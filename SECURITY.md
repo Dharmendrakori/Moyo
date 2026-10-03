@@ -17,7 +17,7 @@ Verification performed for this release:
 | --- | --- | --- |
 | Type safety | `npm run typecheck` | PASS |
 | Lint | `npm run lint` | PASS (0 errors) |
-| Unit tests | `npm test` | PASS (46 tests) |
+| Unit tests | `npm test` | PASS (84 tests) |
 | Production build | `npm run build` | PASS |
 | Dependency audit (runtime) | `npm audit --omit=dev` | 0 vulnerabilities |
 

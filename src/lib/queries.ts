@@ -147,6 +147,29 @@ export async function getCategoryBySlug(slug: string) {
   };
 }
 
+/**
+ * Charging options published for one service, for the booking wizard.
+ *
+ * Kept separate from `getCategoryBySlug` on purpose: that function projects a
+ * narrow list shape (a low "from" price) for browsing, while the wizard needs
+ * the actual per-option rows. Only fields the wizard displays are selected, and
+ * only ACTIVE options are returned - an inactive option cannot be chosen, so
+ * surfacing it would be misleading.
+ */
+export async function getServiceChargingOptions(serviceId: string) {
+  return prisma.serviceOption.findMany({
+    where: { serviceId, isActive: true },
+    orderBy: { charging: 'asc' },
+    select: {
+      charging: true,
+      pricePaise: true,
+      budgetMinPaise: true,
+      budgetMaxPaise: true,
+      durationMinMinutes: true,
+    },
+  });
+}
+
 export type ServiceDetail = {
   id: string;
   name: string;

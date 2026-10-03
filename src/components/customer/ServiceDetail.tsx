@@ -305,7 +305,7 @@ function BookingSidebar({
           </ul>
 
           <Link
-            href={`/book?service=${service.slug}`}
+            href={`/book?service=${encodeURIComponent(service.slug)}`}
             className="mt-5 flex w-full items-center justify-center gap-2 rounded-lg bg-brand-600 px-4 py-3 text-sm font-semibold text-white transition hover:bg-brand-700"
           >
             <Icon name="bolt" size={16} />

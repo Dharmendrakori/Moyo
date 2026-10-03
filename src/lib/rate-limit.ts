@@ -104,5 +104,21 @@ export const REVIEW_POLICY: RateLimitRule = { name: 'review', limit: 5, windowMs
 /** Generic mutation guard for admin APIs. */
 export const ADMIN_MUTATION_POLICY: RateLimitRule = { name: 'admin', limit: 120, windowMs: 60_000 };
 
+/**
+ * Authenticated reads (booking list / detail).
+ *
+ * Generous, because these back ordinary page navigation, but still bounded so
+ * that a compromised or scripted session cannot enumerate records in a loop.
+ */
+export const READ_POLICY: RateLimitRule = { name: 'read', limit: 120, windowMs: 60_000 };
+
+/**
+ * Price preview requests.
+ *
+ * Each one performs a database read and is issued once per wizard step, so the
+ * quota is sized for that flow rather than for free-form querying.
+ */
+export const QUOTE_POLICY: RateLimitRule = { name: 'quote', limit: 30, windowMs: 60_000 };
+
 /** Webhook endpoint: providers retry, so the limit is generous. */
 export const WEBHOOK_POLICY: RateLimitRule = { name: 'webhook', limit: 120, windowMs: 60_000 };

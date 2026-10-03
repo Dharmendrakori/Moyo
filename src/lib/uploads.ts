@@ -57,9 +57,15 @@ function magicMatches(head: Uint8Array, sig: readonly number[], offset = 0): boo
 /**
  * Absolute path of the upload directory, resolved against process.cwd().
  * Kept outside `public/` by convention and by .gitignore.
+ *
+ * The `turbopackIgnore` comments are deliberate. Turbopack's static analysis
+ * cannot prove that `UPLOAD_DIR` stays inside a known subfolder, so it would
+ * trace and bundle the ENTIRE project into the server output. These calls are
+ * runtime-only filesystem writes to a directory that is never served, so opting
+ * out of tracing is correct and keeps the deployment artefact small.
  */
 function uploadRoot(): string {
-  return path.resolve(process.cwd(), env().UPLOAD_DIR);
+  return path.resolve(/* turbopackIgnore: true */ process.cwd(), env().UPLOAD_DIR);
 }
 
 /**
@@ -116,10 +122,11 @@ export async function storeValidatedUpload(file: File): Promise<{
   // Server-generated name. Never derived from user input.
   const storageKey = `${randomBytes(16).toString('hex')}${rule.ext as string}`;
   const root = uploadRoot();
-  const target = path.resolve(root, storageKey);
+  // turbopackIgnore: runtime-only path, see uploadRoot().
+  const target = path.resolve(/* turbopackIgnore: true */ root, storageKey);
 
   // Path containment: the resolved target must stay inside the upload root.
-  if (target !== path.join(root, path.basename(target))) {
+  if (target !== path.join(/* turbopackIgnore: true */ root, path.basename(target))) {
     throw new ApiError('INVALID_PATH', 'Invalid storage path', 400);
   }
 
@@ -144,7 +151,8 @@ export function resolveStoredFile(storageKey: string): string {
   if (!/^[a-f0-9]{32}\.(jpg|png|webp)$/.test(storageKey)) {
     throw new ApiError('INVALID_PATH', 'Invalid attachment reference', 400);
   }
-  const resolved = path.resolve(root, storageKey);
+  // turbopackIgnore: runtime-only path, see uploadRoot().
+  const resolved = path.resolve(/* turbopackIgnore: true */ root, storageKey);
   if (!resolved.startsWith(root + path.sep)) {
     throw new ApiError('INVALID_PATH', 'Invalid attachment reference', 400);
   }

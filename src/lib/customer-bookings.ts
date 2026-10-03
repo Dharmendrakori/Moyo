@@ -116,7 +116,18 @@ export async function getCustomerBooking(customerId: string, bookingId: string) 
       description: true,
       createdAt: true,
       updatedAt: true,
-      service: { select: { id: true, name: true, slug: true } },
+      isEmergency: true,
+      // The category is required by the tracking page header, so it is joined
+      // here rather than being fetched separately on each render.
+      service: {
+        select: {
+          id: true,
+          name: true,
+          slug: true,
+          serviceType: true,
+          subCategory: { select: { category: { select: { name: true, slug: true } } } },
+        },
+      },
       provider: {
         select: { displayName: true, contactPhone: true, whatsappNumber: true },
       },

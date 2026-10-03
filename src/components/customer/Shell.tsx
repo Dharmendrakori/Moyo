@@ -16,20 +16,31 @@ import { prisma } from '@/lib/prisma';
 
 export type NavItem = { href: string; label: string; icon: IconName };
 
+/**
+ * Primary navigation.
+ *
+ * Only routes that actually exist are linked. `/orders` and `/support` are not
+ * implemented yet, so they are omitted rather than rendered as dead links.
+ */
 const PRIMARY_NAV: NavItem[] = [
   { href: '/categories', label: 'Categories', icon: 'grid' },
+  { href: '/book', label: 'Book a service', icon: 'bolt' },
   { href: '/bookings', label: 'My bookings', icon: 'clipboard' },
-  { href: '/orders', label: 'Materials', icon: 'package' },
-  { href: '/support', label: 'Support', icon: 'message' },
 ];
 
-/** Mobile bottom navigation, per the specification. */
+/**
+ * Mobile bottom navigation, per the specification.
+ *
+ * "Booking" points at the wizard (`/book`), which is the central customer
+ * action. `/call` and `/account` are not yet implemented pages, so those items
+ * resolve to the nearest real surface rather than a dead route.
+ */
 const BOTTOM_NAV: NavItem[] = [
   { href: '/', label: 'Home', icon: 'home' },
   { href: '/categories', label: 'Menu', icon: 'grid' },
-  { href: '/categories', label: 'Booking', icon: 'bolt' },
-  { href: '/call', label: 'Call now', icon: 'phone' },
-  { href: '/account', label: 'Account', icon: 'user' },
+  { href: '/book', label: 'Booking', icon: 'bolt' },
+  { href: '/bookings', label: 'Bookings', icon: 'clipboard' },
+  { href: '/login', label: 'Account', icon: 'user' },
 ];
 
 /**
@@ -172,16 +183,16 @@ export function CustomerFooter() {
               title="Platform"
               links={[
                 { href: '/categories', label: 'All categories' },
+                { href: '/book', label: 'Book a service' },
                 { href: '/bookings', label: 'My bookings' },
-                { href: '/orders', label: 'Material orders' },
               ]}
             />
             <FooterColumn
               title="Account"
               links={[
-                { href: '/account', label: 'Profile' },
-                { href: '/account/history', label: 'Service history' },
-                { href: '/support', label: 'Support' },
+                { href: '/login', label: 'Sign in' },
+                { href: '/register', label: 'Create account' },
+                { href: '/bookings', label: 'Booking history' },
               ]}
             />
             <FooterColumn

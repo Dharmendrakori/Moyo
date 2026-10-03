@@ -216,6 +216,41 @@ export const createBookingSchema = z
   });
 
 /**
+ * Server-side price PREVIEW for the booking confirmation step.
+ *
+ * The confirmation screen must show what the provider has actually published
+ * BEFORE the booking is created. This schema carries only the inputs needed to
+ * resolve a price - it deliberately has no room for a client-supplied amount,
+ * so a browser can never influence the figure that is displayed or stored.
+ */
+export const quoteSchema = z
+  .object({
+    serviceId: z.string().cuid('Invalid service'),
+    charging: z.enum(CHARGING_OPTIONS),
+    budgetMin: z.coerce.number().int().min(BUDGET_FLOOR_PAISE).max(BUDGET_CEILING_PAISE).optional(),
+    budgetMax: z.coerce.number().int().min(BUDGET_FLOOR_PAISE).max(BUDGET_CEILING_PAISE).optional(),
+  })
+  .strict()
+  .superRefine((data, ctx) => {
+    if (data.charging !== 'CUSTOMER_BUDGET') return;
+    if (data.budgetMin == null || data.budgetMax == null) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'Enter both a minimum and maximum budget',
+        path: ['budgetMin'],
+      });
+      return;
+    }
+    if (data.budgetMin > data.budgetMax) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'Minimum budget cannot exceed maximum budget',
+        path: ['budgetMax'],
+      });
+    }
+  });
+
+/**
  * Booking transition request. The client names a DESIRED next status; the
  * server re-validates it against the state machine and the actor's role.
  */

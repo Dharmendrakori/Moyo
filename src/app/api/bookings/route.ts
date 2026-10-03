@@ -1,7 +1,7 @@
 import { audit } from '@/lib/audit';
 import { assertCsrf, assertSameOrigin, requireUser } from '@/lib/auth';
 import { ApiError, apiHandler, jsonOk, parseJson, tooManyRequests } from '@/lib/api';
-import { BOOKING_POLICY, rateLimitByUser } from '@/lib/rate-limit';
+import { BOOKING_POLICY, READ_POLICY, rateLimitByUser } from '@/lib/rate-limit';
 import { createBookingSchema } from '@/lib/validation';
 import { prisma } from '@/lib/prisma';
 import {
@@ -10,7 +10,40 @@ import {
   normaliseServiceType,
   resolveBookingPricing,
 } from '@/lib/pricing';
+import { listCustomerBookings } from '@/lib/customer-bookings';
 import type { ChargingOption } from '@/lib/domain';
+
+/**
+ * GET /api/bookings
+ *
+ * Lists the AUTHENTICATED CUSTOMER'S OWN bookings.
+ *
+ * Ownership is not a parameter here: `user.id` comes from the session and is
+ * passed straight into a query that is itself scoped by `customerId`. A caller
+ * cannot widen the result set by supplying an id, because the schema for these
+ * query parameters has no field that could carry one.
+ */
+export const GET = apiHandler(async (request: Request) => {
+  const user = await requireUser();
+
+  const limit = await rateLimitByUser(READ_POLICY, user.id);
+  if (!limit.allowed) return tooManyRequests(limit.retryAfterSeconds);
+
+  const url = new URL(request.url);
+
+  // Parsed defensively: an unrecognised value simply falls back to the default
+  // rather than reaching a query. `page`/`pageSize` are bounded integers.
+  const rawPage = Number(url.searchParams.get('page') ?? '1');
+  const page = Number.isFinite(rawPage) ? Math.min(10_000, Math.max(1, Math.floor(rawPage))) : 1;
+  const rawSize = Number(url.searchParams.get('pageSize') ?? '10');
+  const pageSize = Number.isFinite(rawSize) ? Math.min(50, Math.max(1, Math.floor(rawSize))) : 10;
+  const status = url.searchParams.get('status') ?? undefined;
+
+  const { items, total } = await listCustomerBookings(user.id, { status, page, pageSize });
+
+  return jsonOk({ items, total, page, pageSize });
+});
+
 
 /**
  * POST /api/bookings

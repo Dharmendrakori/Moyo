@@ -156,7 +156,7 @@ const SERIC_PROVIDER = {
   description:
     'Service provider operating on the Moyo platform across the 20 official service categories, covering electrical, electronic, solar, plumbing and allied works.',
   registeredAddress: 'Top Floor, Multicare Hospital, Royal Market, Bhopal, Madhya Pradesh 462030',
-  contactEmail: 'Seric.TechSolutions@gmail.com',
+  contactEmail: 'dharmendra.kori@outlook.com',
   contactPhone: '9993043078',
   whatsappNumber: '9993043078',
   // Not verified in this deployment - the UI must not claim verification.
@@ -168,29 +168,52 @@ async function seedProvider() {
   console.log('Seeding provider: SERIC TECH SOLUTIONS...');
 
   const email = SERIC_PROVIDER.contactEmail.toLowerCase();
-  const providerUser = await prisma.user.upsert({
-    where: { email },
-    update: { name: SERIC_PROVIDER.legalName, isActive: true },
-    create: {
-      email,
-      // Unusable random password. This account is managed via password reset.
-      // It can never be logged into with a known credential from the codebase.
-      passwordHash: await bcrypt.hash(randomPassword(), 12),
-      phone: SERIC_PROVIDER.contactPhone,
-      name: SERIC_PROVIDER.legalName,
-      role: 'PROVIDER',
-      isActive: true,
-    },
+
+  // The provider PROFILE is keyed on its slug, not on the owning user.
+  //
+  // Keying on `userId` (as this previously did) makes the seed depend on the
+  // provider's contact email: change that email and the upsert looks for a
+  // profile that does not exist, tries to CREATE one, and dies on the unique
+  // `slug` constraint left behind by the previous run. The slug is the stable
+  // business identity, so it is the correct key.
+  //
+  // The USER is still reconciled by email, and an existing provider user is
+  // reused when one is already present, so re-seeding never orphans it.
+  let providerUser = await prisma.user.findFirst({
+    where: { role: 'PROVIDER' },
+    select: { id: true },
   });
 
+  if (!providerUser) {
+    providerUser = await prisma.user.upsert({
+      where: { email },
+      update: { name: SERIC_PROVIDER.legalName, isActive: true },
+      create: {
+        email,
+        // Unusable random password. This account is managed via password reset.
+        // It can never be logged into with a known credential from the codebase.
+        passwordHash: await bcrypt.hash(randomPassword(), 12),
+        phone: SERIC_PROVIDER.contactPhone,
+        name: SERIC_PROVIDER.legalName,
+        role: 'PROVIDER',
+        isActive: true,
+      },
+      select: { id: true },
+    });
+  }
+
   const provider = await prisma.provider.upsert({
-    where: { userId: providerUser.id },
+    where: { slug: SERIC_PROVIDER.slug },
     update: {
+      userId: providerUser.id,
+      legalName: SERIC_PROVIDER.legalName,
       displayName: SERIC_PROVIDER.displayName,
+      description: SERIC_PROVIDER.description,
       registeredAddress: SERIC_PROVIDER.registeredAddress,
       contactEmail: SERIC_PROVIDER.contactEmail,
       contactPhone: SERIC_PROVIDER.contactPhone,
       whatsappNumber: SERIC_PROVIDER.whatsappNumber,
+      isVerified: SERIC_PROVIDER.isVerified,
       isActive: SERIC_PROVIDER.isActive,
     },
     create: {
@@ -288,7 +311,7 @@ async function seedSettings() {
     ['platform.name', 'MOYO'],
     ['platform.currency', 'INR'],
     ['platform.taxRateBps', '1800'],
-    ['support.email', 'Seric.TechSolutions@gmail.com'],
+    ['support.email', 'dharmendra.kori@outlook.com'],
     ['support.phone', '9993043078'],
     ['booking.autoAssign', 'false'],
   ];
