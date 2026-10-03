@@ -54,3 +54,11 @@ storage/uploads/*
 .vscode/*
 !.vscode/extensions.json
 .idea
+
+# --- Scratch / tooling output -----------------------------------------------
+# Transient log files created during local build/audit work.
+_*.txt
+_*.log
+_*.json
+_*.ps1
+_.env 

@@ -1,0 +1,629 @@
+// MOYO platform data model.
+//
+// IMPORTANT DESIGN NOTES
+// ----------------------
+// - SQLite (the development datasource) does not support native enums, so every
+//   "enum" column is a String with a @default. The allowed values live in
+//   `src/lib/domain.ts` and are enforced by Zod at the API boundary AND by the
+//   server before every write. A stored string is never trusted for an
+//   authorization decision without narrowing it first.
+// - Monetary values are integers (paise) to avoid floating-point rounding.
+// - Ownership columns (customerId / providerId / technicianId) exist on every
+//   individually addressable record, so authorization is enforced per row and
+//   IDOR is structurally prevented (see src/lib/access.ts).
+// - Booking status transitions are validated against src/lib/booking-state.ts;
+//   a client can never set an arbitrary status.
+// - FOR PRODUCTION, switch the datasource provider to `postgresql` and promote
+//   the documented string columns to native enums for DB-level enforcement.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// ---------------------------------------------------------------------------
+// Identity
+// ---------------------------------------------------------------------------
+
+model User {
+  id           String    @id @default(cuid())
+  email        String    @unique
+  phone        String    @unique
+  name         String
+  passwordHash String
+  /// CUSTOMER | PROVIDER | TECHNICIAN | ADMIN
+  role         String    @default("CUSTOMER")
+  isActive     Boolean   @default(true)
+
+  // Lockout / brute-force mitigation state
+  failedLoginCount Int      @default(0)
+  lockedUntil     DateTime?
+  lastLoginAt     DateTime?
+  passwordChangedAt DateTime @default(now())
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  provider   Provider?
+  technician Technician?
+  bookings   Booking[]        @relation("CustomerBookings")
+  invoices   Invoice[]
+  reviews    Review[]
+  orders     MaterialOrder[]
+  messages   Message[]        @relation("ParticipantMessages")
+  threads    MessageThread[]
+  notifications Notification[]
+  referralsMade   Referral[]   @relation("ReferralOwner")
+  referralSignups Referral[]   @relation("ReferralInvitee")
+  sessions   Session[]
+  auditLogs  AuditLog[]
+  address    CustomerAddress?
+
+  @@index([role, isActive])
+}
+
+/// Opaque, hashed server-side sessions. No JWT is used, so logout, role changes
+/// and account suspension take effect on the very next request.
+model Session {
+  id               String   @id @default(cuid())
+  /// SHA-256 of the cookie token. The raw token exists only in the cookie.
+  tokenHash        String   @unique
+  userId           String
+  user             User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userAgent        String?
+  /// Hashed, never the raw IP.
+  ipHash           String?
+  csrfToken        String
+  expiresAt        DateTime
+  revokedAt        DateTime?
+  createdAt        DateTime @default(now())
+  lastSeenAt       DateTime @default(now())
+
+  @@index([userId])
+  @@index([expiresAt])
+}
+
+model CustomerAddress {
+  id         String  @id @default(cuid())
+  userId     String  @unique
+  user       User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  label      String
+  line1      String
+  line2      String?
+  area       String
+  city       String
+  state      String
+  pincode    String
+  landmark   String?
+  latitude   Float?
+  longitude  Float?
+  isDefault  Boolean @default(true)
+  updatedAt  DateTime @updatedAt
+}
+
+// ---------------------------------------------------------------------------
+// Provider / Technician
+// ---------------------------------------------------------------------------
+
+/// A service provider operating on Moyo. SERIC TECH SOLUTIONS is one of these.
+model Provider {
+  id             String  @id @default(cuid())
+  userId         String  @unique
+  user           User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  legalName      String
+  displayName    String
+  slug           String  @unique
+  description    String?
+  /// Free-form contact block. No invented guarantees or certifications.
+  contactEmail   String?
+  contactPhone   String?
+  whatsappNumber String?
+  registeredAddress String?
+  websiteUrl     String?
+  /// Explicit, admin-managed operational fields. NULL means "not published",
+  /// and the UI renders neutral copy rather than inventing a value.
+  serviceAreaCities String?
+  gstin          String?
+  isVerified     Boolean @default(false)
+  isActive       Boolean @default(false)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  services    ProviderService[]
+  bookings    Booking[]
+  technicians Technician[]
+  invoices    Invoice[]
+  orders      MaterialOrder[]
+
+  @@index([isActive])
+}
+
+model Technician {
+  id           String  @id @default(cuid())
+  userId       String  @unique
+  user         User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  providerId   String
+  provider     Provider @relation(fields: [providerId], references: [id], onDelete: Cascade)
+  displayName  String
+  headline     String?
+  /// Verified skill tags only. Never fabricated.
+  skills       String?
+  phone        String?
+  isActive     Boolean @default(false)
+  /// Set by admin only; drives "available" claims in the UI.
+  isAvailable  Boolean @default(false)
+  /// Aggregated from approved reviews only, never seeded with a made-up score.
+  ratingCount  Int     @default(0)
+  ratingSum    Int     @default(0)
+  totalJobs    Int     @default(0)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  bookings Booking[]
+
+  @@index([providerId, isActive])
+}
+
+// ---------------------------------------------------------------------------
+// Service catalog (data-driven, 20 official categories)
+// ---------------------------------------------------------------------------
+
+model Category {
+  id          String  @id @default(cuid())
+  /// 1..20 exactly as defined by the SERIC specification. Never renamed.
+  code        String  @unique
+  position    Int     @unique
+  name        String
+  slug        String  @unique
+  description String?
+  iconKey     String?
+  isActive    Boolean @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  subCategories SubCategory[]
+
+  @@index([isActive, position])
+}
+
+model SubCategory {
+  id          String  @id @default(cuid())
+  categoryId  String
+  category    Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  name        String
+  slug        String
+  description String?
+  isActive    Boolean @default(true)
+
+  services Service[]
+
+  @@unique([categoryId, slug])
+  @@index([categoryId])
+}
+
+model Service {
+  id             String  @id @default(cuid())
+  subCategoryId  String
+  subCategory    SubCategory @relation(fields: [subCategoryId], references: [id], onDelete: Cascade)
+  name           String
+  slug           String  @unique
+  description    String?
+  includedWork   String?
+  /// REPAIR | INSTALLATION | UNINSTALLATION | MAINTENANCE | REPLACEMENT |
+  /// CUSTOMIZATION | SPARE_PARTS | SITE_VISIT | CONSULTATION | REMOTE_SUPPORT
+  serviceType    String  @default("REPAIR")
+  isActive       Boolean @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  options   ServiceOption[]
+  providers ProviderService[]
+  bookings  Booking[]
+  reviews   Review[]
+
+  @@index([subCategoryId, isActive])
+}
+
+/// Pricing rules per service + charging option. All money is server-side and
+/// resolved from the database; the client can never post a price.
+model ServiceOption {
+  id          String  @id @default(cuid())
+  serviceId   String
+  service     Service @relation(fields: [serviceId], references: [id], onDelete: Cascade)
+  /// VISIT_CHARGE | FIXED_CHARGE | CUSTOMER_BUDGET
+  charging    String
+  /// Minor units (paise). NULL means "price not published yet".
+  pricePaise  Int?
+  /// For CUSTOMER_BUDGET: bounds the customer may enter, server-validated.
+  budgetMinPaise Int?
+  budgetMaxPaise Int?
+  durationMinMinutes Int?
+  isActive    Boolean @default(true)
+
+  @@unique([serviceId, charging])
+  @@index([serviceId])
+}
+
+model ProviderService {
+  providerId String
+  provider   Provider @relation(fields: [providerId], references: [id], onDelete: Cascade)
+  serviceId  String
+  service    Service  @relation(fields: [serviceId], references: [id], onDelete: Cascade)
+
+  @@unique([providerId, serviceId])
+}
+
+// ---------------------------------------------------------------------------
+// Booking
+// ---------------------------------------------------------------------------
+
+model Booking {
+  id          String @id @default(cuid())
+  /// Human-friendly sequential reference, e.g. MOYO-2026-000123.
+  reference   String @unique
+  customerId  String
+  customer    User   @relation("CustomerBookings", fields: [customerId], references: [id], onDelete: Restrict)
+
+  providerId  String?
+  provider    Provider? @relation(fields: [providerId], references: [id], onDelete: SetNull)
+
+  serviceId   String
+  service     Service @relation(fields: [serviceId], references: [id], onDelete: Restrict)
+
+  technicianId String?
+  technician   Technician? @relation(fields: [technicianId], references: [id], onDelete: SetNull)
+
+  /// REQUESTED | CONFIRMED | TECHNICIAN_ASSIGNED | TECHNICIAN_ON_THE_WAY |
+  /// ARRIVED | SERVICE_IN_PROGRESS | COMPLETED | INVOICE_GENERATED |
+  /// PAYMENT_PENDING | PAID | FEEDBACK_PENDING | CLOSED | CANCELLED
+  status      String  @default("REQUESTED")
+  /// INSTANT | LATER | SCHEDULED | EMERGENCY
+  mode        String  @default("INSTANT")
+  serviceType String
+
+  /// VISIT_CHARGE | FIXED_CHARGE | CUSTOMER_BUDGET
+  charging    String
+  /// Snapshot of the SERVER-resolved price. Never client input.
+  quotedPaise Int?
+  budgetMinPaise Int?
+  budgetMaxPaise Int?
+
+  scheduledFor DateTime?
+  addressLine1 String
+  addressLine2 String?
+  area         String
+  city         String
+  state        String
+  pincode      String
+  landmark     String?
+  contactName  String
+  contactPhone String
+  description  String?
+  isEmergency  Boolean @default(false)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  statusEvents BookingStatusEvent[]
+  attachments  Attachment[]
+  invoice      Invoice?
+  payments     Payment[]
+  review       Review?
+  order        MaterialOrder?
+
+  @@index([customerId, status])
+  @@index([providerId, status])
+  @@index([technicianId, status])
+  @@index([status, createdAt])
+}
+
+/// Append-only log of every status transition, so the state machine is
+/// reconstructable and each transition records who performed it.
+model BookingStatusEvent {
+  id        String   @id @default(cuid())
+  bookingId String
+  booking   Booking  @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  from      String?
+  to        String
+  actorId   String?
+  actorRole String?
+  note      String?
+  createdAt DateTime @default(now())
+
+  @@index([bookingId, createdAt])
+}
+
+model Attachment {
+  id           String   @id @default(cuid())
+  bookingId    String
+  booking      Booking  @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  /// Random server-generated name. User filenames are NEVER used as paths.
+  storageKey   String   @unique
+  originalName String?
+  mimeType     String
+  sizeBytes    Int
+  sha256       String?
+  createdAt    DateTime @default(now())
+
+  @@index([bookingId])
+}
+
+model Review {
+  id           String   @id @default(cuid())
+  bookingId    String   @unique
+  booking      Booking  @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  customerId   String
+  customer     User     @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  serviceId    String
+  service      Service  @relation(fields: [serviceId], references: [id], onDelete: Cascade)
+  technicianId String?
+  rating       Int
+  comment      String?
+  /// Admin moderation: hidden from public aggregates until approved.
+  isApproved   Boolean @default(false)
+  createdAt    DateTime @default(now())
+
+  @@index([serviceId, isApproved])
+  @@index([isApproved, createdAt])
+}
+
+// ---------------------------------------------------------------------------
+// Commerce
+// ---------------------------------------------------------------------------
+
+model Invoice {
+  id         String  @id @default(cuid())
+  number     String  @unique
+  bookingId  String  @unique
+  booking    Booking @relation(fields: [bookingId], references: [id], onDelete: Restrict)
+  customerId String
+  customer   User    @relation(fields: [customerId], references: [id], onDelete: Restrict)
+  providerId String?
+  provider   Provider? @relation(fields: [providerId], references: [id], onDelete: SetNull)
+
+  /// DRAFT | ISSUED | PAID | VOID | OVERDUE
+  status       String  @default("DRAFT")
+  subtotalPaise Int
+  taxPaise      Int
+  totalPaise    Int
+  currency      String  @default("INR")
+  taxRateBps    Int     @default(1800)
+  notes         String?
+  issuedAt  DateTime?
+  paidAt    DateTime?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  lineItems InvoiceLineItem[]
+  payments  Payment[]
+
+  @@index([customerId, status])
+  @@index([status, createdAt])
+}
+
+model InvoiceLineItem {
+  id          String  @id @default(cuid())
+  invoiceId   String
+  invoice     Invoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  description String
+  quantity    Int     @default(1)
+  unitPaise   Int
+  amountPaise Int
+}
+
+model Payment {
+  id             String   @id @default(cuid())
+  /// Idempotency key; unique so a retry can never double-charge.
+  idempotencyKey String   @unique
+  invoiceId      String
+  invoice        Invoice  @relation(fields: [invoiceId], references: [id], onDelete: Restrict)
+  bookingId      String
+  booking        Booking  @relation(fields: [bookingId], references: [id], onDelete: Restrict)
+
+  /// CREATED | PENDING | SUCCEEDED | FAILED | REFUNDED
+  /// Set to SUCCEEDED ONLY by a verified webhook handler.
+  status        String   @default("CREATED")
+  amountPaise   Int
+  currency      String   @default("INR")
+  /// Opaque reference from the payment provider. Never card data.
+  providerRef   String?
+  /// Last 4 digits, and only if the provider supplies them.
+  cardLast4     String?
+  failureReason String?
+  /// Whether the webhook that settled this payment passed signature checks.
+  signatureVerified Boolean @default(false)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([invoiceId])
+  @@index([status, createdAt])
+}
+
+model Material {
+  id             String  @id @default(cuid())
+  sku            String  @unique
+  name           String
+  slug           String  @unique
+  category       String
+  brand          String?
+  description    String?
+  unitPricePaise Int
+  mrpPaise       Int?
+  /// Flagged rather than assumed, so unknown warranty data is never claimed.
+  warrantyMonths Int?
+  imageUrl       String?
+  isActive       Boolean @default(true)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  orderItems MaterialOrderItem[]
+
+  @@index([category, isActive])
+}
+
+model MaterialOrder {
+  id         String  @id @default(cuid())
+  reference  String  @unique
+  /// MATERIAL | INSTALLATION
+  kind       String  @default("MATERIAL")
+  customerId String
+  customer   User    @relation(fields: [customerId], references: [id], onDelete: Restrict)
+  providerId String?
+  provider   Provider? @relation(fields: [providerId], references: [id], onDelete: SetNull)
+  bookingId  String?  @unique
+  booking    Booking? @relation(fields: [bookingId], references: [id], onDelete: SetNull)
+
+  /// PLACED | CONFIRMED | PACKED | DISPATCHED | DELIVERED | CANCELLED |
+  /// INSTALLATION_SCHEDULED | INSTALLATION_COMPLETED
+  status        String @default("PLACED")
+  subtotalPaise Int
+  taxPaise      Int
+  totalPaise    Int
+  currency      String @default("INR")
+
+  deliverToName    String
+  deliverToPhone   String
+  addressLine1     String
+  addressLine2     String?
+  area             String
+  city             String
+  state            String
+  pincode          String
+  installationRequested Boolean @default(false)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  items MaterialOrderItem[]
+
+  @@index([customerId, status])
+  @@index([status, createdAt])
+}
+
+model MaterialOrderItem {
+  id         String   @id @default(cuid())
+  orderId    String
+  order      MaterialOrder @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  materialId String
+  material   Material @relation(fields: [materialId], references: [id], onDelete: Restrict)
+  /// Name/price snapshot so later catalog edits never rewrite order history.
+  nameSnapshot   String
+  brandSnapshot  String?
+  unitPricePaise Int
+  quantity       Int
+  amountPaise    Int
+
+  @@index([orderId])
+}
+
+// ---------------------------------------------------------------------------
+// Communication, referral, audit
+// ---------------------------------------------------------------------------
+
+model Notification {
+  id      String  @id @default(cuid())
+  userId  String
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  /// IN_APP | EMAIL | SMS | WHATSAPP | PUSH
+  channel String  @default("IN_APP")
+  title   String
+  body    String
+  link    String?
+  /// QUEUED | SENT | FAILED | READ
+  status  String  @default("QUEUED")
+  readAt  DateTime?
+  createdAt DateTime @default(now())
+
+  @@index([userId, status, createdAt])
+}
+
+model MessageThread {
+  id            String   @id @default(cuid())
+  subject       String
+  customerId    String
+  customer      User     @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  /// OPEN | PENDING | CLOSED
+  status        String   @default("OPEN")
+  lastMessageAt DateTime @default(now())
+  createdAt     DateTime @default(now())
+
+  messages Message[]
+
+  @@index([customerId, status])
+  @@index([status, lastMessageAt])
+}
+
+model Message {
+  id        String   @id @default(cuid())
+  threadId  String
+  thread    MessageThread @relation(fields: [threadId], references: [id], onDelete: Cascade)
+  senderId  String?
+  sender    User?    @relation("ParticipantMessages", fields: [senderId], references: [id], onDelete: SetNull)
+  body      String
+  /// Null sender with staffHandled = true means a support-team reply.
+  staffHandled Boolean @default(false)
+  createdAt DateTime @default(now())
+
+  @@index([threadId, createdAt])
+}
+
+model Referral {
+  id          String  @id @default(cuid())
+  code        String  @unique
+  ownerId     String
+  owner       User    @relation("ReferralOwner", fields: [ownerId], references: [id], onDelete: Cascade)
+  inviteeId   String? @unique
+  invitee     User?   @relation("ReferralInvitee", fields: [inviteeId], references: [id], onDelete: SetNull)
+  /// PENDING | QUALIFIED | CREDITED | EXPIRED | REJECTED
+  status      String  @default("PENDING")
+  creditPaise Int     @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([ownerId, status])
+}
+
+/// Security-relevant event log. NEVER stores passwords, tokens, card data or
+/// full customer addresses - `metadata` carries non-sensitive facts only.
+model AuditLog {
+  id         String   @id @default(cuid())
+  actorId    String?
+  actor      User?    @relation(fields: [actorId], references: [id], onDelete: SetNull)
+  actorRole  String?
+  /// See AUDIT_ACTIONS in src/lib/domain.ts
+  action     String
+  entityType String
+  entityId   String?
+  /// JSON string of non-sensitive operational facts only.
+  metadata   String?
+  ipHash     String?
+  userAgent  String?
+  createdAt  DateTime @default(now())
+
+  @@index([actorId, createdAt])
+  @@index([action, createdAt])
+  @@index([entityType, entityId])
+}
+
+model Setting {
+  key       String   @id
+  value     String
+  updatedAt DateTime @updatedAt
+}
+
+/// Sequential counter used to generate human-friendly booking/order references
+/// without a race-prone max(id)+1 query.
+model Counter {
+  key       String   @id
+  value     Int      @default(0)
+  updatedAt DateTime @updatedAt
+}
