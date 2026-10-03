@@ -1,0 +1,2948 @@
+<html lang="en" class="scroll-smooth">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>SERIC TECH SOLUTIONS | Expert Electrical & Electronic Services</title>
+  
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Font Awesome -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+  <!-- Google Fonts: Inter & Outfit -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@500;600;700;800&display=swap" rel="stylesheet">
+
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            brand: {
+              50: '#f0f7ff',
+              100: '#e0effe',
+              200: '#bae0fd',
+              500: '#0066cc',
+              600: '#0284c7',
+              700: '#0369a1',
+              800: '#075985',
+              900: '#0c4a6e',
+              dark: '#0a192f',
+              navy: '#0b192c',
+              accent: '#f59e0b',
+              electric: '#00f0ff',
+              success: '#10b981',
+              danger: '#ef4444'
+            }
+          },
+          fontFamily: {
+            sans: ['Inter', 'sans-serif'],
+            display: ['Outfit', 'sans-serif']
+          }
+        }
+      }
+    }
+  </script>
+
+  <style>
+    /* Custom scrollbar and technical micro-details */
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: #f1f5f9; }
+    ::-webkit-scrollbar-thumb { background: #94a3b8; border-radius: 999px; }
+    ::-webkit-scrollbar-thumb:hover { background: #64748b; }
+    
+    .tech-grid-bg {
+      background-size: 30px 30px;
+      background-image: 
+        linear-gradient(to right, rgba(0, 102, 204, 0.04) 1px, transparent 1px),
+        linear-gradient(to bottom, rgba(0, 102, 204, 0.04) 1px, transparent 1px);
+    }
+    .glow-cyan {
+      box-shadow: 0 0 25px -5px rgba(0, 102, 204, 0.25);
+    }
+    .glow-accent {
+      box-shadow: 0 0 20px -3px rgba(245, 158, 11, 0.3);
+    }
+    .safe-bottom {
+      padding-bottom: env(safe-area-inset-bottom, 70px);
+    }
+    .badge-pulse {
+      animation: pulse-ring 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+    }
+    @keyframes pulse-ring {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.6; transform: scale(1.05); }
+    }
+    .tab-active {
+      border-color: #0066cc;
+      color: #0066cc;
+      background-color: #f0f7ff;
+    }
+    /* Hide on print */
+    @media print {
+      .no-print { display: none !important; }
+      body { background: white; }
+    }
+  </style>
+</head>
+
+<body class="bg-slate-50 text-slate-800 font-sans antialiased min-h-screen flex flex-col tech-grid-bg pb-16 md:pb-0">
+
+  <!-- ================= TOP EMERGENCY & CONTACT BANNER ================= -->
+  <div class="bg-brand-navy text-slate-200 text-xs py-2 px-4 border-b border-slate-700 hidden md:block">
+    <div class="max-w-7xl mx-auto flex justify-between items-center">
+      <div class="flex items-center gap-6">
+        <span class="flex items-center gap-1.5 text-brand-electric font-semibold">
+          <i class="fa-solid fa-bolt text-brand-accent animate-bounce"></i> 24x7 Bhopal Emergency Dispatch Available
+        </span>
+        <span class="text-slate-400">|</span>
+        <span class="flex items-center gap-1.5"><i class="fa-solid fa-location-dot text-brand-accent"></i> Bhopal M.P. (462030)</span>
+      </div>
+      <div class="flex items-center gap-6">
+        <a href="tel:+919993043078" class="hover:text-white transition flex items-center gap-1"><i class="fa-solid fa-phone text-emerald-400"></i> +91 9993043078 (Jagdish Verma)</a>
+        <a href="tel:+919575616213" class="hover:text-white transition hidden lg:inline">+91 9575616213 (Mangal Singh)</a>
+        <a href="mailto:Seric.TechSolutions@gmail.com" class="hover:text-brand-electric transition flex items-center gap-1"><i class="fa-regular fa-envelope"></i> Seric.TechSolutions@gmail.com</a>
+      </div>
+    </div>
+  </div>
+
+  <!-- ================= MAIN HEADER ================= -->
+  <header class="sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-slate-200 shadow-sm">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="flex items-center justify-between h-18 py-2">
+        
+        <!-- Brand Logo -->
+        <div class="flex items-center gap-3 cursor-pointer" onclick="showScreen('home')">
+          <div class="w-11 h-11 rounded-xl bg-gradient-to-tr from-brand-900 to-brand-500 flex items-center justify-center text-white shadow-md text-xl font-bold font-display tracking-tight border border-blue-400/30">
+            <span class="text-brand-accent font-black">S</span>TS
+          </div>
+          <div>
+            <div class="flex items-center gap-1.5">
+              <span class="font-display font-extrabold text-xl tracking-tight text-slate-900 uppercase">SERIC TECH</span>
+              <span class="bg-brand-50 text-brand-500 text-[10px] font-bold px-1.5 py-0.5 rounded border border-brand-200">SOLUTIONS</span>
+            </div>
+            <p class="text-[10px] font-medium text-slate-500 leading-none">Expert Electrical & Electronic Services</p>
+          </div>
+        </div>
+
+        <!-- Location Selector & Global Search (Desktop) -->
+        <div class="hidden lg:flex items-center gap-3 flex-1 max-w-xl mx-8">
+          <!-- Location Picker -->
+          <button onclick="openLocationModal()" class="flex items-center gap-2 px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold rounded-lg transition border border-slate-200 whitespace-nowrap">
+            <i class="fa-solid fa-location-crosshairs text-brand-500"></i>
+            <span id="currentLocationText">Royal Market, Bhopal</span>
+            <i class="fa-solid fa-chevron-down text-[10px] text-slate-400"></i>
+          </button>
+
+          <!-- Search Input -->
+          <div class="relative w-full">
+            <i class="fa-solid fa-magnifying-glass absolute left-3.5 top-3 text-slate-400 text-sm"></i>
+            <input 
+              type="text" 
+              id="globalSearchInput"
+              placeholder="Search 20+ categories, AC repair, Solar, Hospital items..." 
+              oninput="handleGlobalSearch(this.value)"
+              class="w-full pl-9 pr-8 py-2 text-xs bg-slate-50 focus:bg-white border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent transition"
+            />
+            <button onclick="clearSearch()" id="searchClearBtn" class="hidden absolute right-3 top-2.5 text-slate-400 hover:text-slate-600">
+              <i class="fa-solid fa-circle-xmark text-xs"></i>
+            </button>
+            
+            <!-- Live Search Results Dropdown -->
+            <div id="searchResultsDropdown" class="hidden absolute left-0 right-0 top-11 bg-white rounded-xl shadow-2xl border border-slate-200 z-50 max-h-96 overflow-y-auto p-2"></div>
+          </div>
+        </div>
+
+        <!-- Desktop Action Buttons -->
+        <div class="hidden md:flex items-center gap-3">
+          <button onclick="openMaterialStore()" class="flex items-center gap-2 px-3 py-2 text-xs font-bold text-slate-700 hover:text-brand-500 hover:bg-brand-50 rounded-lg transition">
+            <i class="fa-solid fa-box-open text-brand-500"></i>
+            <span>Materials</span>
+            <span id="cartCountBadge" class="hidden bg-brand-accent text-slate-900 font-extrabold text-[10px] px-1.5 py-0.2 rounded-full">0</span>
+          </button>
+          
+          <button onclick="showScreen('bookings')" class="flex items-center gap-2 px-3 py-2 text-xs font-bold text-slate-700 hover:text-brand-500 hover:bg-brand-50 rounded-lg transition">
+            <i class="fa-solid fa-calendar-check text-brand-600"></i>
+            <span>Current Booking</span>
+          </button>
+
+          <a href="tel:+919993043078" class="flex items-center gap-1.5 px-3 py-2 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 text-xs font-bold rounded-lg border border-emerald-200 transition">
+            <i class="fa-solid fa-phone-volume"></i>
+            <span>Call Now</span>
+          </a>
+
+          <button onclick="startBookingWizard()" class="flex items-center gap-2 px-4 py-2 bg-brand-500 hover:bg-brand-600 text-white text-xs font-bold rounded-lg shadow-md hover:shadow-lg transition">
+            <i class="fa-solid fa-bolt-lightning text-brand-accent"></i>
+            <span>Book Service</span>
+          </button>
+
+          <button onclick="toggleSideMenu()" class="p-2 text-slate-700 hover:text-brand-500 hover:bg-slate-100 rounded-lg">
+            <i class="fa-solid fa-bars-staggered text-lg"></i>
+          </button>
+        </div>
+
+        <!-- Mobile Header Quick CTA -->
+        <div class="flex items-center gap-2 md:hidden">
+          <button onclick="startBookingWizard()" class="px-3 py-1.5 bg-brand-500 text-white text-xs font-bold rounded-lg flex items-center gap-1 shadow">
+            <i class="fa-solid fa-bolt-lightning text-brand-accent text-[10px]"></i> Book
+          </button>
+          <a href="tel:+919993043078" class="p-2 bg-emerald-500 text-white rounded-lg shadow text-xs">
+            <i class="fa-solid fa-phone"></i>
+          </a>
+          <button onclick="toggleSideMenu()" class="p-2 text-slate-700 bg-slate-100 rounded-lg">
+            <i class="fa-solid fa-bars text-sm"></i>
+          </button>
+        </div>
+
+      </div>
+
+      <!-- Mobile Search Bar -->
+      <div class="pb-2.5 md:hidden">
+        <div class="relative">
+          <i class="fa-solid fa-magnifying-glass absolute left-3 top-2.5 text-slate-400 text-xs"></i>
+          <input 
+            type="text" 
+            placeholder="Search categories, services & parts..." 
+            oninput="handleGlobalSearch(this.value)"
+            class="w-full pl-8 pr-4 py-2 text-xs bg-slate-100 rounded-lg border border-slate-200 focus:outline-none focus:bg-white focus:ring-2 focus:ring-brand-500"
+          />
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- ================= NOTIFICATION / TOAST CONTAINER ================= -->
+  <div id="toastContainer" class="fixed top-20 right-4 z-50 flex flex-col gap-2 pointer-events-none max-w-sm w-full"></div>
+
+  <!-- ================= APP CONTAINER (DYNAMIC VIEWS) ================= -->
+  <main id="appMain" class="flex-grow">
+    
+    <!-- ================= VIEW: HOME ================= -->
+    <section id="view-home" class="view-screen block">
+      
+      <!-- HERO SECTION -->
+      <div class="relative bg-gradient-to-br from-brand-dark via-brand-navy to-slate-900 text-white overflow-hidden border-b border-slate-800">
+        <div class="absolute inset-0 opacity-10 bg-[radial-gradient(#38bdf8_1px,transparent_1px)] [background-size:16px_16px]"></div>
+        
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 md:py-16 relative z-10">
+          <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
+            
+            <div class="lg:col-span-7 space-y-5">
+              <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-brand-500/20 border border-brand-500/40 text-brand-electric text-xs font-bold tracking-wide uppercase">
+                <span class="w-2 h-2 rounded-full bg-emerald-400 animate-ping"></span>
+                Official Bhopal Service & Dispatch Network
+              </div>
+              
+              <h1 class="text-3xl sm:text-4xl lg:text-5xl font-extrabold font-display leading-tight tracking-tight text-white">
+                Your Trusted Partner for <span class="text-transparent bg-clip-text bg-gradient-to-r from-sky-400 to-brand-electric">Expert Electrical & Electronic</span> Services
+              </h1>
+              
+              <p class="text-sm sm:text-base text-slate-300 max-w-2xl leading-relaxed">
+                From household wiring, AC maintenance, and solar installations to hospital medical equipment, industrial plants, and verified material procurement. Fast technician assignment across Bhopal.
+              </p>
+
+              <!-- Charging Model Indicator Cards -->
+              <div class="grid grid-cols-3 gap-2 pt-2 pb-1">
+                <div class="bg-white/10 backdrop-blur-sm border border-white/10 rounded-lg p-2.5 text-center hover:bg-white/15 transition cursor-pointer" onclick="startBookingWizardWithModel('VISIT')">
+                  <div class="text-[10px] font-bold text-sky-300 uppercase">Option 1</div>
+                  <div class="text-xs sm:text-sm font-extrabold text-white">Visit Charge</div>
+                  <div class="text-[10px] text-slate-300">₹199 Inspection</div>
+                </div>
+                <div class="bg-white/10 backdrop-blur-sm border border-white/10 rounded-lg p-2.5 text-center hover:bg-white/15 transition cursor-pointer" onclick="startBookingWizardWithModel('FIXED')">
+                  <div class="text-[10px] font-bold text-amber-300 uppercase">Option 2</div>
+                  <div class="text-xs sm:text-sm font-extrabold text-white">Fixed Charge</div>
+                  <div class="text-[10px] text-slate-300">Upfront Rate</div>
+                </div>
+                <div class="bg-white/10 backdrop-blur-sm border border-white/10 rounded-lg p-2.5 text-center hover:bg-white/15 transition cursor-pointer" onclick="startBookingWizardWithModel('BUDGET')">
+                  <div class="text-[10px] font-bold text-emerald-300 uppercase">Option 3</div>
+                  <div class="text-xs sm:text-sm font-extrabold text-white">Your Budget</div>
+                  <div class="text-[10px] text-slate-300">Min - Max Range</div>
+                </div>
+              </div>
+
+              <!-- Hero CTAs -->
+              <div class="flex flex-wrap items-center gap-3 pt-2">
+                <button onclick="startBookingWizard()" class="px-6 py-3 bg-brand-500 hover:bg-brand-600 text-white text-sm font-bold rounded-xl shadow-lg hover:shadow-brand-500/50 flex items-center gap-2 transition transform active:scale-95">
+                  <i class="fa-solid fa-bolt text-brand-accent"></i> Book a Technician Now
+                </button>
+                <a href="tel:+919993043078" class="px-5 py-3 bg-white/10 hover:bg-white/20 text-white text-sm font-bold rounded-xl border border-white/20 flex items-center gap-2 transition">
+                  <i class="fa-solid fa-phone text-emerald-400"></i> Call Dispatch Center
+                </a>
+                <a href="https://wa.me/919993043078?text=Hello%20Seric%20Tech%20Solutions,%20I%20need%20electrical%20assistance" target="_blank" class="px-4 py-3 bg-emerald-600/30 hover:bg-emerald-600/50 text-emerald-300 text-sm font-bold rounded-xl border border-emerald-500/40 flex items-center gap-2 transition">
+                  <i class="fa-brands fa-whatsapp text-lg text-emerald-400"></i> WhatsApp
+                </a>
+              </div>
+
+              <div class="flex items-center gap-4 text-xs text-slate-400 pt-1">
+                <span class="flex items-center gap-1"><i class="fa-solid fa-shield-halved text-brand-electric"></i> Verified Technicians</span>
+                <span class="flex items-center gap-1"><i class="fa-solid fa-receipt text-brand-accent"></i> Transparent Invoicing</span>
+                <span class="flex items-center gap-1"><i class="fa-solid fa-clock-rotate-left text-emerald-400"></i> 60-Min Instant Dispatch</span>
+              </div>
+            </div>
+
+            <!-- Hero Right: Interactive Quick Dispatch Status Simulator -->
+            <div class="lg:col-span-5">
+              <div class="bg-slate-800/80 backdrop-blur-md rounded-2xl p-5 border border-slate-700/80 shadow-2xl">
+                <div class="flex items-center justify-between border-b border-slate-700 pb-3 mb-4">
+                  <div class="flex items-center gap-2">
+                    <span class="w-3 h-3 rounded-full bg-emerald-500 animate-pulse"></span>
+                    <h3 class="text-xs font-bold tracking-wider uppercase text-slate-300">Live Technician Network</h3>
+                  </div>
+                  <span class="text-[10px] bg-slate-700 text-brand-electric px-2 py-0.5 rounded font-mono">Bhopal Hub</span>
+                </div>
+
+                <!-- Active Dispatch Preview Card -->
+                <div class="bg-slate-900/90 rounded-xl p-4 border border-slate-700/60 mb-3 space-y-3">
+                  <div class="flex items-center justify-between">
+                    <div class="flex items-center gap-3">
+                      <div class="w-10 h-10 rounded-full bg-brand-500/20 border border-brand-500 flex items-center justify-center text-brand-electric font-bold text-sm">
+                        <i class="fa-solid fa-user-gear"></i>
+                      </div>
+                      <div>
+                        <div class="text-xs font-bold text-white flex items-center gap-1.5">
+                          Deepak Sharma <i class="fa-solid fa-circle-check text-emerald-400 text-[10px]"></i>
+                        </div>
+                        <div class="text-[11px] text-slate-400">Master Industrial & Domestic Electrician</div>
+                      </div>
+                    </div>
+                    <span class="bg-emerald-500/10 text-emerald-400 text-[10px] font-bold px-2 py-1 rounded border border-emerald-500/30">Available</span>
+                  </div>
+
+                  <div class="grid grid-cols-2 gap-2 text-[11px] bg-slate-800/60 p-2.5 rounded-lg border border-slate-700/40">
+                    <div>
+                      <span class="text-slate-400 block text-[10px]">CURRENT SECTOR</span>
+                      <span class="font-medium text-slate-200">Royal Market / MP Nagar</span>
+                    </div>
+                    <div>
+                      <span class="text-slate-400 block text-[10px]">AVG ARRIVAL ETA</span>
+                      <span class="font-medium text-brand-accent">25 - 40 Mins</span>
+                    </div>
+                  </div>
+
+                  <div class="flex gap-2 pt-1">
+                    <button onclick="quickBookWithTechnician('Deepak Sharma', 'Domestic Wiring & Circuit Repair')" class="flex-1 py-2 bg-brand-500 hover:bg-brand-600 text-white rounded-lg text-xs font-bold transition flex items-center justify-center gap-1.5">
+                      <i class="fa-solid fa-bolt"></i> Instant Request
+                    </button>
+                    <button onclick="showScreen('categories')" class="px-3 py-2 bg-slate-700 hover:bg-slate-600 text-slate-200 rounded-lg text-xs font-medium">
+                      All 20 Categories
+                    </button>
+                  </div>
+                </div>
+
+                <div class="text-[11px] text-slate-400 flex items-center justify-between px-1">
+                  <span>Registered HQ: Top Floor, Multicare Hospital</span>
+                  <a href="#registered-details" class="text-brand-electric hover:underline text-[10px]">View Credentials</a>
+                </div>
+              </div>
+            </div>
+
+          </div>
+        </div>
+      </div>
+
+      <!-- ================= QUICK ACTION HUBS ================= -->
+      <section class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 -mt-6 relative z-20">
+        <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+          
+          <div onclick="startBookingWizard()" class="bg-white p-3.5 rounded-xl shadow-md border border-slate-200 hover:border-brand-500 hover:shadow-lg transition cursor-pointer flex flex-col items-center text-center group">
+            <div class="w-10 h-10 rounded-lg bg-blue-50 group-hover:bg-brand-500 group-hover:text-white text-brand-500 flex items-center justify-center text-lg mb-2 transition">
+              <i class="fa-solid fa-calendar-plus"></i>
+            </div>
+            <span class="text-xs font-bold text-slate-800 group-hover:text-brand-500">Book Service</span>
+            <span class="text-[10px] text-slate-500">Instant / Scheduled</span>
+          </div>
+
+          <div onclick="showScreen('bookings')" class="bg-white p-3.5 rounded-xl shadow-md border border-slate-200 hover:border-brand-500 hover:shadow-lg transition cursor-pointer flex flex-col items-center text-center group">
+            <div class="w-10 h-10 rounded-lg bg-emerald-50 group-hover:bg-emerald-600 group-hover:text-white text-emerald-600 flex items-center justify-center text-lg mb-2 transition">
+              <i class="fa-solid fa-list-check"></i>
+            </div>
+            <span class="text-xs font-bold text-slate-800 group-hover:text-emerald-600">Current Booking</span>
+            <span class="text-[10px] text-slate-500">Track Technician</span>
+          </div>
+
+          <a href="tel:+919993043078" class="bg-white p-3.5 rounded-xl shadow-md border border-slate-200 hover:border-emerald-500 hover:shadow-lg transition cursor-pointer flex flex-col items-center text-center group">
+            <div class="w-10 h-10 rounded-lg bg-amber-50 group-hover:bg-amber-500 group-hover:text-white text-amber-600 flex items-center justify-center text-lg mb-2 transition">
+              <i class="fa-solid fa-phone-volume"></i>
+            </div>
+            <span class="text-xs font-bold text-slate-800 group-hover:text-amber-600">Call Us</span>
+            <span class="text-[10px] text-slate-500">Direct Dispatch</span>
+          </a>
+
+          <a href="https://wa.me/919993043078" target="_blank" class="bg-white p-3.5 rounded-xl shadow-md border border-slate-200 hover:border-green-500 hover:shadow-lg transition cursor-pointer flex flex-col items-center text-center group">
+            <div class="w-10 h-10 rounded-lg bg-green-50 group-hover:bg-green-600 group-hover:text-white text-green-600 flex items-center justify-center text-lg mb-2 transition">
+              <i class="fa-brands fa-whatsapp"></i>
+            </div>
+            <span class="text-xs font-bold text-slate-800 group-hover:text-green-600">WhatsApp</span>
+            <span class="text-[10px] text-slate-500">Chat Support</span>
+          </a>
+
+          <div onclick="openMaterialStore()" class="bg-white p-3.5 rounded-xl shadow-md border border-slate-200 hover:border-brand-500 hover:shadow-lg transition cursor-pointer flex flex-col items-center text-center group">
+            <div class="w-10 h-10 rounded-lg bg-purple-50 group-hover:bg-purple-600 group-hover:text-white text-purple-600 flex items-center justify-center text-lg mb-2 transition">
+              <i class="fa-solid fa-box-open"></i>
+            </div>
+            <span class="text-xs font-bold text-slate-800 group-hover:text-purple-600">Order Materials</span>
+            <span class="text-[10px] text-slate-500">Genuine Parts</span>
+          </div>
+
+          <div onclick="startEmergencyBooking()" class="bg-red-50 p-3.5 rounded-xl shadow-md border border-red-200 hover:border-red-500 hover:shadow-lg transition cursor-pointer flex flex-col items-center text-center group">
+            <div class="w-10 h-10 rounded-lg bg-red-500 text-white flex items-center justify-center text-lg mb-2 animate-pulse">
+              <i class="fa-solid fa-truck-medical"></i>
+            </div>
+            <span class="text-xs font-bold text-red-700 group-hover:text-red-800">Emergency</span>
+            <span class="text-[10px] text-red-600 font-semibold">Priority 24/7</span>
+          </div>
+
+        </div>
+      </section>
+
+      <!-- ================= 20 OFFICIAL MAIN CATEGORIES GRID ================= -->
+      <section class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+        <div class="flex flex-col md:flex-row md:items-end justify-between mb-8 gap-4">
+          <div>
+            <div class="flex items-center gap-2 text-brand-500 font-bold text-xs uppercase tracking-wider">
+              <i class="fa-solid fa-layer-group"></i> Comprehensive Catalog
+            </div>
+            <h2 class="text-2xl sm:text-3xl font-extrabold font-display text-slate-900 mt-1">
+              20 Official Main Service Categories
+            </h2>
+            <p class="text-xs sm:text-sm text-slate-500 mt-1">
+              Standardized charging, certified technicians and end-to-end support across all sectors.
+            </p>
+          </div>
+
+          <!-- Category Category Filter Tabs -->
+          <div class="flex items-center gap-1.5 overflow-x-auto pb-1 max-w-full no-scrollbar">
+            <button onclick="filterCategoryGrid('all')" class="category-filter-btn px-3 py-1.5 text-xs font-semibold rounded-lg bg-brand-500 text-white whitespace-nowrap active-cat" data-group="all">All (20)</button>
+            <button onclick="filterCategoryGrid('household')" class="category-filter-btn px-3 py-1.5 text-xs font-semibold rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 whitespace-nowrap" data-group="household">Domestic & Commercial</button>
+            <button onclick="filterCategoryGrid('industrial')" class="category-filter-btn px-3 py-1.5 text-xs font-semibold rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 whitespace-nowrap" data-group="industrial">Industrial & Medical</button>
+            <button onclick="filterCategoryGrid('construction')" class="category-filter-btn px-3 py-1.5 text-xs font-semibold rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 whitespace-nowrap" data-group="construction">Construction & Civil</button>
+          </div>
+        </div>
+
+        <!-- Dynamic Category Cards Container -->
+        <div id="mainCategoriesGrid" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
+          <!-- Populated by JavaScript from the official 20 Category dataset -->
+        </div>
+      </section>
+
+      <!-- ================= HOW IT WORKS (THE EXACT PDF FLOW) ================= -->
+      <section class="bg-gradient-to-b from-slate-100 to-white py-14 border-y border-slate-200">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div class="text-center max-w-3xl mx-auto mb-10">
+            <span class="text-xs font-bold tracking-widest text-brand-500 uppercase bg-blue-50 px-3 py-1 rounded-full border border-blue-200">Official Process Flow</span>
+            <h2 class="text-2xl sm:text-3xl font-extrabold font-display text-slate-900 mt-2">How Booking & Dispatch Works</h2>
+            <p class="text-xs sm:text-sm text-slate-500 mt-1">Transparent customer flow strictly following Seric Tech Solutions governance.</p>
+          </div>
+
+          <div class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-3 relative">
+            
+            <!-- Step 1 -->
+            <div class="bg-white p-3 rounded-xl border border-slate-200 text-center shadow-sm flex flex-col items-center">
+              <span class="w-6 h-6 rounded-full bg-brand-500 text-white font-bold text-xs flex items-center justify-center mb-2">1</span>
+              <i class="fa-solid fa-bars text-brand-500 text-lg mb-1"></i>
+              <h4 class="text-xs font-bold text-slate-800">Category</h4>
+              <p class="text-[10px] text-slate-500">Pick from 20 main domains</p>
+            </div>
+
+            <!-- Step 2 -->
+            <div class="bg-white p-3 rounded-xl border border-slate-200 text-center shadow-sm flex flex-col items-center">
+              <span class="w-6 h-6 rounded-full bg-brand-500 text-white font-bold text-xs flex items-center justify-center mb-2">2</span>
+              <i class="fa-solid fa-screwdriver-wrench text-brand-500 text-lg mb-1"></i>
+              <h4 class="text-xs font-bold text-slate-800">Service</h4>
+              <p class="text-[10px] text-slate-500">Select specific task</p>
+            </div>
+
+            <!-- Step 3 -->
+            <div class="bg-white p-3 rounded-xl border border-brand-400 bg-brand-50/40 text-center shadow-sm flex flex-col items-center">
+              <span class="w-6 h-6 rounded-full bg-brand-accent text-slate-900 font-extrabold text-xs flex items-center justify-center mb-2">3</span>
+              <i class="fa-solid fa-tags text-brand-accent text-lg mb-1"></i>
+              <h4 class="text-xs font-bold text-slate-900">Charging</h4>
+              <p class="text-[10px] text-slate-600">Visit / Fixed / Budget</p>
+            </div>
+
+            <!-- Step 4 -->
+            <div class="bg-white p-3 rounded-xl border border-slate-200 text-center shadow-sm flex flex-col items-center">
+              <span class="w-6 h-6 rounded-full bg-brand-500 text-white font-bold text-xs flex items-center justify-center mb-2">4</span>
+              <i class="fa-solid fa-circle-check text-emerald-600 text-lg mb-1"></i>
+              <h4 class="text-xs font-bold text-slate-800">Confirm</h4>
+              <p class="text-[10px] text-slate-500">Review & proceed</p>
+            </div>
+
+            <!-- Step 5 -->
+            <div class="bg-white p-3 rounded-xl border border-slate-200 text-center shadow-sm flex flex-col items-center">
+              <span class="w-6 h-6 rounded-full bg-brand-500 text-white font-bold text-xs flex items-center justify-center mb-2">5</span>
+              <i class="fa-solid fa-user-check text-blue-600 text-lg mb-1"></i>
+              <h4 class="text-xs font-bold text-slate-800">Technician</h4>
+              <p class="text-[10px] text-slate-500">Assigned with ETA</p>
+            </div>
+
+            <!-- Step 6 -->
+            <div class="bg-white p-3 rounded-xl border border-slate-200 text-center shadow-sm flex flex-col items-center">
+              <span class="w-6 h-6 rounded-full bg-brand-500 text-white font-bold text-xs flex items-center justify-center mb-2">6</span>
+              <i class="fa-solid fa-van-shuttle text-amber-600 text-lg mb-1"></i>
+              <h4 class="text-xs font-bold text-slate-800">Site Visit</h4>
+              <p class="text-[10px] text-slate-500">Arrival & job execution</p>
+            </div>
+
+            <!-- Step 7 -->
+            <div class="bg-white p-3 rounded-xl border border-slate-200 text-center shadow-sm flex flex-col items-center">
+              <span class="w-6 h-6 rounded-full bg-brand-500 text-white font-bold text-xs flex items-center justify-center mb-2">7</span>
+              <i class="fa-solid fa-file-invoice-dollar text-purple-600 text-lg mb-1"></i>
+              <h4 class="text-xs font-bold text-slate-800">Invoice</h4>
+              <p class="text-[10px] text-slate-500">Bill generated & paid</p>
+            </div>
+
+            <!-- Step 8 -->
+            <div class="bg-white p-3 rounded-xl border border-slate-200 text-center shadow-sm flex flex-col items-center">
+              <span class="w-6 h-6 rounded-full bg-emerald-600 text-white font-bold text-xs flex items-center justify-center mb-2">8</span>
+              <i class="fa-solid fa-star text-amber-500 text-lg mb-1"></i>
+              <h4 class="text-xs font-bold text-slate-800">Feedback</h4>
+              <p class="text-[10px] text-slate-500">Rate & refer ₹50</p>
+            </div>
+
+          </div>
+        </div>
+      </section>
+
+      <!-- ================= POPULAR / FEATURED SERVICES ================= -->
+      <section class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+        <div class="flex flex-col sm:flex-row sm:items-end justify-between mb-6 gap-3">
+          <div>
+            <span class="text-xs font-bold uppercase tracking-wider text-brand-500">Top Requested</span>
+            <h2 class="text-2xl sm:text-3xl font-extrabold font-display text-slate-900">Popular Technical Services</h2>
+          </div>
+          <button onclick="showScreen('categories')" class="text-xs font-bold text-brand-500 hover:text-brand-600 flex items-center gap-1">
+            Browse All Subcategories <i class="fa-solid fa-arrow-right"></i>
+          </button>
+        </div>
+
+        <div id="popularServicesGrid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <!-- Dynamically Rendered Service Cards with Pricing & Action -->
+        </div>
+      </section>
+
+      <!-- ================= MATERIAL ORDERING SHOWCASE ================= -->
+      <section class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div class="bg-gradient-to-r from-slate-900 via-brand-dark to-slate-900 rounded-2xl p-6 sm:p-8 text-white relative overflow-hidden border border-slate-700">
+          <div class="relative z-10 grid grid-cols-1 lg:grid-cols-12 gap-6 items-center">
+            <div class="lg:col-span-8 space-y-3">
+              <div class="inline-flex items-center gap-2 px-3 py-1 rounded bg-brand-500/30 text-brand-electric text-xs font-bold uppercase">
+                <i class="fa-solid fa-boxes-packing"></i> Category #20 — Material Procurement
+              </div>
+              <h3 class="text-xl sm:text-3xl font-extrabold font-display">
+                Need New Equipment, Cables or Spare Parts?
+              </h3>
+              <p class="text-xs sm:text-sm text-slate-300 max-w-xl">
+                Order genuine ACs, MCBs, Inverters, Solar Panels, Pumps, Wiring, CCTV cameras, and Kitchen Appliances directly with certified on-site installation support.
+              </p>
+              <div class="flex flex-wrap gap-2 pt-2">
+                <button onclick="openMaterialStore()" class="px-5 py-2.5 bg-brand-500 hover:bg-brand-600 text-white text-xs font-bold rounded-lg transition flex items-center gap-2 shadow-lg">
+                  <i class="fa-solid fa-bag-shopping"></i> Open Material Store
+                </button>
+                <button onclick="startBookingWizardWithService('Spare Parts Ordering')" class="px-4 py-2.5 bg-white/10 hover:bg-white/20 text-white text-xs font-bold rounded-lg border border-white/20 transition">
+                  Request Custom Parts Sourcing
+                </button>
+              </div>
+            </div>
+            <div class="lg:col-span-4 flex justify-center">
+              <div class="grid grid-cols-2 gap-2 text-center text-xs w-full max-w-xs">
+                <div class="bg-white/10 p-3 rounded-lg border border-white/10">
+                  <i class="fa-solid fa-shield-virus text-brand-electric text-xl mb-1"></i>
+                  <div class="font-bold">100% Genuine</div>
+                  <div class="text-[10px] text-slate-400">OEM Warranty</div>
+                </div>
+                <div class="bg-white/10 p-3 rounded-lg border border-white/10">
+                  <i class="fa-solid fa-truck-fast text-brand-accent text-xl mb-1"></i>
+                  <div class="font-bold">Fast Delivery</div>
+                  <div class="text-[10px] text-slate-400">Bhopal Local Stock</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ================= TRUST, COMPLIANCE & OFFICE LOCATIONS ================= -->
+      <section id="registered-details" class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+        <div class="bg-white rounded-2xl p-6 sm:p-8 border border-slate-200 shadow-sm">
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+            
+            <div class="space-y-2">
+              <div class="flex items-center gap-2 text-brand-500 font-bold text-xs uppercase">
+                <i class="fa-solid fa-building-circle-check"></i> Registered Headquarters
+              </div>
+              <h4 class="text-base font-bold text-slate-900 font-display">SERIC TECH SOLUTIONS</h4>
+              <p class="text-xs text-slate-600 leading-relaxed">
+                Top Floor, Multicare Hospital, Royal Market, Bhopal, Madhya Pradesh – 462030
+              </p>
+              <div class="pt-2 text-xs text-slate-500">
+                <span class="font-semibold text-slate-700">Official Email:</span><br>
+                <a href="mailto:Seric.TechSolutions@gmail.com" class="text-brand-500 hover:underline">Seric.TechSolutions@gmail.com</a>
+              </div>
+            </div>
+
+            <div class="space-y-2 border-y md:border-y-0 md:border-x border-slate-200 py-4 md:py-0 md:px-6">
+              <div class="flex items-center gap-2 text-emerald-600 font-bold text-xs uppercase">
+                <i class="fa-solid fa-headset"></i> Authorized Contact Officers
+              </div>
+              <ul class="text-xs space-y-2 text-slate-700">
+                <li class="flex items-center justify-between">
+                  <span class="font-medium">Jagdish Verma:</span>
+                  <a href="tel:+919993043078" class="font-bold text-brand-500 hover:underline">+91 9993043078</a>
+                </li>
+                <li class="flex items-center justify-between">
+                  <span class="font-medium">Mangal Singh:</span>
+                  <a href="tel:+919575616213" class="font-bold text-brand-500 hover:underline">+91 9575616213</a>
+                </li>
+                <li class="flex items-center justify-between">
+                  <span class="font-medium">Rahul Rai:</span>
+                  <a href="tel:+917047172454" class="font-bold text-brand-500 hover:underline">+91 7047172454</a>
+                </li>
+              </ul>
+            </div>
+
+            <div class="space-y-2">
+              <div class="flex items-center gap-2 text-amber-500 font-bold text-xs uppercase">
+                <i class="fa-solid fa-award"></i> Service Guarantee
+              </div>
+              <p class="text-xs text-slate-600 leading-relaxed">
+                All electrical repairs, solar works, plumbing and installations follow standard safety protocols, GST compliant invoices and rated technician performance verification.
+              </p>
+              <div class="pt-2">
+                <button onclick="openReferModal()" class="w-full py-2 bg-amber-50 hover:bg-amber-100 border border-amber-300 text-amber-800 rounded-lg text-xs font-bold flex items-center justify-center gap-2 transition">
+                  <i class="fa-solid fa-gift text-brand-accent"></i> Refer & Earn ₹50 Instant Credit
+                </button>
+              </div>
+            </div>
+
+          </div>
+        </div>
+      </section>
+
+    </section>
+
+    <!-- ================= VIEW: ALL CATEGORIES & EXPLORER ================= -->
+    <section id="view-categories" class="view-screen hidden max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <div class="mb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <button onclick="showScreen('home')" class="text-xs font-semibold text-brand-500 hover:underline mb-1 flex items-center gap-1">
+            <i class="fa-solid fa-chevron-left text-[10px]"></i> Back to Home
+          </button>
+          <h2 class="text-2xl font-extrabold font-display text-slate-900">Service Category Directory</h2>
+          <p class="text-xs text-slate-500">Explore specific subcategories, inspection charges and instant booking options.</p>
+        </div>
+        <div class="flex items-center gap-2">
+          <input 
+            type="text" 
+            id="catSearchInput" 
+            placeholder="Filter categories..." 
+            oninput="filterCategorySearch(this.value)"
+            class="px-3 py-2 text-xs bg-white border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-500 w-full sm:w-64"
+          />
+        </div>
+      </div>
+
+      <div id="fullCategoriesList" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <!-- Generated by JavaScript with Subcategory expansion -->
+      </div>
+    </section>
+
+    <!-- ================= VIEW: CATEGORY DETAIL & SUBCATEGORIES ================= -->
+    <section id="view-category-detail" class="view-screen hidden max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <button onclick="showScreen('categories')" class="text-xs font-semibold text-brand-500 hover:underline mb-4 flex items-center gap-1">
+        <i class="fa-solid fa-chevron-left text-[10px]"></i> Back to All Categories
+      </button>
+
+      <div id="categoryDetailHeader" class="bg-white rounded-2xl p-6 border border-slate-200 mb-6 shadow-sm">
+        <!-- Rendered by JS -->
+      </div>
+
+      <h3 class="text-lg font-bold font-display text-slate-900 mb-4">Available Services & Subcategories</h3>
+      <div id="subcategoryServicesList" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <!-- Rendered by JS -->
+      </div>
+    </section>
+
+    <!-- ================= VIEW: CURRENT BOOKING & LIVE TRACKING ================= -->
+    <section id="view-bookings" class="view-screen hidden max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <div class="flex items-center justify-between mb-6">
+        <div>
+          <h2 class="text-2xl font-extrabold font-display text-slate-900">Current Booking & Dispatch Tracking</h2>
+          <p class="text-xs text-slate-500">Live service progress, technician details and billing.</p>
+        </div>
+        <button onclick="startBookingWizard()" class="px-3 py-2 bg-brand-500 text-white rounded-lg text-xs font-bold hover:bg-brand-600 transition">
+          + New Booking
+        </button>
+      </div>
+
+      <div id="activeBookingContainer">
+        <!-- Injected dynamically based on active booking state -->
+      </div>
+    </section>
+
+    <!-- ================= VIEW: MATERIAL STORE (COMMERCE) ================= -->
+    <section id="view-materials" class="view-screen hidden max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <div class="flex flex-col md:flex-row md:items-center justify-between mb-6 gap-4">
+        <div>
+          <button onclick="showScreen('home')" class="text-xs font-semibold text-brand-500 hover:underline mb-1 flex items-center gap-1">
+            <i class="fa-solid fa-chevron-left text-[10px]"></i> Back to Home
+          </button>
+          <h2 class="text-2xl font-extrabold font-display text-slate-900">New Material & Equipment Ordering</h2>
+          <p class="text-xs text-slate-500">Official Category #20 — Order genuine appliances, wires, inverters & electrical parts.</p>
+        </div>
+        
+        <div class="flex items-center gap-3">
+          <button onclick="openCartModal()" class="relative px-4 py-2 bg-brand-500 hover:bg-brand-600 text-white text-xs font-bold rounded-lg flex items-center gap-2 shadow">
+            <i class="fa-solid fa-cart-shopping"></i>
+            <span>Cart</span>
+            <span id="cartBadgeCountScreen" class="bg-brand-accent text-slate-900 font-extrabold text-[10px] px-2 py-0.5 rounded-full">0</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Material Filters -->
+      <div class="flex items-center gap-2 overflow-x-auto pb-2 mb-6">
+        <button onclick="filterMaterials('all')" class="mat-filter-btn px-3 py-1.5 text-xs font-bold rounded-lg bg-brand-500 text-white" data-mat="all">All Items</button>
+        <button onclick="filterMaterials('Heavy Appliances')" class="mat-filter-btn px-3 py-1.5 text-xs font-bold rounded-lg bg-slate-100 text-slate-700" data-mat="Heavy Appliances">AC & Appliances</button>
+        <button onclick="filterMaterials('Electrical Parts')" class="mat-filter-btn px-3 py-1.5 text-xs font-bold rounded-lg bg-slate-100 text-slate-700" data-mat="Electrical Parts">Wiring & MCBs</button>
+        <button onclick="filterMaterials('Power & Solar')" class="mat-filter-btn px-3 py-1.5 text-xs font-bold rounded-lg bg-slate-100 text-slate-700" data-mat="Power & Solar">Inverters & Solar</button>
+        <button onclick="filterMaterials('Security & Tech')" class="mat-filter-btn px-3 py-1.5 text-xs font-bold rounded-lg bg-slate-100 text-slate-700" data-mat="Security & Tech">CCTV & Routers</button>
+      </div>
+
+      <!-- Materials Grid -->
+      <div id="materialsGrid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+        <!-- Rendered by JS -->
+      </div>
+    </section>
+
+    <!-- ================= VIEW: USER PROFILE & HISTORY ================= -->
+    <section id="view-profile" class="view-screen hidden max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <div class="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-sm mb-6">
+        <div class="bg-brand-navy p-6 text-white flex items-center gap-4">
+          <div class="w-16 h-16 rounded-full bg-brand-500 border-2 border-white flex items-center justify-center text-2xl font-bold font-display">
+            STS
+          </div>
+          <div>
+            <h3 class="text-lg font-bold">Rahul Sharma (Customer)</h3>
+            <p class="text-xs text-slate-300"><i class="fa-solid fa-phone text-emerald-400"></i> +91 98260XXXXX | Bhopal M.P.</p>
+            <span class="inline-block mt-1 text-[10px] bg-emerald-500/20 text-emerald-300 px-2 py-0.5 rounded border border-emerald-500/40">Verified Customer</span>
+          </div>
+        </div>
+        
+        <div class="p-6 grid grid-cols-2 sm:grid-cols-4 gap-4 text-center border-b border-slate-100 bg-slate-50">
+          <div>
+            <div class="text-xl font-bold text-brand-500" id="statCompleted">3</div>
+            <div class="text-[11px] text-slate-500">Completed Services</div>
+          </div>
+          <div>
+            <div class="text-xl font-bold text-amber-500">₹150</div>
+            <div class="text-[11px] text-slate-500">Referral Wallet</div>
+          </div>
+          <div>
+            <div class="text-xl font-bold text-emerald-600">5.0 ★</div>
+            <div class="text-[11px] text-slate-500">Avg Given Rating</div>
+          </div>
+          <div>
+            <div class="text-xl font-bold text-purple-600">Active</div>
+            <div class="text-[11px] text-slate-500">AMC Status</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="space-y-4">
+        <h4 class="text-sm font-bold text-slate-800 uppercase tracking-wider">Service History & Invoices</h4>
+        <div id="serviceHistoryList" class="space-y-3">
+          <!-- Rendered by JS -->
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- ================= FOOTER ================= -->
+  <footer class="bg-slate-900 text-slate-400 text-xs pt-12 pb-8 border-t border-slate-800 no-print">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-8 mb-8">
+        
+        <!-- Company Info -->
+        <div class="lg:col-span-2 space-y-3">
+          <div class="flex items-center gap-2">
+            <div class="w-8 h-8 rounded bg-brand-500 flex items-center justify-center text-white font-bold font-display">STS</div>
+            <span class="text-white font-bold font-display text-base tracking-tight">SERIC TECH SOLUTIONS</span>
+          </div>
+          <p class="text-slate-400 text-xs leading-relaxed max-w-sm">
+            “Your Trusted Partner for Expert Electrical & Electronic Services”. Operating across residential, commercial, industrial, hospital and institutional electrical domains in Bhopal.
+          </p>
+          <div class="pt-2 text-slate-300 space-y-1">
+            <p><i class="fa-solid fa-location-dot text-brand-electric w-4"></i> Top Floor, Multicare Hospital, Royal Market, Bhopal M.P.–462030</p>
+            <p><i class="fa-solid fa-envelope text-brand-electric w-4"></i> Seric.TechSolutions@gmail.com</p>
+          </div>
+        </div>
+
+        <!-- Official Contacts -->
+        <div class="space-y-2">
+          <h5 class="text-white font-bold text-xs uppercase tracking-wider">Direct Contacts</h5>
+          <ul class="space-y-1.5">
+            <li><a href="tel:+919993043078" class="hover:text-brand-electric transition">Jagdish Verma: +91 9993043078</a></li>
+            <li><a href="tel:+919575616213" class="hover:text-brand-electric transition">Mangal Singh: +91 9575616213</a></li>
+            <li><a href="tel:+917047172454" class="hover:text-brand-electric transition">Rahul Rai: +91 7047172454</a></li>
+            <li><a href="https://wa.me/919993043078" class="text-emerald-400 hover:underline flex items-center gap-1"><i class="fa-brands fa-whatsapp"></i> WhatsApp Direct</a></li>
+          </ul>
+        </div>
+
+        <!-- Charging Options -->
+        <div class="space-y-2">
+          <h5 class="text-white font-bold text-xs uppercase tracking-wider">Charging Options</h5>
+          <ul class="space-y-1.5 text-slate-400">
+            <li class="hover:text-white cursor-pointer" onclick="startBookingWizardWithModel('VISIT')">1. Visit Charge (₹199 Inspection)</li>
+            <li class="hover:text-white cursor-pointer" onclick="startBookingWizardWithModel('FIXED')">2. Fixed Charge (Standard Scope)</li>
+            <li class="hover:text-white cursor-pointer" onclick="startBookingWizardWithModel('BUDGET')">3. Customer Budget (Min/Max Range)</li>
+            <li class="hover:text-white cursor-pointer" onclick="showScreen('categories')">Emergency 24x7 Protocol</li>
+            <li class="hover:text-white cursor-pointer" onclick="openMaterialStore()">Genuine Spare Parts Sourcing</li>
+          </ul>
+        </div>
+
+        <!-- Navigation & Quick Links -->
+        <div class="space-y-2">
+          <h5 class="text-white font-bold text-xs uppercase tracking-wider">Quick Links</h5>
+          <ul class="space-y-1.5">
+            <li><a href="javascript:void(0)" onclick="showScreen('home')" class="hover:text-white">Home</a></li>
+            <li><a href="javascript:void(0)" onclick="showScreen('categories')" class="hover:text-white">All 20 Categories</a></li>
+            <li><a href="javascript:void(0)" onclick="openMaterialStore()" class="hover:text-white">New Material Ordering</a></li>
+            <li><a href="javascript:void(0)" onclick="openReferModal()" class="text-brand-accent hover:underline">Refer & Earn ₹50</a></li>
+            <li><a href="javascript:void(0)" onclick="openTermsModal()" class="hover:text-white">Terms & Conditions</a></li>
+          </ul>
+        </div>
+
+      </div>
+
+      <div class="pt-6 border-t border-slate-800 flex flex-col sm:flex-row items-center justify-between gap-3 text-slate-400 text-[11px]">
+        <div>© 2025 SERIC TECH SOLUTIONS. All Rights Reserved. Bhopal, MP.</div>
+        <div class="flex items-center gap-4">
+          <button onclick="openTermsModal()" class="hover:underline">Terms & Conditions</button>
+          <span>•</span>
+          <button onclick="openPrivacyModal()" class="hover:underline">Privacy Policy</button>
+          <span>•</span>
+          <span>GST Verified Services</span>
+        </div>
+      </div>
+    </div>
+  </footer>
+
+  <!-- ================= MOBILE BOTTOM NAVIGATION (EXACT PDF APP SPEC) ================= -->
+  <!-- Specification: Home | Menu | Booking | Call Now | Account -->
+  <nav class="md:hidden fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur-md border-t border-slate-200 z-40 px-2 py-1.5 safe-bottom no-print shadow-lg">
+    <div class="grid grid-cols-5 text-center">
+      
+      <!-- 1. Home -->
+      <button onclick="showScreen('home')" id="mobileNavHome" class="flex flex-col items-center justify-center py-1 text-brand-500 font-bold">
+        <i class="fa-solid fa-house text-base"></i>
+        <span class="text-[10px] mt-0.5">Home</span>
+      </button>
+
+      <!-- 2. Menu -->
+      <button onclick="toggleSideMenu()" id="mobileNavMenu" class="flex flex-col items-center justify-center py-1 text-slate-500 hover:text-brand-500">
+        <i class="fa-solid fa-grip text-base"></i>
+        <span class="text-[10px] mt-0.5">Menu</span>
+      </button>
+
+      <!-- 3. Booking (Central Action) -->
+      <button onclick="startBookingWizard()" id="mobileNavBook" class="flex flex-col items-center justify-center -mt-3">
+        <div class="w-11 h-11 rounded-full bg-brand-500 text-white flex items-center justify-center shadow-lg border-2 border-white">
+          <i class="fa-solid fa-bolt-lightning text-brand-accent text-sm"></i>
+        </div>
+        <span class="text-[10px] font-bold text-brand-500 mt-0.5">Booking</span>
+      </button>
+
+      <!-- 4. Call Now -->
+      <a href="tel:+919993043078" class="flex flex-col items-center justify-center py-1 text-emerald-600 font-bold">
+        <i class="fa-solid fa-phone-volume text-base"></i>
+        <span class="text-[10px] mt-0.5">Call Now</span>
+      </a>
+
+      <!-- 5. Account -->
+      <button onclick="showScreen('profile')" id="mobileNavAccount" class="flex flex-col items-center justify-center py-1 text-slate-500 hover:text-brand-500">
+        <i class="fa-solid fa-circle-user text-base"></i>
+        <span class="text-[10px] mt-0.5">Account</span>
+      </button>
+
+    </div>
+  </nav>
+
+  <!-- ================= SIDEBAR MENU / ACCOUNT DRAWER (FULL PDF STRUCTURE) ================= -->
+  <div id="sideMenuBackdrop" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 hidden transition-opacity" onclick="toggleSideMenu()"></div>
+  <aside id="sideMenuDrawer" class="fixed top-0 right-0 bottom-0 w-80 max-w-full bg-white z-50 shadow-2xl transform translate-x-full transition-transform duration-300 flex flex-col overflow-hidden">
+    
+    <!-- Drawer Header -->
+    <div class="p-4 bg-brand-navy text-white flex items-center justify-between border-b border-slate-700">
+      <div class="flex items-center gap-3">
+        <div class="w-9 h-9 rounded-lg bg-brand-500 flex items-center justify-center font-bold text-white">STS</div>
+        <div>
+          <div class="text-xs font-bold">SERIC TECH SOLUTIONS</div>
+          <div class="text-[10px] text-slate-300">Customer & Field Service Portal</div>
+        </div>
+      </div>
+      <button onclick="toggleSideMenu()" class="p-1.5 text-slate-300 hover:text-white rounded">
+        <i class="fa-solid fa-xmark text-base"></i>
+      </button>
+    </div>
+
+    <!-- Drawer Navigation Items (From PDF Menu Spec) -->
+    <div class="flex-1 overflow-y-auto p-4 space-y-1 text-xs font-medium text-slate-700">
+      
+      <div class="text-[10px] font-bold uppercase tracking-wider text-slate-400 px-3 py-1">Quick Services</div>
+      
+      <a href="javascript:void(0)" onclick="openLocationModal(); toggleSideMenu();" class="flex items-center justify-between px-3 py-2.5 rounded-lg hover:bg-slate-100 text-slate-800">
+        <span class="flex items-center gap-3"><i class="fa-solid fa-location-dot text-brand-500 w-4"></i> Location: Bhopal (Royal Market)</span>
+        <i class="fa-solid fa-chevron-right text-[10px] text-slate-400"></i>
+      </a>
+
+      <a href="javascript:void(0)" onclick="showScreen('categories'); toggleSideMenu();" class="flex items-center justify-between px-3 py-2.5 rounded-lg hover:bg-slate-100">
+        <span class="flex items-center gap-3"><i class="fa-solid fa-layer-group text-brand-600 w-4"></i> 20 Main Categories</span>
+        <span class="text-[10px] bg-blue-50 text-blue-600 font-bold px-1.5 py-0.5 rounded">All</span>
+      </a>
+
+      <a href="javascript:void(0)" onclick="showScreen('bookings'); toggleSideMenu();" class="flex items-center justify-between px-3 py-2.5 rounded-lg hover:bg-slate-100">
+        <span class="flex items-center gap-3"><i class="fa-solid fa-clipboard-list text-emerald-600 w-4"></i> Current Booking</span>
+        <span class="text-[10px] bg-emerald-50 text-emerald-600 font-bold px-1.5 py-0.5 rounded">Live</span>
+      </a>
+
+      <a href="tel:+919993043078" class="flex items-center justify-between px-3 py-2.5 rounded-lg hover:bg-slate-100 text-slate-800">
+        <span class="flex items-center gap-3"><i class="fa-solid fa-phone text-emerald-600 w-4"></i> Call Dispatch Center</span>
+        <span class="text-[10px] font-mono">+91 9993043078</span>
+      </a>
+
+      <a href="https://wa.me/919993043078" target="_blank" class="flex items-center justify-between px-3 py-2.5 rounded-lg hover:bg-slate-100 text-green-700">
+        <span class="flex items-center gap-3"><i class="fa-brands fa-whatsapp text-green-600 text-sm w-4"></i> WhatsApp Support</span>
+      </a>
+
+      <div class="text-[10px] font-bold uppercase tracking-wider text-slate-400 px-3 pt-3 py-1">Customer Account</div>
+
+      <a href="javascript:void(0)" onclick="showScreen('profile'); toggleSideMenu();" class="flex items-center justify-between px-3 py-2.5 rounded-lg hover:bg-slate-100">
+        <span class="flex items-center gap-3"><i class="fa-solid fa-user text-brand-500 w-4"></i> User Profile</span>
+      </a>
+
+      <a href="javascript:void(0)" onclick="openMaterialStore(); toggleSideMenu();" class="flex items-center justify-between px-3 py-2.5 rounded-lg hover:bg-slate-100">
+        <span class="flex items-center gap-3"><i class="fa-solid fa-box-open text-purple-600 w-4"></i> Material Orders</span>
+      </a>
+
+      <a href="javascript:void(0)" onclick="openReferModal(); toggleSideMenu();" class="flex items-center justify-between px-3 py-2.5 rounded-lg bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-200">
+        <span class="flex items-center gap-3 font-bold"><i class="fa-solid fa-gift text-brand-accent w-4"></i> Refer & Earn ₹50</span>
+        <span class="text-[10px] bg-amber-200 px-1.5 py-0.5 rounded font-bold">Reward</span>
+      </a>
+
+      <div class="text-[10px] font-bold uppercase tracking-wider text-slate-400 px-3 pt-3 py-1">System & Support</div>
+
+      <a href="javascript:void(0)" onclick="openTermsModal(); toggleSideMenu();" class="flex items-center justify-between px-3 py-2 rounded-lg hover:bg-slate-100 text-slate-600">
+        <span class="flex items-center gap-3"><i class="fa-solid fa-shield-halved text-slate-400 w-4"></i> Terms & Conditions</span>
+      </a>
+
+      <a href="javascript:void(0)" onclick="openContactModal(); toggleSideMenu();" class="flex items-center justify-between px-3 py-2 rounded-lg hover:bg-slate-100 text-slate-600">
+        <span class="flex items-center gap-3"><i class="fa-solid fa-address-book text-slate-400 w-4"></i> Bhopal HQ Info</span>
+      </a>
+
+      <a href="javascript:void(0)" onclick="showToast('Logged out of demo session'); toggleSideMenu();" class="flex items-center justify-between px-3 py-2 rounded-lg hover:bg-red-50 text-red-600">
+        <span class="flex items-center gap-3"><i class="fa-solid fa-arrow-right-from-bracket w-4"></i> Logout</span>
+      </a>
+
+    </div>
+
+    <div class="p-3 bg-slate-50 border-t border-slate-200 text-center text-[10px] text-slate-500">
+      SERIC TECH SOLUTIONS v3.4 — Bhopal Central
+    </div>
+  </aside>
+
+  <!-- ================= MULTI-STEP BOOKING WIZARD MODAL (CORE FLOW) ================= -->
+  <div id="bookingWizardModal" class="fixed inset-0 bg-slate-900/70 backdrop-blur-sm z-50 hidden flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
+    <div class="bg-white rounded-2xl w-full max-w-2xl overflow-hidden shadow-2xl border border-slate-200 my-auto flex flex-col max-h-[90vh]">
+      
+      <!-- Wizard Header -->
+      <div class="bg-brand-navy p-4 text-white flex items-center justify-between">
+        <div>
+          <div class="text-[10px] uppercase font-bold text-brand-electric tracking-wider">Service Booking Dispatch</div>
+          <h3 class="text-base font-extrabold font-display" id="wizardTitle">Step 1: Choose Main Category</h3>
+        </div>
+        <button onclick="closeBookingWizard()" class="p-1 text-slate-400 hover:text-white">
+          <i class="fa-solid fa-xmark text-lg"></i>
+        </button>
+      </div>
+
+      <!-- Step Progress Bar -->
+      <div class="bg-slate-100 px-4 py-2 border-b border-slate-200">
+        <div class="flex items-center justify-between text-[11px] font-bold text-slate-600 mb-1">
+          <span id="wizardStepIndicator">Step 1 of 8</span>
+          <span id="wizardStepName">Category Selection</span>
+        </div>
+        <div class="w-full bg-slate-200 h-1.5 rounded-full overflow-hidden">
+          <div id="wizardProgressBar" class="bg-brand-500 h-full transition-all duration-300 w-[12.5%]"></div>
+        </div>
+      </div>
+
+      <!-- Wizard Step Body (Dynamic) -->
+      <div id="wizardStepContent" class="p-5 overflow-y-auto flex-1 text-xs">
+        <!-- Injected via JavaScript for each Step 1 to Step 8 -->
+      </div>
+
+      <!-- Wizard Navigation Footer -->
+      <div class="p-4 bg-slate-50 border-t border-slate-200 flex items-center justify-between gap-3">
+        <button id="wizardBackBtn" onclick="prevWizardStep()" class="px-4 py-2 bg-slate-200 hover:bg-slate-300 text-slate-700 font-bold rounded-lg transition disabled:opacity-40 disabled:cursor-not-allowed">
+          Back
+        </button>
+        <div class="flex items-center gap-2">
+          <button onclick="closeBookingWizard()" class="px-3 py-2 text-slate-500 hover:text-slate-700 font-semibold">
+            Cancel
+          </button>
+          <button id="wizardNextBtn" onclick="nextWizardStep()" class="px-5 py-2 bg-brand-500 hover:bg-brand-600 text-white font-bold rounded-lg shadow transition flex items-center gap-1.5">
+            <span>Next Step</span> <i class="fa-solid fa-arrow-right text-xs"></i>
+          </button>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ================= INVOICE MODAL (PDF SPEC GENERATOR) ================= -->
+  <div id="invoiceModal" class="fixed inset-0 bg-slate-900/70 backdrop-blur-sm z-50 hidden flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
+    <div class="bg-white rounded-2xl w-full max-w-xl overflow-hidden shadow-2xl border border-slate-200 my-auto p-6 text-slate-800">
+      
+      <div class="flex items-center justify-between border-b pb-4 mb-4">
+        <div class="flex items-center gap-2">
+          <div class="w-8 h-8 rounded bg-brand-500 text-white flex items-center justify-center font-bold text-sm">STS</div>
+          <div>
+            <h4 class="font-bold text-sm text-slate-900">SERIC TECH SOLUTIONS</h4>
+            <p class="text-[10px] text-slate-500">Official Service Invoice & Tax Receipt</p>
+          </div>
+        </div>
+        <div class="text-right">
+          <span class="text-[10px] font-mono text-slate-500" id="invNumber">INV-2025-8834</span>
+          <div class="text-xs font-bold text-emerald-600" id="invStatusBadge">PAID</div>
+        </div>
+      </div>
+
+      <div class="text-xs space-y-3" id="invoiceDetails">
+        <!-- Rendered by JS -->
+      </div>
+
+      <div class="mt-6 pt-4 border-t flex items-center justify-between no-print">
+        <button onclick="window.print()" class="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-lg text-xs flex items-center gap-1.5">
+          <i class="fa-solid fa-print"></i> Print Invoice
+        </button>
+        <button onclick="closeInvoiceModal()" class="px-5 py-2 bg-brand-500 text-white font-bold rounded-lg text-xs">
+          Close
+        </button>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ================= FEEDBACK & RATING MODAL ================= -->
+  <div id="ratingModal" class="fixed inset-0 bg-slate-900/70 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+    <div class="bg-white rounded-2xl max-w-md w-full p-6 text-center shadow-2xl border border-slate-200">
+      <div class="w-12 h-12 rounded-full bg-amber-100 text-amber-500 flex items-center justify-center mx-auto text-xl mb-3">
+        <i class="fa-solid fa-star"></i>
+      </div>
+      <h3 class="text-lg font-bold text-slate-900">Rate Your Service Experience</h3>
+      <p class="text-xs text-slate-500 mb-4">How was the job done by our certified technician?</p>
+
+      <div class="flex justify-center gap-2 text-2xl text-amber-400 mb-4 cursor-pointer" id="starRatingGroup">
+        <i class="fa-solid fa-star" onclick="setStar(1)"></i>
+        <i class="fa-solid fa-star" onclick="setStar(2)"></i>
+        <i class="fa-solid fa-star" onclick="setStar(3)"></i>
+        <i class="fa-solid fa-star" onclick="setStar(4)"></i>
+        <i class="fa-solid fa-star" onclick="setStar(5)"></i>
+      </div>
+
+      <textarea id="feedbackText" rows="3" placeholder="Share your feedback on punctuality, electrical expertise and quality..." class="w-full text-xs p-3 border border-slate-200 rounded-lg focus:ring-2 focus:ring-brand-500 outline-none mb-4"></textarea>
+
+      <div class="flex gap-2">
+        <button onclick="closeRatingModal()" class="flex-1 py-2 text-xs font-bold text-slate-600 bg-slate-100 rounded-lg">Skip</button>
+        <button onclick="submitFeedback()" class="flex-1 py-2 text-xs font-bold text-white bg-brand-500 hover:bg-brand-600 rounded-lg shadow">Submit Review</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ================= MATERIAL CART & CHECKOUT MODAL ================= -->
+  <div id="cartModal" class="fixed inset-0 bg-slate-900/70 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+    <div class="bg-white rounded-2xl max-w-lg w-full p-6 shadow-2xl border border-slate-200 flex flex-col max-h-[85vh]">
+      <div class="flex items-center justify-between border-b pb-3 mb-3">
+        <h3 class="text-base font-bold font-display text-slate-900 flex items-center gap-2">
+          <i class="fa-solid fa-cart-shopping text-brand-500"></i> New Material Cart
+        </h3>
+        <button onclick="closeCartModal()" class="text-slate-400 hover:text-slate-600">
+          <i class="fa-solid fa-xmark text-lg"></i>
+        </button>
+      </div>
+
+      <div id="cartItemsList" class="flex-1 overflow-y-auto space-y-3 text-xs pr-1">
+        <!-- Rendered by JS -->
+      </div>
+
+      <div class="border-t pt-3 mt-3 space-y-2">
+        <div class="flex justify-between text-xs font-bold">
+          <span>Subtotal:</span>
+          <span id="cartSubtotal">₹0</span>
+        </div>
+        <div class="flex justify-between text-[11px] text-slate-500">
+          <span>Delivery & On-site Verification:</span>
+          <span class="text-emerald-600 font-semibold">FREE (Bhopal)</span>
+        </div>
+        <div class="flex justify-between text-sm font-extrabold text-slate-900 pt-1 border-t">
+          <span>Total Payable:</span>
+          <span id="cartTotal" class="text-brand-500">₹0</span>
+        </div>
+
+        <button onclick="checkoutCart()" class="w-full py-2.5 bg-brand-500 hover:bg-brand-600 text-white text-xs font-bold rounded-lg shadow mt-2">
+          Proceed to Order & Delivery Address
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ================= LOCATION SELECTOR MODAL ================= -->
+  <div id="locationModal" class="fixed inset-0 bg-slate-900/70 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+    <div class="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl border border-slate-200">
+      <div class="flex items-center justify-between mb-4">
+        <h3 class="text-base font-bold font-display text-slate-900 flex items-center gap-2">
+          <i class="fa-solid fa-location-crosshairs text-brand-500"></i> Select Bhopal Area
+        </h3>
+        <button onclick="closeLocationModal()" class="text-slate-400 hover:text-slate-600">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+      
+      <p class="text-xs text-slate-500 mb-3">Our certified dispatch units are stationed across key Bhopal hubs for 30-45 min arrival.</p>
+      
+      <div class="grid grid-cols-2 gap-2 text-xs mb-4">
+        <button onclick="setLocation('Royal Market (HQ)')" class="p-2.5 text-left border rounded-lg hover:border-brand-500 hover:bg-brand-50 font-medium">📍 Royal Market (HQ)</button>
+        <button onclick="setLocation('MP Nagar Zone 1 & 2')" class="p-2.5 text-left border rounded-lg hover:border-brand-500 hover:bg-brand-50 font-medium">📍 MP Nagar</button>
+        <button onclick="setLocation('Arera Colony / 10 No.')" class="p-2.5 text-left border rounded-lg hover:border-brand-500 hover:bg-brand-50 font-medium">📍 Arera Colony</button>
+        <button onclick="setLocation('Hoshangabad Road')" class="p-2.5 text-left border rounded-lg hover:border-brand-500 hover:bg-brand-50 font-medium">📍 Hoshangabad Rd</button>
+        <button onclick="setLocation('Kolar Road / Chuna Bhatti')" class="p-2.5 text-left border rounded-lg hover:border-brand-500 hover:bg-brand-50 font-medium">📍 Kolar Road</button>
+        <button onclick="setLocation('Indrapuri / BHEL')" class="p-2.5 text-left border rounded-lg hover:border-brand-500 hover:bg-brand-50 font-medium">📍 BHEL / Indrapuri</button>
+      </div>
+
+      <div class="relative">
+        <input type="text" id="customLocationInput" placeholder="Or enter specific colony, ward or landmark..." class="w-full text-xs p-2.5 border rounded-lg pr-16 focus:ring-2 focus:ring-brand-500 outline-none">
+        <button onclick="setCustomLocation()" class="absolute right-1 top-1 bottom-1 px-3 bg-brand-500 text-white rounded text-xs font-bold">Set</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ================= REFER & EARN ₹50 MODAL ================= -->
+  <div id="referModal" class="fixed inset-0 bg-slate-900/70 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+    <div class="bg-white rounded-2xl max-w-md w-full p-6 text-center shadow-2xl border border-slate-200">
+      <div class="w-14 h-14 rounded-full bg-amber-100 text-amber-500 flex items-center justify-center mx-auto text-2xl mb-3">
+        <i class="fa-solid fa-gift"></i>
+      </div>
+      <h3 class="text-lg font-bold font-display text-slate-900">Refer & Earn ₹50 Instant Credit</h3>
+      <p class="text-xs text-slate-600 mb-4">Share Seric Tech Solutions with friends, hospitals, hotels or offices in Bhopal. You receive ₹50 wallet credit on their first booked service!</p>
+      
+      <div class="bg-slate-100 p-3 rounded-xl border border-dashed border-slate-300 flex items-center justify-between mb-4">
+        <span class="font-mono font-bold text-sm text-brand-500">SERIC50-BHOPAL</span>
+        <button onclick="copyReferCode()" class="px-3 py-1 bg-white hover:bg-slate-50 border rounded text-xs font-bold text-slate-700 shadow-sm">
+          Copy Code
+        </button>
+      </div>
+
+      <div class="flex gap-2">
+        <a href="https://wa.me/?text=Get%20expert%20electrical%20and%20electronic%20services%20in%20Bhopal%20from%20SERIC%20TECH%20SOLUTIONS.%20Use%20my%20code%20SERIC50-BHOPAL%20for%20discounts!%20Call%20+919993043078" target="_blank" class="flex-1 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-lg flex items-center justify-center gap-2 shadow">
+          <i class="fa-brands fa-whatsapp text-sm"></i> Share WhatsApp
+        </a>
+        <button onclick="closeReferModal()" class="px-4 py-2.5 bg-slate-200 text-slate-700 text-xs font-bold rounded-lg">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ================= TERMS & CONDITIONS MODAL ================= -->
+  <div id="termsModal" class="fixed inset-0 bg-slate-900/70 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+    <div class="bg-white rounded-2xl max-w-xl w-full p-6 shadow-2xl border border-slate-200 max-h-[85vh] flex flex-col">
+      <div class="flex justify-between items-center border-b pb-3 mb-3">
+        <h3 class="text-base font-bold font-display text-slate-900">Terms of Service & Charging Policy</h3>
+        <button onclick="closeTermsModal()" class="text-slate-400 hover:text-slate-600"><i class="fa-solid fa-xmark text-lg"></i></button>
+      </div>
+      <div class="flex-1 overflow-y-auto text-xs text-slate-600 space-y-3 leading-relaxed pr-2">
+        <p class="font-bold text-slate-800">1. Charging Structure (Authoritative PDF Spec):</p>
+        <ul class="list-disc pl-5 space-y-1">
+          <li><strong>Visit Charge:</strong> Standard inspection fee ₹199 applicable for diagnose & site analysis. If customer approves quote, work proceeds.</li>
+          <li><strong>Fixed Charge:</strong> Agreed upfront price for standard tasks (e.g. switch replacement, ceiling fan install).</li>
+          <li><strong>Customer Budget:</strong> Customer specifies minimum and maximum range; technician allocation aligns strictly within budget. If customer declines confirmation, workflow exits without penalty.</li>
+        </ul>
+        <p class="font-bold text-slate-800">2. Safety & Verification:</p>
+        <p>All technicians dispatched by Seric Tech Solutions carry verified photo credentials. Customer is advised to verify Technician ID upon arrival.</p>
+        <p class="font-bold text-slate-800">3. Material Procurement:</p>
+        <p>Parts and items ordered under Category #20 carry standard manufacturer warranty with authentic tax invoice generated from Bhopal HQ.</p>
+      </div>
+      <div class="pt-3 border-t mt-3 text-right">
+        <button onclick="closeTermsModal()" class="px-4 py-2 bg-brand-500 text-white text-xs font-bold rounded-lg">I Understand</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ================= JAVASCRIPT APP LOGIC & OFFICIAL PDF DATA ================= -->
+  <script>
+    /* ==========================================================================
+       1. OFFICIAL 20 MAIN CATEGORIES & SUBCATEGORIES (EXACT PDF SOURCE OF TRUTH)
+       ========================================================================== */
+    const MAIN_CATEGORIES = [
+      {
+        id: 1,
+        code: "cat-1",
+        group: "household",
+        name: "Home & Household Services",
+        icon: "fa-house-chimney-user",
+        color: "text-sky-600",
+        bg: "bg-sky-50",
+        desc: "Complete residential electrical installation, switchboards, inverter wiring, and appliance care.",
+        visitFee: 199,
+        subcategories: [
+          { name: "Fan Installation & Repair (Ceiling / Exhaust)", price: "₹149 - ₹299", time: "30 min" },
+          { name: "Switchboard & Socket Repair / Replacement", price: "₹99 - ₹249", time: "20 min" },
+          { name: "Inverter & Battery Wiring Setup", price: "₹399 - ₹799", time: "60 min" },
+          { name: "House Complete Wiring Inspection / Short Circuit", price: "₹299 - ₹899", time: "45 min" },
+          { name: "LED Lights, Chandelier & Strip Lighting", price: "₹149 - ₹499", time: "30 min" },
+          { name: "Geyser & Water Heater Electrical Repair", price: "₹249 - ₹499", time: "40 min" }
+        ]
+      },
+      {
+        id: 2,
+        code: "cat-2",
+        group: "industrial",
+        name: "Hospital & Medical Equipment Services",
+        icon: "fa-hospital",
+        color: "text-red-600",
+        bg: "bg-red-50",
+        desc: "Precision calibration, ICU power backup, autoclave, OT lights, and medical electronics servicing.",
+        visitFee: 499,
+        subcategories: [
+          { name: "ICU & Operation Theatre Electrical Isolation", price: "₹999 - ₹2499", time: "120 min" },
+          { name: "Autoclave & Sterilizer Wiring Repair", price: "₹599 - ₹1299", time: "60 min" },
+          { name: "Medical Monitor & ECG Machine Calibration", price: "₹799 - ₹1999", time: "90 min" },
+          { name: "Hospital Emergency UPS & DG Auto Transfer Switch", price: "₹899 - ₹2999", time: "120 min" },
+          { name: "Oxygen Concentrator Power Circuit Servicing", price: "₹499 - ₹999", time: "45 min" }
+        ]
+      },
+      {
+        id: 3,
+        code: "cat-3",
+        group: "household",
+        name: "Office & Shop Services",
+        icon: "fa-briefcase",
+        color: "text-blue-600",
+        bg: "bg-blue-50",
+        desc: "Commercial lighting, network cabling, server rack power, billing counter electricals & AMC.",
+        visitFee: 299,
+        subcategories: [
+          { name: "Commercial Office Lighting & False Ceiling Wiring", price: "₹499 - ₹1499", time: "90 min" },
+          { name: "Server Rack & LAN Cable Power Trunking", price: "₹599 - ₹1899", time: "120 min" },
+          { name: "Showroom Display Track Light Setup", price: "₹399 - ₹999", time: "60 min" },
+          { name: "POS & Billing Computer Electrical Protection", price: "₹299 - ₹599", time: "40 min" }
+        ]
+      },
+      {
+        id: 4,
+        code: "cat-4",
+        group: "household",
+        name: "Hotel & Restaurant Services",
+        icon: "fa-utensils",
+        color: "text-amber-600",
+        bg: "bg-amber-50",
+        desc: "Commercial kitchen equipment, cold storage power, dining ambiance, exhaust & chimney wiring.",
+        visitFee: 349,
+        subcategories: [
+          { name: "Commercial Oven & Deep Fryer Power Lines", price: "₹499 - ₹1299", time: "60 min" },
+          { name: "Commercial Kitchen Heavy Exhaust Fan Setup", price: "₹599 - ₹1499", time: "90 min" },
+          { name: "Buffet Warmer & Tandoor Thermostat Repair", price: "₹399 - ₹899", time: "45 min" },
+          { name: "Hotel Room Key-Card Master Power Switch Setup", price: "₹449 - ₹1199", time: "60 min" }
+        ]
+      },
+      {
+        id: 5,
+        code: "cat-5",
+        group: "household",
+        name: "College & School Services",
+        icon: "fa-graduation-cap",
+        color: "text-indigo-600",
+        bg: "bg-indigo-50",
+        desc: "Smart classroom projectors, computer lab 3-phase wiring, PA speaker systems and campus lighting.",
+        visitFee: 299,
+        subcategories: [
+          { name: "Smart Class Interactive Screen & Projector Setup", price: "₹499 - ₹1299", time: "90 min" },
+          { name: "Computer Lab 40-PC Central Power Distribution", price: "₹999 - ₹2999", time: "180 min" },
+          { name: "Campus Bell & PA Public Address System", price: "₹399 - ₹899", time: "60 min" },
+          { name: "Auditorium Stage Sound & Stage Lights", price: "₹799 - ₹2499", time: "150 min" }
+        ]
+      },
+      {
+        id: 6,
+        code: "cat-6",
+        group: "household",
+        name: "Event Management & Support",
+        icon: "fa-champagne-glasses",
+        color: "text-purple-600",
+        bg: "bg-purple-50",
+        desc: "Temporary event power supply, stage truss lighting, heavy DG generator sync & live electrician support.",
+        visitFee: 499,
+        subcategories: [
+          { name: "Wedding & Exhibition Temporary Power Distribution", price: "₹1499 - ₹4999", time: "Full Event" },
+          { name: "Sound & DJ High-Voltage Safety Breaker Setup", price: "₹799 - ₹1999", time: "120 min" },
+          { name: "Stage Halogen / LED PAR Light Trussing", price: "₹999 - ₹2999", time: "180 min" },
+          { name: "On-Site Standby Electrician for Live Functions", price: "₹999 / shift", time: "8 hours" }
+        ]
+      },
+      {
+        id: 7,
+        code: "cat-7",
+        group: "industrial",
+        name: "Industrial & Company Services",
+        icon: "fa-industry",
+        color: "text-emerald-600",
+        bg: "bg-emerald-50",
+        desc: "3-Phase motor rewinding, PLC control panels, capacitor bank power factor correction, transformer repair.",
+        visitFee: 599,
+        subcategories: [
+          { name: "Industrial Control Panel & VFD Drive Troubleshooting", price: "₹1299 - ₹3999", time: "180 min" },
+          { name: "3-Phase Induction Motor Starter & Contactor Repair", price: "₹699 - ₹1999", time: "120 min" },
+          { name: "APFC Automatic Power Factor Capacitor Maintenance", price: "₹1499 - ₹4499", time: "240 min" },
+          { name: "Factory Heavy Machinery Cable Trunking & Earthing", price: "₹999 - ₹2999", time: "180 min" }
+        ]
+      },
+      {
+        id: 8,
+        code: "cat-8",
+        group: "industrial",
+        name: "Renewable Energy & Solar Projects",
+        icon: "fa-solar-panel",
+        color: "text-amber-500",
+        bg: "bg-amber-50",
+        desc: "On-grid & off-grid rooftop solar setup, MPPT solar inverters, Net Metering support and solar water heaters.",
+        visitFee: 399,
+        subcategories: [
+          { name: "Rooftop Solar Plant Inspection & Cleaning/Audit", price: "₹499 - ₹1299", time: "90 min" },
+          { name: "On-Grid Inverter Synchronization & Fault Clearing", price: "₹699 - ₹1999", time: "120 min" },
+          { name: "Solar Structure Earthing & Lightning Arrester Setup", price: "₹899 - ₹2499", time: "150 min" },
+          { name: "Complete 1kW - 10kW Solar EPC Project Advisory", price: "₹299 - ₹999", time: "60 min" }
+        ]
+      },
+      {
+        id: 9,
+        code: "cat-9",
+        group: "industrial",
+        name: "Agricultural Electrical Services",
+        icon: "fa-wheat-awn",
+        color: "text-lime-600",
+        bg: "bg-lime-50",
+        desc: "Submersible borewell pump starters, farm automatic water controllers, rural line single-phasing preventers.",
+        visitFee: 349,
+        subcategories: [
+          { name: "Submersible Pump Starter & Auto-Switch Repair", price: "₹349 - ₹799", time: "60 min" },
+          { name: "Farm 3-Phase Phase-Sequencing & Protection", price: "₹499 - ₹1199", time: "90 min" },
+          { name: "Drip Irrigation Timer & Solenoid Valve Wiring", price: "₹599 - ₹1499", time: "120 min" }
+        ]
+      },
+      {
+        id: 10,
+        code: "cat-10",
+        group: "household",
+        name: "Computing & Electronics Item Services",
+        icon: "fa-desktop",
+        color: "text-cyan-600",
+        bg: "bg-cyan-50",
+        desc: "SMPS repair, Smart TV motherboard diagnosis, Wi-Fi router setup, CCTV DVR security cameras.",
+        visitFee: 249,
+        subcategories: [
+          { name: "CCTV Camera Installation & DVR Remote Config", price: "₹399 - ₹999", time: "60 min" },
+          { name: "Smart LED TV Wall Mounting & Circuit Check", price: "₹299 - ₹699", time: "45 min" },
+          { name: "Desktop Computer Power Supply (SMPS) Replacement", price: "₹199 - ₹499", time: "30 min" },
+          { name: "Office Wi-Fi Mesh Router & Access Point Tuning", price: "₹299 - ₹799", time: "40 min" }
+        ]
+      },
+      {
+        id: 11,
+        code: "cat-11",
+        group: "construction",
+        name: "Construction & Building Electrical Services",
+        icon: "fa-plug-circle-bolt",
+        color: "text-orange-600",
+        bg: "bg-orange-50",
+        desc: "New building conduit pipe laying, concealed wiring, distribution board (DB) dressing, copper earthing pits.",
+        visitFee: 399,
+        subcategories: [
+          { name: "Slab Conduit Pipe Laying (Per Sq. Ft Estimation)", price: "Custom Quote", time: "Full Day" },
+          { name: "Wall Chipping & Concealed Metal Box Fixing", price: "₹499 - ₹1999", time: "Per Room" },
+          { name: "Main LT Panel & Distribution Board (DB) Dressing", price: "₹899 - ₹2499", time: "150 min" },
+          { name: "Chemical Earthing Pit & Copper Rod Installation", price: "₹1299 - ₹3499", time: "180 min" }
+        ]
+      },
+      {
+        id: 12,
+        code: "cat-12",
+        group: "construction",
+        name: "Civil & Building Construction Services",
+        icon: "fa-trowel-bricks",
+        color: "text-stone-600",
+        bg: "bg-stone-50",
+        desc: "Electrical masonry cutting, plaster touch-up after rewiring, core cutting and structural drilling.",
+        visitFee: 299,
+        subcategories: [
+          { name: "Post-Electrical Wall Repair & Cement Plaster Patching", price: "₹399 - ₹999", time: "90 min" },
+          { name: "RCC Beam Core Cutting for Exhaust & Cables", price: "₹699 - ₹1899", time: "60 min" },
+          { name: "Waterproofing around Electrical Wall Passages", price: "₹499 - ₹1299", time: "90 min" }
+        ]
+      },
+      {
+        id: 13,
+        code: "cat-13",
+        group: "construction",
+        name: "Plumbing & Water System Services",
+        icon: "fa-faucet-drip",
+        color: "text-teal-600",
+        bg: "bg-teal-50",
+        desc: "Water booster pumps, RO purifier plumbing, sensor faucets, overhead tank automatic water level controllers.",
+        visitFee: 199,
+        subcategories: [
+          { name: "Automatic Water Level Controller Float Switch Install", price: "₹349 - ₹699", time: "45 min" },
+          { name: "Water Pressure Booster Pump Electrical Plumbing", price: "₹499 - ₹1199", time: "90 min" },
+          { name: "RO Water Purifier Power Adapter & Pump Repair", price: "₹249 - ₹599", time: "40 min" },
+          { name: "Kitchen Sink & Bathroom Sensor Tap Wiring", price: "₹299 - ₹699", time: "45 min" }
+        ]
+      },
+      {
+        id: 14,
+        code: "cat-14",
+        group: "construction",
+        name: "Carpentry & Woodwork Services",
+        icon: "fa-hammer",
+        color: "text-amber-800",
+        bg: "bg-amber-50",
+        desc: "Modular kitchen wire boxing, wooden false ceiling LED groove cutting, TV unit concealed wire paneling.",
+        visitFee: 199,
+        subcategories: [
+          { name: "Wooden TV Unit Wire Concealment & Slot Cutting", price: "₹299 - ₹799", time: "60 min" },
+          { name: "False Ceiling Cove Light Channel Fixing", price: "₹399 - ₹999", time: "90 min" },
+          { name: "Modular Kitchen Wooden Switch Plate Customization", price: "₹249 - ₹599", time: "45 min" }
+        ]
+      },
+      {
+        id: 15,
+        code: "cat-15",
+        group: "construction",
+        name: "Painting & Home Improvement Services",
+        icon: "fa-paint-roller",
+        color: "text-pink-600",
+        bg: "bg-pink-50",
+        desc: "Protective electrical masking during painting, waterproof exterior switchboard coatings and touchups.",
+        visitFee: 199,
+        subcategories: [
+          { name: "Switchboard Masking & Post-Paint Panel Refitting", price: "₹299 - ₹699", time: "60 min" },
+          { name: "Anti-Corrosion Coating for Industrial Enclosures", price: "₹499 - ₹1499", time: "120 min" }
+        ]
+      },
+      {
+        id: 16,
+        code: "cat-16",
+        group: "household",
+        name: "Cleaning & Sanitization Services",
+        icon: "fa-broom",
+        color: "text-emerald-500",
+        bg: "bg-emerald-50",
+        desc: "De-dusting LT distribution panels, industrial blower cleaning of electronics, split AC deep jet pump wash.",
+        visitFee: 199,
+        subcategories: [
+          { name: "Split AC Deep Foam & Jet Pump Cleaning", price: "₹399 - ₹599", time: "45 min" },
+          { name: "Electrical Control Panel Non-Conductive Blow Cleaning", price: "₹499 - ₹1299", time: "60 min" },
+          { name: "Ceiling Fan & Decorative Chandelier Ultrasonic Cleaning", price: "₹199 - ₹499", time: "30 min" }
+        ]
+      },
+      {
+        id: 17,
+        code: "cat-17",
+        group: "household",
+        name: "Home Renovation & Interior Design",
+        icon: "fa-couch",
+        color: "text-violet-600",
+        bg: "bg-violet-50",
+        desc: "Smart home automation, touch switches, Alexa/Google home integration, architectural ambient profile lights.",
+        visitFee: 349,
+        subcategories: [
+          { name: "Smart Wi-Fi Switch Module Retrofit (No rewiring)", price: "₹399 - ₹899", time: "60 min" },
+          { name: "Magnetic Track & Profile LED Architectural Design", price: "₹699 - ₹1999", time: "120 min" },
+          { name: "Motorized Smart Curtain Remote Controller Setup", price: "₹499 - ₹1299", time: "90 min" }
+        ]
+      },
+      {
+        id: 18,
+        code: "cat-18",
+        group: "industrial",
+        name: "Contract & Maintenance Plans",
+        icon: "fa-file-signature",
+        color: "text-blue-800",
+        bg: "bg-blue-50",
+        desc: "Annual Maintenance Contracts (AMC) for apartments, hospitals, banks, corporate towers and showrooms.",
+        visitFee: 0,
+        subcategories: [
+          { name: "Residential Society Annual Electrical AMC", price: "Custom Quote", time: "Annual" },
+          { name: "Hospital Critical Power Regular Monthly Audit", price: "₹1999 / mo", time: "Monthly" },
+          { name: "Showroom / Bank Branch 24/7 Rapid AMC Cover", price: "₹1499 / mo", time: "Monthly" }
+        ]
+      },
+      {
+        id: 19,
+        code: "cat-19",
+        group: "industrial",
+        name: "Man-Power Requirement",
+        icon: "fa-user-group",
+        color: "text-slate-700",
+        bg: "bg-slate-100",
+        desc: "Deploy certified ITI/diploma electrical technicians, helpers, and site supervisors for short & long term contracts.",
+        visitFee: 299,
+        subcategories: [
+          { name: "Certified Electrician On-Demand (Full Day 8 hrs)", price: "₹850 / day", time: "8 Hours" },
+          { name: "Electrical Helper / Wireman Assistant", price: "₹550 / day", time: "8 Hours" },
+          { name: "Solar Plant Installation Technician Squad (3-5 men)", price: "₹3500 / day", time: "8 Hours" }
+        ]
+      },
+      {
+        id: 20,
+        code: "cat-20",
+        group: "household",
+        name: "New Material Ordering",
+        icon: "fa-boxes-stacked",
+        color: "text-brand-500",
+        bg: "bg-brand-50",
+        desc: "Genuine direct ordering of ACs, Inverters, MCBs, Copper Wire Bundles, CCTV, Pumps and Kitchen Appliances.",
+        visitFee: 0,
+        subcategories: [
+          { name: "Order Air Conditioners (Split / Window / Inverter)", price: "Direct Store", time: "Same Day" },
+          { name: "Order Pure Copper Concealed Wiring Bundles", price: "Direct Store", time: "Same Day" },
+          { name: "Order Solar Panels, Inverters & Tubular Batteries", price: "Direct Store", time: "Same Day" },
+          { name: "Order Smart MCBs, DB Boxes & Modular Switches", price: "Direct Store", time: "Same Day" }
+        ]
+      }
+    ];
+
+    /* ==========================================================================
+       2. OFFICIAL MATERIAL STORE ITEMS (PDF EXAMPLES)
+       ========================================================================== */
+    const MATERIAL_CATALOG = [
+      {
+        id: "m-1",
+        category: "Heavy Appliances",
+        name: "1.5 Ton 5-Star Inverter Split AC",
+        brand: "OEM Certified Partner",
+        price: 36490,
+        mrp: 44990,
+        rating: 4.8,
+        imgIcon: "fa-snowflake",
+        desc: "Copper condenser, rapid cooling with anti-dust filter. Free Bhopal on-site delivery."
+      },
+      {
+        id: "m-2",
+        category: "Power & Solar",
+        name: "1100VA Pure Sine Wave Inverter + 150Ah Tubular Battery Combo",
+        brand: "Gold Standard Power",
+        price: 18990,
+        mrp: 23500,
+        rating: 4.9,
+        imgIcon: "fa-car-battery",
+        desc: "Heavy duty power backup for whole house, 36 months warranty."
+      },
+      {
+        id: "m-3",
+        category: "Electrical Parts",
+        name: "FR PVC Insulated Copper Wire 2.5 sq mm (90m Red)",
+        brand: "ISI Certified Multi-Strand",
+        price: 2150,
+        mrp: 2600,
+        rating: 4.9,
+        imgIcon: "fa-plug",
+        desc: "100% pure electrolytic copper, flame retardant for concealed housing."
+      },
+      {
+        id: "m-4",
+        category: "Electrical Parts",
+        name: "32A Double Pole MCB & 8-Way SPN Distribution Board",
+        brand: "Industrial Grade",
+        price: 1350,
+        mrp: 1750,
+        rating: 4.7,
+        imgIcon: "fa-toggle-on",
+        desc: "High short-circuit breaking capacity with IP30 metal enclosure."
+      },
+      {
+        id: "m-5",
+        category: "Security & Tech",
+        name: "4-Channel Full HD Smart CCTV Camera + 1TB DVR Kit",
+        brand: "SecureVision Pro",
+        price: 8499,
+        mrp: 11999,
+        rating: 4.8,
+        imgIcon: "fa-video",
+        desc: "Night vision, mobile live viewing, weatherproof dome & bullet cameras."
+      },
+      {
+        id: "m-6",
+        category: "Heavy Appliances",
+        name: "1.0 HP Self-Priming Water Pump Motor",
+        brand: "High-Lift Copper Winding",
+        price: 4699,
+        mrp: 5899,
+        rating: 4.7,
+        imgIcon: "fa-water",
+        desc: "Thermal overload protection, ideal for residential multistory pumping."
+      },
+      {
+        id: "m-7",
+        category: "Heavy Appliances",
+        name: "25 Litre Storage Water Geyser (5-Star)",
+        brand: "Glasslined Inner Tank",
+        price: 6890,
+        mrp: 8990,
+        rating: 4.8,
+        imgIcon: "fa-shower",
+        desc: "High pressure rating suitable for high-rise buildings."
+      },
+      {
+        id: "m-8",
+        category: "Power & Solar",
+        name: "540W Mono PERC Half-Cut Solar Panel (24V)",
+        brand: "Tier-1 High Efficiency",
+        price: 14200,
+        mrp: 17900,
+        rating: 4.9,
+        imgIcon: "fa-solar-panel",
+        desc: "25-year performance warranty, extreme weather resistant glass."
+      }
+    ];
+
+    /* ==========================================================================
+       3. POPULAR SERVICES SEED DATA
+       ========================================================================== */
+    const POPULAR_SERVICES = [
+      {
+        catId: 1,
+        title: "Short Circuit & Power Trip Fix",
+        catName: "Home & Household",
+        icon: "fa-bolt-lightning",
+        desc: "Emergency diagnosis of MCB tripping, neutral loss and wiring burnout.",
+        price: "From ₹199",
+        badge: "Emergency Fast",
+        badgeColor: "bg-red-50 text-red-600"
+      },
+      {
+        catId: 1,
+        title: "Inverter & Battery Wiring",
+        catName: "Home & Household",
+        icon: "fa-car-battery",
+        desc: "Safe dual-line inverter connection, changeover switch & battery charging test.",
+        price: "From ₹399",
+        badge: "High Demand",
+        badgeColor: "bg-blue-50 text-blue-600"
+      },
+      {
+        catId: 2,
+        title: "Hospital ICU Backup & OT Power Check",
+        catName: "Hospital & Medical",
+        icon: "fa-heart-pulse",
+        desc: "Critical zero-downtime medical isolation power verification and stabilizer audit.",
+        price: "Inspection ₹499",
+        badge: "Specialized",
+        badgeColor: "bg-purple-50 text-purple-600"
+      },
+      {
+        catId: 8,
+        title: "Rooftop Solar Plant Inspection",
+        catName: "Renewable Energy",
+        icon: "fa-solar-panel",
+        desc: "Inverter sync fault clearing, Net-metering testing and generation optimization.",
+        price: "From ₹499",
+        badge: "Eco Energy",
+        badgeColor: "bg-amber-50 text-amber-700"
+      }
+    ];
+
+    /* ==========================================================================
+       4. APPLICATION STATE MANAGEMENT
+       ========================================================================== */
+    const AppState = {
+      currentLocation: "Royal Market (HQ), Bhopal",
+      activeView: "home",
+      selectedCategory: null,
+      selectedSubcategory: null,
+      
+      // Wizard Form State
+      wizard: {
+        step: 1,
+        categoryId: 1,
+        serviceName: "Switchboard & Socket Repair / Replacement",
+        serviceType: "Repair", // Installation, Maintenance, Emergency, etc.
+        chargingModel: "VISIT", // VISIT, FIXED, BUDGET
+        budgetMin: 300,
+        budgetMax: 1000,
+        visitCharge: 199,
+        fixedPrice: 349,
+        address: "Plot 14, Royal Market, Near Multicare Hospital",
+        bookingMode: "INSTANT", // INSTANT, LATER, EMERGENCY
+        scheduledDate: new Date().toISOString().split('T')[0],
+        scheduledTime: "11:00 AM",
+        customerName: "Rahul Sharma",
+        customerPhone: "+91 9826012345",
+        instructions: "",
+        confirmed: false
+      },
+
+      // Active Live Booking State
+      activeBooking: {
+        id: "STS-2025-0941",
+        categoryName: "Home & Household Services",
+        serviceName: "Short Circuit & Power Trip Fix",
+        chargingModel: "VISIT CHARGE",
+        baseAmount: 199,
+        sparePartsAmount: 450,
+        status: "Technician Assigned", // Requested -> Confirmed -> Technician Assigned -> On The Way -> Arrived -> In Progress -> Completed -> Invoiced -> Paid
+        statusStep: 3, // 1 to 7
+        eta: "22 Mins",
+        technician: {
+          name: "Deepak Sharma",
+          phone: "+91 9993043078",
+          skill: "Master Domestic Electrician",
+          rating: "4.9 ★ (180+ jobs)",
+          avatar: "DS"
+        },
+        address: "Flat 204, Royal Palms, Royal Market Bhopal",
+        timestamp: "Today, 10:30 AM"
+      },
+
+      cart: [],
+      ratingStar: 5
+    };
+
+    /* ==========================================================================
+       5. INITIALIZATION & DOM RENDERING
+       ========================================================================== */
+    document.addEventListener("DOMContentLoaded", () => {
+      renderMainCategoriesGrid(MAIN_CATEGORIES);
+      renderPopularServices();
+      renderMaterialsGrid(MATERIAL_CATALOG);
+      renderActiveBookingView();
+      renderServiceHistory();
+      updateLocationDisplay();
+    });
+
+    // View Router
+    function showScreen(screenId) {
+      document.querySelectorAll('.view-screen').forEach(el => {
+        el.classList.add('hidden');
+        el.classList.remove('block');
+      });
+
+      const target = document.getElementById(`view-${screenId}`);
+      if (target) {
+        target.classList.remove('hidden');
+        target.classList.add('block');
+        AppState.activeView = screenId;
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      }
+
+      // Update mobile nav highlight
+      const navMap = {
+        'home': 'mobileNavHome',
+        'categories': 'mobileNavMenu',
+        'bookings': 'mobileNavBook',
+        'profile': 'mobileNavAccount'
+      };
+      document.querySelectorAll('nav.md\\:hidden button').forEach(btn => btn.classList.remove('text-brand-500', 'font-bold'));
+      const activeNavBtn = document.getElementById(navMap[screenId]);
+      if (activeNavBtn) activeNavBtn.classList.add('text-brand-500', 'font-bold');
+    }
+
+    // Render 20 Official Categories
+    function renderMainCategoriesGrid(categories) {
+      const container = document.getElementById('mainCategoriesGrid');
+      const fullListContainer = document.getElementById('fullCategoriesList');
+      
+      if (!container) return;
+
+      container.innerHTML = categories.map(cat => `
+        <div onclick="openCategoryDetail(${cat.id})" class="bg-white rounded-xl p-4 border border-slate-200 hover:border-brand-500 hover:shadow-lg transition-all duration-200 cursor-pointer flex flex-col justify-between group">
+          <div>
+            <div class="flex items-center justify-between mb-3">
+              <div class="w-10 h-10 rounded-xl ${cat.bg} ${cat.color} flex items-center justify-center text-lg group-hover:scale-110 transition-transform">
+                <i class="fa-solid ${cat.icon}"></i>
+              </div>
+              <span class="text-[10px] font-mono font-bold text-slate-400">#${cat.id}</span>
+            </div>
+            <h4 class="text-xs font-bold text-slate-900 group-hover:text-brand-500 line-clamp-2">${cat.name}</h4>
+            <p class="text-[10px] text-slate-500 mt-1 line-clamp-2">${cat.desc}</p>
+          </div>
+          
+          <div class="mt-3 pt-2.5 border-t border-slate-100 flex items-center justify-between text-[10px]">
+            <span class="font-semibold text-slate-700">Inspection: ₹${cat.visitFee}</span>
+            <span class="text-brand-500 font-bold group-hover:translate-x-0.5 transition-transform">Book <i class="fa-solid fa-chevron-right text-[8px]"></i></span>
+          </div>
+        </div>
+      `).join('');
+
+      if (fullListContainer) {
+        fullListContainer.innerHTML = categories.map(cat => `
+          <div class="bg-white rounded-xl p-5 border border-slate-200 hover:border-brand-500 shadow-sm transition">
+            <div class="flex items-center gap-3 mb-3">
+              <div class="w-10 h-10 rounded-lg ${cat.bg} ${cat.color} flex items-center justify-center text-lg">
+                <i class="fa-solid ${cat.icon}"></i>
+              </div>
+              <div>
+                <span class="text-[10px] font-mono font-bold text-brand-500">CATEGORY ${cat.id}</span>
+                <h4 class="text-sm font-bold text-slate-900">${cat.name}</h4>
+              </div>
+            </div>
+            <p class="text-xs text-slate-500 mb-3">${cat.desc}</p>
+            <div class="space-y-1.5 border-t pt-3 mb-4">
+              <div class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Common Subcategories:</div>
+              ${cat.subcategories.slice(0, 3).map(sub => `
+                <div class="flex justify-between items-center text-xs text-slate-700 bg-slate-50 px-2 py-1 rounded">
+                  <span class="truncate pr-2">${sub.name}</span>
+                  <span class="font-semibold text-brand-600 whitespace-nowrap">${sub.price}</span>
+                </div>
+              `).join('')}
+            </div>
+            <div class="flex gap-2">
+              <button onclick="openCategoryDetail(${cat.id})" class="flex-1 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-lg transition">
+                View All Subservices
+              </button>
+              <button onclick="startWizardWithCat(${cat.id})" class="flex-1 py-2 bg-brand-500 hover:bg-brand-600 text-white text-xs font-bold rounded-lg transition">
+                Book Inspection
+              </button>
+            </div>
+          </div>
+        `).join('');
+      }
+    }
+
+    // Filter Category Grid by tab
+    function filterCategoryGrid(group) {
+      document.querySelectorAll('.category-filter-btn').forEach(btn => {
+        btn.classList.remove('bg-brand-500', 'text-white');
+        btn.classList.add('bg-slate-100', 'text-slate-700');
+        if (btn.dataset.group === group) {
+          btn.classList.add('bg-brand-500', 'text-white');
+          btn.classList.remove('bg-slate-100', 'text-slate-700');
+        }
+      });
+
+      if (group === 'all') {
+        renderMainCategoriesGrid(MAIN_CATEGORIES);
+      } else {
+        const filtered = MAIN_CATEGORIES.filter(c => c.group === group);
+        renderMainCategoriesGrid(filtered);
+      }
+    }
+
+    function filterCategorySearch(query) {
+      const q = query.toLowerCase();
+      const filtered = MAIN_CATEGORIES.filter(c => 
+        c.name.toLowerCase().includes(q) || 
+        c.desc.toLowerCase().includes(q) ||
+        c.subcategories.some(s => s.name.toLowerCase().includes(q))
+      );
+      renderMainCategoriesGrid(filtered);
+    }
+
+    // Open Category Detail View
+    function openCategoryDetail(catId) {
+      const cat = MAIN_CATEGORIES.find(c => c.id === catId);
+      if (!cat) return;
+
+      AppState.selectedCategory = cat;
+      const header = document.getElementById('categoryDetailHeader');
+      const list = document.getElementById('subcategoryServicesList');
+
+      header.innerHTML = `
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div class="flex items-center gap-4">
+            <div class="w-14 h-14 rounded-2xl ${cat.bg} ${cat.color} flex items-center justify-center text-2xl">
+              <i class="fa-solid ${cat.icon}"></i>
+            </div>
+            <div>
+              <span class="text-xs font-bold text-brand-500 font-mono">OFFICIAL CATEGORY #${cat.id}</span>
+              <h2 class="text-xl sm:text-2xl font-extrabold text-slate-900 font-display">${cat.name}</h2>
+              <p class="text-xs text-slate-500 mt-0.5">${cat.desc}</p>
+            </div>
+          </div>
+          <div class="flex items-center gap-2">
+            <button onclick="startWizardWithCat(${cat.id})" class="px-5 py-2.5 bg-brand-500 hover:bg-brand-600 text-white text-xs font-bold rounded-xl shadow transition flex items-center gap-2">
+              <i class="fa-solid fa-bolt"></i> Book Service in this Category
+            </button>
+          </div>
+        </div>
+      `;
+
+      list.innerHTML = cat.subcategories.map(sub => `
+        <div class="bg-white rounded-xl p-4 border border-slate-200 hover:border-brand-500 transition shadow-sm flex flex-col justify-between">
+          <div>
+            <div class="flex justify-between items-start mb-2">
+              <h4 class="text-xs font-bold text-slate-900">${sub.name}</h4>
+              <span class="text-[10px] bg-slate-100 text-slate-600 px-1.5 py-0.5 rounded font-mono">${sub.time}</span>
+            </div>
+            <div class="text-xs font-extrabold text-brand-600 mb-3">${sub.price}</div>
+            <div class="text-[10px] text-slate-500 space-y-1 mb-4">
+              <div class="flex items-center gap-1.5"><i class="fa-solid fa-circle-check text-emerald-500"></i> Standard Inspection Included</div>
+              <div class="flex items-center gap-1.5"><i class="fa-solid fa-circle-check text-emerald-500"></i> GST Invoice & Safety Compliance</div>
+            </div>
+          </div>
+
+          <div class="grid grid-cols-2 gap-2 pt-2 border-t border-slate-100">
+            <button onclick="startWizardWithSpecificService(${cat.id}, '${sub.name.replace(/'/g, "\\'")}')" class="py-2 bg-brand-50 text-brand-600 hover:bg-brand-500 hover:text-white rounded-lg text-xs font-bold transition text-center">
+              Book Now
+            </button>
+            <a href="tel:+919993043078" class="py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-bold transition text-center flex items-center justify-center gap-1">
+              <i class="fa-solid fa-phone text-xs"></i> Call
+            </a>
+          </div>
+        </div>
+      `).join('');
+
+      showScreen('category-detail');
+    }
+
+    // Render Popular Services
+    function renderPopularServices() {
+      const container = document.getElementById('popularServicesGrid');
+      if (!container) return;
+
+      container.innerHTML = POPULAR_SERVICES.map(srv => `
+        <div class="bg-white rounded-xl p-5 border border-slate-200 hover:border-brand-500 hover:shadow-md transition flex flex-col justify-between">
+          <div>
+            <div class="flex items-center justify-between mb-3">
+              <span class="text-[10px] font-bold px-2 py-0.5 rounded ${srv.badgeColor}">${srv.badge}</span>
+              <span class="text-xs font-bold text-slate-700">${srv.price}</span>
+            </div>
+            <div class="flex items-center gap-3 mb-2">
+              <div class="w-9 h-9 rounded-lg bg-blue-50 text-brand-500 flex items-center justify-center text-sm">
+                <i class="fa-solid ${srv.icon}"></i>
+              </div>
+              <div>
+                <span class="text-[10px] text-slate-400 block">${srv.catName}</span>
+                <h4 class="text-xs font-bold text-slate-900 leading-tight">${srv.title}</h4>
+              </div>
+            </div>
+            <p class="text-xs text-slate-500 mb-4">${srv.desc}</p>
+          </div>
+          <button onclick="startWizardWithCat(${srv.catId})" class="w-full py-2 bg-slate-100 hover:bg-brand-500 hover:text-white text-slate-800 rounded-lg text-xs font-bold transition flex items-center justify-center gap-1.5">
+            <i class="fa-solid fa-bolt text-brand-accent"></i> Book Dispatch
+          </button>
+        </div>
+      `).join('');
+    }
+
+    // Render Materials Catalog
+    function renderMaterialsGrid(items) {
+      const container = document.getElementById('materialsGrid');
+      if (!container) return;
+
+      container.innerHTML = items.map(item => `
+        <div class="bg-white rounded-xl p-4 border border-slate-200 hover:border-brand-500 hover:shadow-md transition flex flex-col justify-between">
+          <div>
+            <div class="flex justify-between items-start mb-3">
+              <span class="text-[10px] bg-slate-100 text-slate-600 px-2 py-0.5 rounded font-medium">${item.category}</span>
+              <span class="text-[11px] text-amber-500 font-bold"><i class="fa-solid fa-star"></i> ${item.rating}</span>
+            </div>
+            
+            <div class="h-24 bg-slate-50 rounded-lg flex items-center justify-center text-brand-500 text-4xl mb-3 border border-slate-100">
+              <i class="fa-solid ${item.imgIcon}"></i>
+            </div>
+
+            <h4 class="text-xs font-bold text-slate-900 line-clamp-2">${item.name}</h4>
+            <div class="text-[10px] text-slate-500 mt-0.5">${item.brand}</div>
+            <p class="text-[11px] text-slate-500 mt-2 line-clamp-2">${item.desc}</p>
+          </div>
+
+          <div class="mt-4 pt-3 border-t border-slate-100">
+            <div class="flex items-baseline gap-2 mb-3">
+              <span class="text-sm font-extrabold text-slate-900">₹${item.price.toLocaleString()}</span>
+              <span class="text-[11px] text-slate-400 line-through">₹${item.mrp.toLocaleString()}</span>
+            </div>
+            <button onclick="addToCart('${item.id}')" class="w-full py-2 bg-brand-500 hover:bg-brand-600 text-white rounded-lg text-xs font-bold transition flex items-center justify-center gap-1.5">
+              <i class="fa-solid fa-cart-plus"></i> Add to Material Order
+            </button>
+          </div>
+        </div>
+      `).join('');
+    }
+
+    function filterMaterials(category) {
+      document.querySelectorAll('.mat-filter-btn').forEach(btn => {
+        btn.classList.remove('bg-brand-500', 'text-white');
+        btn.classList.add('bg-slate-100', 'text-slate-700');
+        if (btn.dataset.mat === category) {
+          btn.classList.add('bg-brand-500', 'text-white');
+          btn.classList.remove('bg-slate-100', 'text-slate-700');
+        }
+      });
+
+      if (category === 'all') {
+        renderMaterialsGrid(MATERIAL_CATALOG);
+      } else {
+        const filtered = MATERIAL_CATALOG.filter(m => m.category === category);
+        renderMaterialsGrid(filtered);
+      }
+    }
+
+    // Active Live Booking Rendering (Timeline & Status)
+    function renderActiveBookingView() {
+      const container = document.getElementById('activeBookingContainer');
+      if (!container) return;
+
+      const b = AppState.activeBooking;
+
+      container.innerHTML = `
+        <div class="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-sm space-y-6 p-6">
+          
+          <!-- Booking Top Bar -->
+          <div class="flex flex-col sm:flex-row sm:items-center justify-between pb-4 border-b border-slate-100 gap-3">
+            <div>
+              <div class="flex items-center gap-2">
+                <span class="text-xs font-mono font-bold text-brand-500 bg-brand-50 px-2 py-0.5 rounded border border-brand-200">${b.id}</span>
+                <span class="text-[10px] bg-emerald-100 text-emerald-800 font-bold px-2 py-0.5 rounded-full">${b.status}</span>
+              </div>
+              <h3 class="text-base font-bold text-slate-900 mt-1">${b.serviceName}</h3>
+              <p class="text-xs text-slate-500">${b.categoryName} • ${b.chargingModel}</p>
+            </div>
+            <div class="text-left sm:text-right">
+              <span class="text-xs text-slate-400 block">Estimated Arrival</span>
+              <span class="text-lg font-extrabold text-brand-accent animate-pulse">${b.eta}</span>
+            </div>
+          </div>
+
+          <!-- Official PDF 9-State Tracking Stepper -->
+          <div class="py-2">
+            <div class="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-3">Live Dispatch Milestone:</div>
+            <div class="grid grid-cols-3 sm:grid-cols-7 gap-2 text-center text-[10px]">
+              
+              <div class="p-2 rounded-lg ${b.statusStep >= 1 ? 'bg-emerald-50 text-emerald-700 font-bold border border-emerald-200' : 'bg-slate-100 text-slate-400'}">
+                <i class="fa-solid fa-file-circle-check text-xs block mb-1"></i> Requested
+              </div>
+
+              <div class="p-2 rounded-lg ${b.statusStep >= 2 ? 'bg-emerald-50 text-emerald-700 font-bold border border-emerald-200' : 'bg-slate-100 text-slate-400'}">
+                <i class="fa-solid fa-circle-check text-xs block mb-1"></i> Confirmed
+              </div>
+
+              <div class="p-2 rounded-lg ${b.statusStep >= 3 ? 'bg-brand-50 text-brand-600 font-bold border border-brand-300 ring-2 ring-brand-500/20' : 'bg-slate-100 text-slate-400'}">
+                <i class="fa-solid fa-user-gear text-xs block mb-1"></i> Assigned
+              </div>
+
+              <div class="p-2 rounded-lg ${b.statusStep >= 4 ? 'bg-emerald-50 text-emerald-700 font-bold border border-emerald-200' : 'bg-slate-100 text-slate-400'}">
+                <i class="fa-solid fa-van-shuttle text-xs block mb-1"></i> On The Way
+              </div>
+
+              <div class="p-2 rounded-lg ${b.statusStep >= 5 ? 'bg-emerald-50 text-emerald-700 font-bold border border-emerald-200' : 'bg-slate-100 text-slate-400'}">
+                <i class="fa-solid fa-house-chimney-crack text-xs block mb-1"></i> Arrived
+              </div>
+
+              <div class="p-2 rounded-lg ${b.statusStep >= 6 ? 'bg-emerald-50 text-emerald-700 font-bold border border-emerald-200' : 'bg-slate-100 text-slate-400'}">
+                <i class="fa-solid fa-screwdriver-wrench text-xs block mb-1"></i> Job Done
+              </div>
+
+              <div class="p-2 rounded-lg ${b.statusStep >= 7 ? 'bg-purple-50 text-purple-700 font-bold border border-purple-200' : 'bg-slate-100 text-slate-400'}">
+                <i class="fa-solid fa-receipt text-xs block mb-1"></i> Invoice & Paid
+              </div>
+
+            </div>
+          </div>
+
+          <!-- Certified Technician Card -->
+          <div class="bg-slate-50 p-4 rounded-xl border border-slate-200 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+            <div class="flex items-center gap-3">
+              <div class="w-12 h-12 rounded-full bg-brand-navy text-white flex items-center justify-center font-bold text-sm border-2 border-brand-500">
+                ${b.technician.avatar}
+              </div>
+              <div>
+                <div class="flex items-center gap-1.5">
+                  <h4 class="text-sm font-bold text-slate-900">${b.technician.name}</h4>
+                  <i class="fa-solid fa-shield-check text-emerald-600 text-xs" title="Identity & Police Verified"></i>
+                </div>
+                <p class="text-xs text-slate-500">${b.technician.skill}</p>
+                <div class="text-[11px] text-amber-600 font-bold">${b.technician.rating}</div>
+              </div>
+            </div>
+
+            <div class="flex items-center gap-2 w-full sm:w-auto">
+              <a href="tel:${b.technician.phone}" class="flex-1 sm:flex-initial px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold flex items-center justify-center gap-1.5 shadow">
+                <i class="fa-solid fa-phone"></i> Call Technician
+              </a>
+              <a href="https://wa.me/919993043078" target="_blank" class="px-3 py-2 bg-white hover:bg-slate-100 border border-slate-200 text-emerald-700 rounded-lg text-xs font-bold flex items-center justify-center">
+                <i class="fa-brands fa-whatsapp text-sm"></i>
+              </a>
+            </div>
+          </div>
+
+          <!-- Dispatch Controls Simulator (Allows switching state in demo) -->
+          <div class="bg-blue-50/50 p-4 rounded-xl border border-blue-100 text-xs">
+            <div class="text-[11px] font-bold text-slate-600 mb-2">Simulate Dispatch Flow:</div>
+            <div class="flex flex-wrap gap-2">
+              <button onclick="advanceBookingStatus(4, 'Technician On The Way', '8 Mins')" class="px-3 py-1.5 bg-white border border-slate-200 hover:bg-slate-50 rounded text-slate-700 font-medium text-[11px]">Set On The Way</button>
+              <button onclick="advanceBookingStatus(5, 'Arrived at Site', 'Arrived')" class="px-3 py-1.5 bg-white border border-slate-200 hover:bg-slate-50 rounded text-slate-700 font-medium text-[11px]">Set Arrived</button>
+              <button onclick="advanceBookingStatus(6, 'Service In Progress', 'In Progress')" class="px-3 py-1.5 bg-white border border-slate-200 hover:bg-slate-50 rounded text-slate-700 font-medium text-[11px]">Set In Progress</button>
+              <button onclick="advanceBookingStatus(7, 'Completed & Invoiced', 'Job Done')" class="px-3 py-1.5 bg-brand-500 hover:bg-brand-600 text-white rounded font-bold text-[11px]">Mark Job Done & Generate Invoice</button>
+            </div>
+          </div>
+
+          <!-- Actions: Invoice & Feedback -->
+          <div class="flex flex-wrap items-center justify-between pt-2 gap-3 border-t border-slate-100">
+            <button onclick="openInvoiceModal()" class="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-bold flex items-center gap-1.5">
+              <i class="fa-solid fa-file-invoice-dollar text-brand-500"></i> View Official Invoice
+            </button>
+            <button onclick="openRatingModal()" class="px-4 py-2 bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200 rounded-lg text-xs font-bold flex items-center gap-1.5">
+              <i class="fa-solid fa-star text-brand-accent"></i> Submit Feedback
+            </button>
+          </div>
+
+        </div>
+      `;
+    }
+
+    function advanceBookingStatus(step, label, eta) {
+      AppState.activeBooking.statusStep = step;
+      AppState.activeBooking.status = label;
+      AppState.activeBooking.eta = eta;
+      renderActiveBookingView();
+      showToast(`Booking updated: ${label}`);
+      if (step === 7) {
+        setTimeout(() => openInvoiceModal(), 600);
+      }
+    }
+
+    // Render User Past Service History
+    function renderServiceHistory() {
+      const container = document.getElementById('serviceHistoryList');
+      if (!container) return;
+
+      const history = [
+        { id: "STS-2025-0811", title: "Ceiling Fan & Exhaust Rewiring", date: "12 Feb 2025", amount: "₹448", status: "Paid" },
+        { id: "STS-2025-0720", title: "Inverter Battery Hydrometer & Wiring Test", date: "28 Jan 2025", amount: "₹299", status: "Paid" },
+        { id: "STS-2025-0604", title: "Switchboard 16A AC Socket Replacement", date: "10 Jan 2025", amount: "₹349", status: "Paid" }
+      ];
+
+      container.innerHTML = history.map(h => `
+        <div class="bg-white p-4 rounded-xl border border-slate-200 flex items-center justify-between text-xs">
+          <div>
+            <div class="flex items-center gap-2">
+              <span class="font-mono font-bold text-slate-700">${h.id}</span>
+              <span class="text-[10px] bg-emerald-100 text-emerald-800 font-bold px-1.5 py-0.2 rounded">${h.status}</span>
+            </div>
+            <div class="font-bold text-slate-900 mt-1">${h.title}</div>
+            <div class="text-[11px] text-slate-400">${h.date} • Bhopal Central</div>
+          </div>
+          <div class="text-right">
+            <span class="text-xs font-extrabold text-slate-900 block">${h.amount}</span>
+            <button onclick="openInvoiceModal()" class="text-brand-500 hover:underline text-[11px] font-semibold">Invoice</button>
+          </div>
+        </div>
+      `).join('');
+    }
+
+    /* ==========================================================================
+       6. MULTI-STEP BOOKING WIZARD ENGINE (EXACT PDF CHARGING & WORKFLOW)
+       ========================================================================== */
+    function startBookingWizard() {
+      AppState.wizard.step = 1;
+      renderWizardStep();
+      document.getElementById('bookingWizardModal').classList.remove('hidden');
+    }
+
+    function startWizardWithCat(catId) {
+      AppState.wizard.categoryId = catId;
+      const cat = MAIN_CATEGORIES.find(c => c.id === catId);
+      if (cat && cat.subcategories.length > 0) {
+        AppState.wizard.serviceName = cat.subcategories[0].name;
+      }
+      AppState.wizard.step = 2;
+      renderWizardStep();
+      document.getElementById('bookingWizardModal').classList.remove('hidden');
+    }
+
+    function startWizardWithSpecificService(catId, serviceName) {
+      AppState.wizard.categoryId = catId;
+      AppState.wizard.serviceName = serviceName;
+      AppState.wizard.step = 3; // Jump directly to Charging Option
+      renderWizardStep();
+      document.getElementById('bookingWizardModal').classList.remove('hidden');
+    }
+
+    function startBookingWizardWithModel(model) {
+      AppState.wizard.chargingModel = model;
+      AppState.wizard.step = 1;
+      renderWizardStep();
+      document.getElementById('bookingWizardModal').classList.remove('hidden');
+    }
+
+    function quickBookWithTechnician(name, skill) {
+      AppState.wizard.serviceName = skill;
+      AppState.wizard.chargingModel = "VISIT";
+      AppState.wizard.step = 4;
+      renderWizardStep();
+      document.getElementById('bookingWizardModal').classList.remove('hidden');
+      showToast(`Technician ${name} pre-selected for dispatch`);
+    }
+
+    function startEmergencyBooking() {
+      AppState.wizard.bookingMode = "EMERGENCY";
+      AppState.wizard.serviceType = "Emergency";
+      AppState.wizard.chargingModel = "VISIT";
+      AppState.wizard.step = 4;
+      renderWizardStep();
+      document.getElementById('bookingWizardModal').classList.remove('hidden');
+      showToast('24/7 Emergency priority enabled');
+    }
+
+    function closeBookingWizard() {
+      document.getElementById('bookingWizardModal').classList.add('hidden');
+    }
+
+    function prevWizardStep() {
+      if (AppState.wizard.step > 1) {
+        AppState.wizard.step--;
+        renderWizardStep();
+      }
+    }
+
+    function nextWizardStep() {
+      // Step Validations
+      if (AppState.wizard.step === 3 && AppState.wizard.chargingModel === 'BUDGET') {
+        const min = parseInt(document.getElementById('wizardBudgetMin')?.value || 0);
+        const max = parseInt(document.getElementById('wizardBudgetMax')?.value || 0);
+        if (min <= 0 || max <= min) {
+          showToast('Please enter a valid Budget Range (Max must exceed Min)', true);
+          return;
+        }
+        AppState.wizard.budgetMin = min;
+        AppState.wizard.budgetMax = max;
+      }
+
+      if (AppState.wizard.step < 8) {
+        AppState.wizard.step++;
+        renderWizardStep();
+      } else {
+        // Final Confirmation
+        confirmAndDispatchBooking();
+      }
+    }
+
+    // Wizard Step Renderer
+    function renderWizardStep() {
+      const step = AppState.wizard.step;
+      const content = document.getElementById('wizardStepContent');
+      const title = document.getElementById('wizardTitle');
+      const indicator = document.getElementById('wizardStepIndicator');
+      const stepName = document.getElementById('wizardStepName');
+      const progressBar = document.getElementById('wizardProgressBar');
+      const nextBtn = document.getElementById('wizardNextBtn');
+      const backBtn = document.getElementById('wizardBackBtn');
+
+      progressBar.style.width = `${(step / 8) * 100}%`;
+      indicator.textContent = `Step ${step} of 8`;
+      backBtn.disabled = step === 1;
+
+      if (step === 8) {
+        nextBtn.innerHTML = `<span>Confirm & Assign Technician</span> <i class="fa-solid fa-check text-xs"></i>`;
+        nextBtn.className = "px-5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-lg shadow transition flex items-center gap-1.5";
+      } else {
+        nextBtn.innerHTML = `<span>Next Step</span> <i class="fa-solid fa-arrow-right text-xs"></i>`;
+        nextBtn.className = "px-5 py-2 bg-brand-500 hover:bg-brand-600 text-white font-bold rounded-lg shadow transition flex items-center gap-1.5";
+      }
+
+      const currentCat = MAIN_CATEGORIES.find(c => c.id === AppState.wizard.categoryId) || MAIN_CATEGORIES[0];
+
+      switch(step) {
+        case 1:
+          title.textContent = "Step 1: Select Main Category";
+          stepName.textContent = "Category Selection";
+          content.innerHTML = `
+            <p class="text-xs text-slate-500 mb-3">Choose from the official 20 Service Domains:</p>
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-80 overflow-y-auto pr-1">
+              ${MAIN_CATEGORIES.map(cat => `
+                <div onclick="selectWizardCategory(${cat.id})" class="p-3 rounded-xl border ${AppState.wizard.categoryId === cat.id ? 'border-brand-500 bg-brand-50/50 ring-2 ring-brand-500/20' : 'border-slate-200 hover:border-slate-300'} cursor-pointer transition flex items-center gap-3">
+                  <div class="w-8 h-8 rounded-lg ${cat.bg} ${cat.color} flex items-center justify-center text-sm">
+                    <i class="fa-solid ${cat.icon}"></i>
+                  </div>
+                  <div>
+                    <h5 class="text-xs font-bold text-slate-900">${cat.name}</h5>
+                    <span class="text-[10px] text-slate-400">Inspection: ₹${cat.visitFee}</span>
+                  </div>
+                </div>
+              `).join('')}
+            </div>
+          `;
+          break;
+
+        case 2:
+          title.textContent = "Step 2: Subcategory & Service Task";
+          stepName.textContent = "Service Task";
+          content.innerHTML = `
+            <div class="mb-3">
+              <span class="text-[10px] text-brand-500 font-bold uppercase">CATEGORY: ${currentCat.name}</span>
+              <p class="text-xs text-slate-500">Pick the specific task or problem you are facing:</p>
+            </div>
+            <div class="space-y-2 max-h-72 overflow-y-auto pr-1">
+              ${currentCat.subcategories.map((sub, idx) => `
+                <div onclick="selectWizardService('${sub.name.replace(/'/g, "\\'")}')" class="p-3 rounded-xl border ${AppState.wizard.serviceName === sub.name ? 'border-brand-500 bg-brand-50/50 ring-2 ring-brand-500/20' : 'border-slate-200 hover:border-slate-300'} cursor-pointer transition flex items-center justify-between">
+                  <div class="flex items-center gap-2.5">
+                    <span class="w-5 h-5 rounded-full bg-slate-100 flex items-center justify-center text-[10px] font-bold text-slate-600">${idx + 1}</span>
+                    <span class="text-xs font-bold text-slate-800">${sub.name}</span>
+                  </div>
+                  <span class="text-xs font-bold text-brand-600">${sub.price}</span>
+                </div>
+              `).join('')}
+              <div onclick="selectWizardService('Custom Inspection & Diagnostic')" class="p-3 rounded-xl border border-dashed border-slate-300 hover:border-brand-500 cursor-pointer text-center text-slate-600 font-semibold">
+                + Other / Custom Electrical Problem
+              </div>
+            </div>
+          `;
+          break;
+
+        case 3:
+          title.textContent = "Step 3: Charging Option";
+          stepName.textContent = "Pricing Model";
+          content.innerHTML = `
+            <p class="text-xs text-slate-500 mb-3">Choose how you want to be billed (Strictly governed as per PDF spec):</p>
+            
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-4">
+              
+              <!-- Option 1: Visit Charge -->
+              <div onclick="setWizardChargingModel('VISIT')" class="p-3.5 rounded-xl border ${AppState.wizard.chargingModel === 'VISIT' ? 'border-brand-500 bg-brand-50 ring-2 ring-brand-500/20' : 'border-slate-200 hover:border-slate-300'} cursor-pointer text-center transition">
+                <div class="text-[10px] font-bold text-brand-500 uppercase">Option 1</div>
+                <div class="text-sm font-extrabold text-slate-900 mt-1">VISIT CHARGE</div>
+                <div class="text-lg font-black text-brand-600 my-1">₹${currentCat.visitFee || 199}</div>
+                <p class="text-[10px] text-slate-500">Inspection & quote. Repair charges discussed on-site.</p>
+              </div>
+
+              <!-- Option 2: Fixed Charge -->
+              <div onclick="setWizardChargingModel('FIXED')" class="p-3.5 rounded-xl border ${AppState.wizard.chargingModel === 'FIXED' ? 'border-brand-500 bg-brand-50 ring-2 ring-brand-500/20' : 'border-slate-200 hover:border-slate-300'} cursor-pointer text-center transition">
+                <div class="text-[10px] font-bold text-amber-600 uppercase">Option 2</div>
+                <div class="text-sm font-extrabold text-slate-900 mt-1">FIXED CHARGE</div>
+                <div class="text-lg font-black text-amber-600 my-1">₹499</div>
+                <p class="text-[10px] text-slate-500">Pre-set standard labour for defined task.</p>
+              </div>
+
+              <!-- Option 3: Customer Budget -->
+              <div onclick="setWizardChargingModel('BUDGET')" class="p-3.5 rounded-xl border ${AppState.wizard.chargingModel === 'BUDGET' ? 'border-brand-500 bg-brand-50 ring-2 ring-brand-500/20' : 'border-slate-200 hover:border-slate-300'} cursor-pointer text-center transition">
+                <div class="text-[10px] font-bold text-emerald-600 uppercase">Option 3</div>
+                <div class="text-sm font-extrabold text-slate-900 mt-1">YOUR BUDGET</div>
+                <div class="text-lg font-black text-emerald-600 my-1">Custom</div>
+                <p class="text-[10px] text-slate-500">Set min/max range. Technician validates range.</p>
+              </div>
+
+            </div>
+
+            <!-- Dynamic Fields for Customer Budget -->
+            <div id="budgetInputsContainer" class="${AppState.wizard.chargingModel === 'BUDGET' ? 'block' : 'hidden'} bg-emerald-50/50 p-4 rounded-xl border border-emerald-200 space-y-3">
+              <div class="text-xs font-bold text-emerald-900">Define Your Budget Constraints (INR):</div>
+              <div class="grid grid-cols-2 gap-3">
+                <div>
+                  <label class="text-[10px] font-bold text-slate-600 uppercase">Minimum Budget (₹)</label>
+                  <input type="number" id="wizardBudgetMin" value="${AppState.wizard.budgetMin}" class="w-full text-xs p-2 bg-white border border-slate-300 rounded-lg focus:ring-2 focus:ring-brand-500 outline-none">
+                </div>
+                <div>
+                  <label class="text-[10px] font-bold text-slate-600 uppercase">Maximum Budget (₹)</label>
+                  <input type="number" id="wizardBudgetMax" value="${AppState.wizard.budgetMax}" class="w-full text-xs p-2 bg-white border border-slate-300 rounded-lg focus:ring-2 focus:ring-brand-500 outline-none">
+                </div>
+              </div>
+              <p class="text-[10px] text-slate-500">Note: If scope exceeds maximum budget, technician will inform before starting work. You can exit anytime.</p>
+            </div>
+          `;
+          break;
+
+        case 4:
+          title.textContent = "Step 4: Bhopal Address & Service Location";
+          stepName.textContent = "Location Details";
+          content.innerHTML = `
+            <div class="space-y-3">
+              <div>
+                <label class="text-[10px] font-bold text-slate-600 uppercase">Service Area / Ward in Bhopal</label>
+                <select id="wizardAreaSelect" onchange="AppState.wizard.address = this.value" class="w-full text-xs p-2.5 bg-white border border-slate-300 rounded-lg focus:ring-2 focus:ring-brand-500 outline-none mt-1">
+                  <option value="Royal Market (Near Multicare Hospital)">Royal Market (HQ Sector)</option>
+                  <option value="MP Nagar Zone 1 & 2">MP Nagar Zone 1 & 2</option>
+                  <option value="Arera Colony E-1 to E-7">Arera Colony (E-1 to E-7)</option>
+                  <option value="Kolar Road & Sarvdharm">Kolar Road & Sarvdharm</option>
+                  <option value="Hoshangabad Road & Bagmugaliya">Hoshangabad Road</option>
+                  <option value="BHEL & Indrapuri">BHEL & Indrapuri</option>
+                  <option value="Shahpura & Bawadiya Kalan">Shahpura & Bawadiya Kalan</option>
+                </select>
+              </div>
+
+              <div>
+                <label class="text-[10px] font-bold text-slate-600 uppercase">House / Flat / Shop / Plot No. & Landmark</label>
+                <textarea id="wizardAddressInput" rows="3" placeholder="e.g. Flat 302, Royal Enclave, Behind MultiCare Hospital, Royal Market Bhopal..." class="w-full text-xs p-2.5 bg-white border border-slate-300 rounded-lg focus:ring-2 focus:ring-brand-500 outline-none mt-1" oninput="AppState.wizard.address = this.value">${AppState.wizard.address}</textarea>
+              </div>
+            </div>
+          `;
+          break;
+
+        case 5:
+          title.textContent = "Step 5: Date, Time & Dispatch Mode";
+          stepName.textContent = "Schedule";
+          content.innerHTML = `
+            <div class="space-y-4">
+              <div>
+                <label class="text-[10px] font-bold text-slate-600 uppercase mb-2 block">Choose Dispatch Mode</label>
+                <div class="grid grid-cols-3 gap-2">
+                  <div onclick="setWizardMode('INSTANT')" class="p-3 rounded-lg border ${AppState.wizard.bookingMode === 'INSTANT' ? 'border-brand-500 bg-brand-50 ring-2 ring-brand-500/20' : 'border-slate-200'} cursor-pointer text-center">
+                    <i class="fa-solid fa-bolt text-brand-500 text-base mb-1"></i>
+                    <div class="text-xs font-bold text-slate-900">Instant</div>
+                    <div class="text-[10px] text-slate-500">30-45 Mins</div>
+                  </div>
+
+                  <div onclick="setWizardMode('LATER')" class="p-3 rounded-lg border ${AppState.wizard.bookingMode === 'LATER' ? 'border-brand-500 bg-brand-50 ring-2 ring-brand-500/20' : 'border-slate-200'} cursor-pointer text-center">
+                    <i class="fa-solid fa-calendar-days text-blue-600 text-base mb-1"></i>
+                    <div class="text-xs font-bold text-slate-900">Scheduled</div>
+                    <div class="text-[10px] text-slate-500">Pick Slot</div>
+                  </div>
+
+                  <div onclick="setWizardMode('EMERGENCY')" class="p-3 rounded-lg border ${AppState.wizard.bookingMode === 'EMERGENCY' ? 'border-red-500 bg-red-50 ring-2 ring-red-500/20' : 'border-slate-200'} cursor-pointer text-center">
+                    <i class="fa-solid fa-truck-medical text-red-600 text-base mb-1"></i>
+                    <div class="text-xs font-bold text-red-700">Emergency</div>
+                    <div class="text-[10px] text-red-600">Priority 24/7</div>
+                  </div>
+                </div>
+              </div>
+
+              <div class="grid grid-cols-2 gap-3">
+                <div>
+                  <label class="text-[10px] font-bold text-slate-600 uppercase">Preferred Date</label>
+                  <input type="date" value="${AppState.wizard.scheduledDate}" class="w-full text-xs p-2 bg-white border border-slate-300 rounded-lg focus:ring-2 focus:ring-brand-500 outline-none mt-1" onchange="AppState.wizard.scheduledDate = this.value">
+                </div>
+                <div>
+                  <label class="text-[10px] font-bold text-slate-600 uppercase">Preferred Time Slot</label>
+                  <select class="w-full text-xs p-2 bg-white border border-slate-300 rounded-lg focus:ring-2 focus:ring-brand-500 outline-none mt-1" onchange="AppState.wizard.scheduledTime = this.value">
+                    <option value="Morning (09:00 AM - 12:00 PM)">Morning (09:00 AM - 12:00 PM)</option>
+                    <option value="Afternoon (12:00 PM - 04:00 PM)">Afternoon (12:00 PM - 04:00 PM)</option>
+                    <option value="Evening (04:00 PM - 08:00 PM)">Evening (04:00 PM - 08:00 PM)</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+          `;
+          break;
+
+        case 6:
+          title.textContent = "Step 6: Problem Description & Photo Upload";
+          stepName.textContent = "Details & Notes";
+          content.innerHTML = `
+            <div class="space-y-3">
+              <div>
+                <label class="text-[10px] font-bold text-slate-600 uppercase">Describe The Electrical Issue / Work Scope</label>
+                <textarea rows="3" placeholder="e.g. Main MCB trips when AC starts, sparking from switchboard, or need 4 fans installed..." class="w-full text-xs p-2.5 bg-white border border-slate-300 rounded-lg focus:ring-2 focus:ring-brand-500 outline-none mt-1" oninput="AppState.wizard.instructions = this.value">${AppState.wizard.instructions}</textarea>
+              </div>
+
+              <div>
+                <label class="text-[10px] font-bold text-slate-600 uppercase">Upload Photo / Audio Note (Optional)</label>
+                <div class="border-2 border-dashed border-slate-300 hover:border-brand-500 rounded-xl p-4 text-center cursor-pointer bg-slate-50 transition">
+                  <i class="fa-solid fa-cloud-arrow-up text-brand-500 text-2xl mb-1"></i>
+                  <div class="text-xs font-bold text-slate-700">Click to upload photos of board, meter or broken appliance</div>
+                  <div class="text-[10px] text-slate-400">JPG, PNG, PDF up to 10MB</div>
+                </div>
+              </div>
+            </div>
+          `;
+          break;
+
+        case 7:
+          title.textContent = "Step 7: Contact Person & Phone";
+          stepName.textContent = "Contact Info";
+          content.innerHTML = `
+            <div class="space-y-3">
+              <div>
+                <label class="text-[10px] font-bold text-slate-600 uppercase">Customer Full Name</label>
+                <input type="text" value="${AppState.wizard.customerName}" class="w-full text-xs p-2.5 bg-white border border-slate-300 rounded-lg focus:ring-2 focus:ring-brand-500 outline-none mt-1" oninput="AppState.wizard.customerName = this.value">
+              </div>
+
+              <div>
+                <label class="text-[10px] font-bold text-slate-600 uppercase">Mobile Number (For OTP & Technician Call)</label>
+                <input type="tel" value="${AppState.wizard.customerPhone}" class="w-full text-xs p-2.5 bg-white border border-slate-300 rounded-lg focus:ring-2 focus:ring-brand-500 outline-none mt-1" oninput="AppState.wizard.customerPhone = this.value">
+              </div>
+
+              <div class="p-3 bg-amber-50 border border-amber-200 rounded-xl text-[11px] text-amber-900 flex items-start gap-2">
+                <i class="fa-solid fa-shield-halved text-brand-accent mt-0.5"></i>
+                <span>Technician phone will be shared immediately upon confirmation. No spam, purely for dispatch.</span>
+              </div>
+            </div>
+          `;
+          break;
+
+        case 8:
+          title.textContent = "Step 8: Review & Confirm Dispatch";
+          stepName.textContent = "Final Summary";
+          const catObj = MAIN_CATEGORIES.find(c => c.id === AppState.wizard.categoryId);
+          content.innerHTML = `
+            <div class="space-y-3">
+              <div class="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-2">
+                <div class="flex justify-between border-b pb-2">
+                  <span class="text-slate-500">Category:</span>
+                  <span class="font-bold text-slate-900">${catObj?.name}</span>
+                </div>
+                <div class="flex justify-between border-b pb-2">
+                  <span class="text-slate-500">Service Task:</span>
+                  <span class="font-bold text-slate-900">${AppState.wizard.serviceName}</span>
+                </div>
+                <div class="flex justify-between border-b pb-2">
+                  <span class="text-slate-500">Charging Model:</span>
+                  <span class="font-bold text-brand-600">${AppState.wizard.chargingModel} (${AppState.wizard.chargingModel === 'VISIT' ? '₹' + (catObj?.visitFee || 199) : AppState.wizard.chargingModel === 'FIXED' ? '₹499' : '₹' + AppState.wizard.budgetMin + ' - ₹' + AppState.wizard.budgetMax})</span>
+                </div>
+                <div class="flex justify-between border-b pb-2">
+                  <span class="text-slate-500">Address:</span>
+                  <span class="font-medium text-slate-800 text-right max-w-xs truncate">${AppState.wizard.address}</span>
+                </div>
+                <div class="flex justify-between">
+                  <span class="text-slate-500">Contact:</span>
+                  <span class="font-medium text-slate-800">${AppState.wizard.customerName} (${AppState.wizard.customerPhone})</span>
+                </div>
+              </div>
+
+              <div class="p-3 bg-emerald-50 border border-emerald-200 rounded-xl text-[11px] text-emerald-900 flex items-center justify-between">
+                <span class="flex items-center gap-1.5"><i class="fa-solid fa-circle-check text-emerald-600"></i> Technician Assignment Ready</span>
+                <span class="font-bold text-xs text-emerald-700">ETA: 30 Mins</span>
+              </div>
+            </div>
+          `;
+          break;
+      }
+    }
+
+    function selectWizardCategory(id) {
+      AppState.wizard.categoryId = id;
+      const cat = MAIN_CATEGORIES.find(c => c.id === id);
+      if (cat && cat.subcategories.length > 0) {
+        AppState.wizard.serviceName = cat.subcategories[0].name;
+      }
+      renderWizardStep();
+    }
+
+    function selectWizardService(name) {
+      AppState.wizard.serviceName = name;
+      renderWizardStep();
+    }
+
+    function setWizardChargingModel(model) {
+      AppState.wizard.chargingModel = model;
+      renderWizardStep();
+    }
+
+    function setWizardMode(mode) {
+      AppState.wizard.bookingMode = mode;
+      renderWizardStep();
+    }
+
+    function confirmAndDispatchBooking() {
+      const cat = MAIN_CATEGORIES.find(c => c.id === AppState.wizard.categoryId);
+      
+      AppState.activeBooking = {
+        id: `STS-${new Date().getFullYear()}-${Math.floor(1000 + Math.random() * 9000)}`,
+        categoryName: cat ? cat.name : "Home & Household Services",
+        serviceName: AppState.wizard.serviceName,
+        chargingModel: AppState.wizard.chargingModel === 'VISIT' ? 'VISIT CHARGE (Inspection)' : AppState.wizard.chargingModel === 'FIXED' ? 'FIXED CHARGE' : 'CUSTOMER BUDGET RANGE',
+        baseAmount: AppState.wizard.chargingModel === 'VISIT' ? (cat?.visitFee || 199) : 499,
+        sparePartsAmount: 0,
+        status: "Technician Assigned",
+        statusStep: 3,
+        eta: "25 - 35 Mins",
+        technician: {
+          name: "Jagdish Verma (Dispatched)",
+          phone: "+91 9993043078",
+          skill: "Senior Field Specialist",
+          rating: "4.9 ★ (220+ jobs)",
+          avatar: "JV"
+        },
+        address: AppState.wizard.address,
+        timestamp: "Just Now"
+      };
+
+      closeBookingWizard();
+      renderActiveBookingView();
+      showScreen('bookings');
+      showToast('Technician assigned successfully! Live tracking active.');
+    }
+
+    /* ==========================================================================
+       7. INVOICE GENERATOR (TAX COMPLIANT BREAKDOWN)
+       ========================================================================== */
+    function openInvoiceModal() {
+      const b = AppState.activeBooking;
+      const invDetails = document.getElementById('invoiceDetails');
+      const invNum = document.getElementById('invNumber');
+      
+      invNum.textContent = `INV-${b.id}`;
+
+      const labour = b.baseAmount;
+      const parts = b.sparePartsAmount;
+      const sub = labour + parts;
+      const gst = Math.round(sub * 0.18);
+      const total = sub + gst;
+
+      invDetails.innerHTML = `
+        <div class="grid grid-cols-2 gap-2 bg-slate-50 p-3 rounded-lg border text-[11px] mb-3">
+          <div>
+            <span class="text-slate-400 block">BILLED TO:</span>
+            <span class="font-bold text-slate-800">${AppState.wizard.customerName}</span>
+            <div class="text-slate-500">${b.address}</div>
+          </div>
+          <div class="text-right">
+            <span class="text-slate-400 block">REGISTERED OFFICE:</span>
+            <span class="font-bold text-slate-800">SERIC TECH SOLUTIONS</span>
+            <div class="text-slate-500">Royal Market, Bhopal M.P.</div>
+          </div>
+        </div>
+
+        <div class="border rounded-lg overflow-hidden">
+          <table class="w-full text-left text-xs">
+            <thead class="bg-slate-100 text-slate-600 font-bold border-b">
+              <tr>
+                <th class="p-2">Description</th>
+                <th class="p-2 text-right">Model</th>
+                <th class="p-2 text-right">Amount</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y text-slate-700">
+              <tr>
+                <td class="p-2">
+                  <div class="font-bold">${b.serviceName}</div>
+                  <div class="text-[10px] text-slate-400">${b.categoryName}</div>
+                </td>
+                <td class="p-2 text-right text-[10px]">${b.chargingModel}</td>
+                <td class="p-2 text-right font-semibold">₹${labour}</td>
+              </tr>
+              ${parts > 0 ? `
+                <tr>
+                  <td class="p-2">
+                    <div class="font-bold">Replaced Electrical Consumables</div>
+                    <div class="text-[10px] text-slate-400">Wire clips, 16A socket, tape</div>
+                  </td>
+                  <td class="p-2 text-right text-[10px]">OEM Parts</td>
+                  <td class="p-2 text-right font-semibold">₹${parts}</td>
+                </tr>
+              ` : ''}
+            </tbody>
+          </table>
+        </div>
+
+        <div class="space-y-1.5 pt-3 border-t text-xs">
+          <div class="flex justify-between text-slate-600">
+            <span>Subtotal:</span>
+            <span>₹${sub}</span>
+          </div>
+          <div class="flex justify-between text-slate-600">
+            <span>GST (18% Applicable):</span>
+            <span>₹${gst}</span>
+          </div>
+          <div class="flex justify-between text-sm font-extrabold text-slate-900 pt-1 border-t">
+            <span>Total Paid Amount:</span>
+            <span class="text-emerald-600">₹${total}</span>
+          </div>
+        </div>
+
+        <div class="p-2.5 bg-emerald-50 rounded-lg border border-emerald-200 text-[10px] text-emerald-800 flex items-center justify-between">
+          <span class="flex items-center gap-1.5"><i class="fa-solid fa-circle-check"></i> Paid via UPI / Cash to Certified Technician</span>
+          <span class="font-bold">Verified</span>
+        </div>
+      `;
+
+      document.getElementById('invoiceModal').classList.remove('hidden');
+    }
+
+    function closeInvoiceModal() {
+      document.getElementById('invoiceModal').classList.add('hidden');
+    }
+
+    /* ==========================================================================
+       8. CART & MATERIAL STORE LOGIC
+       ========================================================================== */
+    function openMaterialStore() {
+      showScreen('materials');
+    }
+
+    function addToCart(itemId) {
+      const item = MATERIAL_CATALOG.find(m => m.id === itemId);
+      if (!item) return;
+
+      const existing = AppState.cart.find(c => c.id === itemId);
+      if (existing) {
+        existing.qty += 1;
+      } else {
+        AppState.cart.push({ ...item, qty: 1 });
+      }
+
+      updateCartUI();
+      showToast(`Added "${item.name}" to Material Order`);
+    }
+
+    function updateCartUI() {
+      const totalQty = AppState.cart.reduce((sum, item) => sum + item.qty, 0);
+      
+      const badge1 = document.getElementById('cartCountBadge');
+      const badge2 = document.getElementById('cartBadgeCountScreen');
+
+      if (badge1) {
+        badge1.textContent = totalQty;
+        badge1.classList.toggle('hidden', totalQty === 0);
+      }
+      if (badge2) {
+        badge2.textContent = totalQty;
+      }
+    }
+
+    function openCartModal() {
+      const container = document.getElementById('cartItemsList');
+      const subtotalEl = document.getElementById('cartSubtotal');
+      const totalEl = document.getElementById('cartTotal');
+
+      if (AppState.cart.length === 0) {
+        container.innerHTML = `
+          <div class="text-center py-8 text-slate-400">
+            <i class="fa-solid fa-cart-flatbed text-3xl mb-2 text-slate-300"></i>
+            <p>Your Material Order Cart is currently empty.</p>
+          </div>
+        `;
+        subtotalEl.textContent = "₹0";
+        totalEl.textContent = "₹0";
+      } else {
+        let subtotal = 0;
+        container.innerHTML = AppState.cart.map((item, idx) => {
+          const itemTotal = item.price * item.qty;
+          subtotal += itemTotal;
+          return `
+            <div class="flex items-center justify-between p-2.5 bg-slate-50 rounded-lg border border-slate-200">
+              <div class="flex-1 pr-2">
+                <h5 class="font-bold text-slate-900">${item.name}</h5>
+                <div class="text-[10px] text-slate-500">₹${item.price.toLocaleString()} x ${item.qty}</div>
+              </div>
+              <div class="flex items-center gap-2">
+                <span class="font-extrabold text-slate-800">₹${itemTotal.toLocaleString()}</span>
+                <button onclick="removeCartItem(${idx})" class="text-red-500 hover:text-red-700 text-xs px-1">
+                  <i class="fa-solid fa-trash-can"></i>
+                </button>
+              </div>
+            </div>
+          `;
+        }).join('');
+
+        subtotalEl.textContent = `₹${subtotal.toLocaleString()}`;
+        totalEl.textContent = `₹${subtotal.toLocaleString()}`;
+      }
+
+      document.getElementById('cartModal').classList.remove('hidden');
+    }
+
+    function closeCartModal() {
+      document.getElementById('cartModal').classList.add('hidden');
+    }
+
+    function removeCartItem(idx) {
+      AppState.cart.splice(idx, 1);
+      updateCartUI();
+      openCartModal();
+    }
+
+    function checkoutCart() {
+      if (AppState.cart.length === 0) {
+        showToast('Add items before proceeding to checkout', true);
+        return;
+      }
+      closeCartModal();
+      AppState.cart = [];
+      updateCartUI();
+      showToast('Material order placed! Our dispatch logistics team will call you for delivery.');
+    }
+
+    /* ==========================================================================
+       9. SEARCH & LOCATION HELPERS
+       ========================================================================== */
+    function handleGlobalSearch(query) {
+      const dropdown = document.getElementById('searchResultsDropdown');
+      const clearBtn = document.getElementById('searchClearBtn');
+
+      if (!query || query.trim().length === 0) {
+        if (dropdown) dropdown.classList.add('hidden');
+        if (clearBtn) clearBtn.classList.add('hidden');
+        return;
+      }
+
+      if (clearBtn) clearBtn.classList.remove('hidden');
+      const q = query.toLowerCase();
+
+      // Search in Categories and Subcategories
+      const matchedCats = MAIN_CATEGORIES.filter(c => 
+        c.name.toLowerCase().includes(q) || 
+        c.subcategories.some(s => s.name.toLowerCase().includes(q))
+      );
+
+      // Search in Materials
+      const matchedMats = MATERIAL_CATALOG.filter(m => 
+        m.name.toLowerCase().includes(q) || 
+        m.category.toLowerCase().includes(q)
+      );
+
+      if (dropdown) {
+        dropdown.classList.remove('hidden');
+        if (matchedCats.length === 0 && matchedMats.length === 0) {
+          dropdown.innerHTML = `<div class="p-4 text-center text-xs text-slate-500">No matching service or materials found for "${query}"</div>`;
+          return;
+        }
+
+        let html = '';
+        if (matchedCats.length > 0) {
+          html += `<div class="text-[10px] font-bold text-slate-400 uppercase px-2 py-1">Services & Categories</div>`;
+          html += matchedCats.slice(0, 4).map(c => `
+            <div onclick="openCategoryDetail(${c.id}); clearSearch();" class="p-2 hover:bg-slate-50 rounded-lg cursor-pointer flex items-center justify-between text-xs">
+              <span class="font-bold text-slate-800">${c.name}</span>
+              <span class="text-[10px] text-brand-500 font-semibold">Inspection: ₹${c.visitFee}</span>
+            </div>
+          `).join('');
+        }
+
+        if (matchedMats.length > 0) {
+          html += `<div class="text-[10px] font-bold text-slate-400 uppercase px-2 pt-2 py-1">Materials & Parts</div>`;
+          html += matchedMats.slice(0, 3).map(m => `
+            <div onclick="openMaterialStore(); clearSearch();" class="p-2 hover:bg-slate-50 rounded-lg cursor-pointer flex items-center justify-between text-xs">
+              <span class="text-slate-800">${m.name}</span>
+              <span class="font-bold text-slate-900">₹${m.price.toLocaleString()}</span>
+            </div>
+          `).join('');
+        }
+
+        dropdown.innerHTML = html;
+      }
+    }
+
+    function clearSearch() {
+      const input = document.getElementById('globalSearchInput');
+      if (input) input.value = '';
+      const dropdown = document.getElementById('searchResultsDropdown');
+      if (dropdown) dropdown.classList.add('hidden');
+      const clearBtn = document.getElementById('searchClearBtn');
+      if (clearBtn) clearBtn.classList.add('hidden');
+    }
+
+    // Location Modals
+    function openLocationModal() {
+      document.getElementById('locationModal').classList.remove('hidden');
+    }
+
+    function closeLocationModal() {
+      document.getElementById('locationModal').classList.add('hidden');
+    }
+
+    function setLocation(loc) {
+      AppState.currentLocation = loc;
+      updateLocationDisplay();
+      closeLocationModal();
+      showToast(`Location set to: ${loc}`);
+    }
+
+    function setCustomLocation() {
+      const val = document.getElementById('customLocationInput').value;
+      if (val) {
+        setLocation(val);
+      }
+    }
+
+    function updateLocationDisplay() {
+      const el = document.getElementById('currentLocationText');
+      if (el) el.textContent = AppState.currentLocation;
+    }
+
+    /* ==========================================================================
+       10. FEEDBACK, MODALS & TOAST UTILITIES
+       ========================================================================== */
+    function setStar(n) {
+      AppState.ratingStar = n;
+      const stars = document.querySelectorAll('#starRatingGroup i');
+      stars.forEach((star, idx) => {
+        if (idx < n) {
+          star.className = "fa-solid fa-star";
+        } else {
+          star.className = "fa-regular fa-star";
+        }
+      });
+    }
+
+    function openRatingModal() {
+      document.getElementById('ratingModal').classList.remove('hidden');
+    }
+
+    function closeRatingModal() {
+      document.getElementById('ratingModal').classList.add('hidden');
+    }
+
+    function submitFeedback() {
+      closeRatingModal();
+      showToast(`Thank you! Your ${AppState.ratingStar}★ rating has been recorded.`);
+    }
+
+    function openReferModal() {
+      document.getElementById('referModal').classList.remove('hidden');
+    }
+
+    function closeReferModal() {
+      document.getElementById('referModal').classList.add('hidden');
+    }
+
+    function copyReferCode() {
+      navigator.clipboard?.writeText("SERIC50-BHOPAL");
+      showToast('Referral code copied to clipboard!');
+    }
+
+    function openTermsModal() {
+      document.getElementById('termsModal').classList.remove('hidden');
+    }
+
+    function closeTermsModal() {
+      document.getElementById('termsModal').classList.add('hidden');
+    }
+
+    function openPrivacyModal() {
+      openTermsModal();
+    }
+
+    function openContactModal() {
+      const reg = document.getElementById('registered-details');
+      if (reg) {
+        showScreen('home');
+        reg.scrollIntoView({ behavior: 'smooth' });
+      }
+    }
+
+    function toggleSideMenu() {
+      const drawer = document.getElementById('sideMenuDrawer');
+      const backdrop = document.getElementById('sideMenuBackdrop');
+      
+      const isOpen = !drawer.classList.contains('translate-x-full');
+      if (isOpen) {
+        drawer.classList.add('translate-x-full');
+        backdrop.classList.add('hidden');
+      } else {
+        drawer.classList.remove('translate-x-full');
+        backdrop.classList.remove('hidden');
+      }
+    }
+
+    function showToast(message, isError = false) {
+      const container = document.getElementById('toastContainer');
+      if (!container) return;
+
+      const toast = document.createElement('div');
+      toast.className = `p-3 rounded-xl shadow-xl text-xs font-semibold flex items-center gap-2.5 transition-all duration-300 transform translate-y-2 pointer-events-auto ${
+        isError ? 'bg-red-600 text-white' : 'bg-slate-900 text-white border border-slate-700'
+      }`;
+      toast.innerHTML = `
+        <i class="fa-solid ${isError ? 'fa-circle-exclamation' : 'fa-circle-check text-brand-electric'}"></i>
+        <span>${message}</span>
+      `;
+
+      container.appendChild(toast);
+      setTimeout(() => toast.classList.remove('translate-y-2'), 10);
+
+      setTimeout(() => {
+        toast.classList.add('opacity-0', 'translate-x-4');
+        setTimeout(() => toast.remove(), 300);
+      }, 3500);
+    }
+  </script>
+</body>
+</html>
