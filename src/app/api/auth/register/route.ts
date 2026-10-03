@@ -13,7 +13,6 @@ import { apiHandler, jsonError, jsonOk, parseJson, tooManyRequests } from '@/lib
 import { prisma } from '@/lib/prisma';
 import { REGISTER_POLICY, rateLimitByIp } from '@/lib/rate-limit';
 import { registerSchema } from '@/lib/validation';
-import { generateToken } from '@/lib/crypto';
 
 /**
  * POST /api/auth/register
@@ -84,29 +83,5 @@ export const POST = apiHandler(async (request: Request) => {
     metadata: { via: 'self_registration' },
   });
 
-  return jsonOk(
-    { user, redirectTo: '/account', csrfToken: csrf },
-    { status: 201 },
-  );
-});
-
-/**
- * POST /api/auth/csrf
- *
- * Returns the current session's CSRF token to the client so it can echo it in
- * the `x-csrf-token` header on mutating requests.
- */
-export const GET = apiHandler(async (request: Request) => {
-  const { getCurrentUser } = await import('@/lib/auth');
-  const user = await getCurrentUser();
-  if (!user) return jsonError('UNAUTHENTICATED', 'Authentication required', 401);
-
-  const jar = await cookies();
-  const csrf = jar.get(CSRF_COOKIE)?.value;
-  if (!csrf) return jsonError('CSRF_MISSING', 'No CSRF token available', 401);
-
-  // Fresh token material is generated only by the session endpoints; this route
-  // simply relays the existing one.
-  void generateToken;
-  return jsonOk({ csrfToken: csrf });
+  return jsonOk({ user, redirectTo: '/account', csrfToken: csrf }, { status: 201 });
 });

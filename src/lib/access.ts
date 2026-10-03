@@ -1,5 +1,4 @@
 import 'server-only';
-import { NextResponse } from 'next/server';
 import type { Role } from './domain';
 import { prisma } from './prisma';
 import { audit } from './audit';

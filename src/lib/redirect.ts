@@ -18,7 +18,6 @@ export function safeRedirectPath(next: string | null | undefined, fallback = '/a
   // Protocol-relative URL: "//evil.com"
   if (next.startsWith('//')) return fallback;
   if (next.includes('\\')) return fallback;
-  // eslint-disable-next-line no-control-regex
   if (/[\u0000-\u001F\u007F]/.test(next)) return fallback;
   if (/^\/[^\/]*@/.test(next)) return fallback;
   return next;

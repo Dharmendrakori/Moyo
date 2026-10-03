@@ -1,5 +1,6 @@
 import { PrismaClient } from '@prisma/client';
 import bcrypt from 'bcryptjs';
+import { randomBytes } from 'node:crypto';
 import { CATEGORIES } from './catalog';
 import { CHARGING_OPTIONS, type ServiceType } from '../src/lib/domain';
 
@@ -236,10 +237,13 @@ async function seedProvider() {
   return provider;
 }
 
+/**
+ * Generates an unusable random password for accounts that must exist before a
+ * credential is issued (for example the seeded provider account, which is only
+ * ever used via password reset). This can never be known to anyone reading the
+ * repository.
+ */
 function randomPassword(): string {
-  // Node crypto is imported lazily to keep this file dependency-free at top.
-  // eslint-disable-next-line @typescript-eslint/no-var-requires
-  const { randomBytes } = require('node:crypto') as typeof import('node:crypto');
   return randomBytes(32).toString('base64url');
 }
 

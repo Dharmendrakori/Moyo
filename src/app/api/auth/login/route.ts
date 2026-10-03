@@ -1,7 +1,6 @@
 import { cookies } from 'next/headers';
-import { NextResponse } from 'next/server';
 import { audit } from '@/lib/audit';
-import { DUMMY_HASH, hashIp, verifyPassword } from '@/lib/crypto';
+import { verifyPassword, DUMMY_HASH } from '@/lib/crypto';
 import {
   CSRF_COOKIE,
   SESSION_COOKIE,
@@ -12,7 +11,7 @@ import {
 } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { apiHandler, jsonError, jsonOk, parseJson, tooManyRequests } from '@/lib/api';
-import { LOGIN_POLICY, rateLimit, rateLimitByIp } from '@/lib/rate-limit';
+import { LOGIN_POLICY, rateLimitByIp } from '@/lib/rate-limit';
 import { loginSchema } from '@/lib/validation';
 import { safeRedirectPath } from '@/lib/redirect';
 

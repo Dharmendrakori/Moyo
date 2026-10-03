@@ -3,14 +3,15 @@ import { audit } from '@/lib/audit';
 import {
   CSRF_COOKIE,
   SESSION_COOKIE,
+  assertCsrf,
   assertSameOrigin,
   csrfCookieOptions,
+  destroyAllSessions,
   destroySession,
+  getCurrentUser,
   sessionCookieOptions,
 } from '@/lib/auth';
 import { apiHandler, jsonOk } from '@/lib/api';
-import { createSession } from '@/lib/auth';
-import { getCurrentUser } from '@/lib/auth';
 
 /**
  * POST /api/auth/logout
@@ -20,8 +21,6 @@ import { getCurrentUser } from '@/lib/auth';
  */
 export const POST = apiHandler(async (request: Request) => {
   assertSameOrigin(request);
-
-  const { assertCsrf } = await import('@/lib/auth');
   await assertCsrf(request);
 
   const user = await getCurrentUser();
@@ -41,7 +40,7 @@ export const POST = apiHandler(async (request: Request) => {
 });
 
 /**
- * POST /api/auth/logout-all
+ * DELETE /api/auth/logout-all
  *
  * Revokes every session for the account ("sign out everywhere"), which is the
  * safe response to a suspected session theft.
@@ -49,7 +48,6 @@ export const POST = apiHandler(async (request: Request) => {
 export const DELETE = apiHandler(async (request: Request) => {
   assertSameOrigin(request);
 
-  const { assertCsrf, destroyAllSessions } = await import('@/lib/auth');
   const user = await getCurrentUser();
   if (!user) {
     const jar = await cookies();
