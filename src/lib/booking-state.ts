@@ -49,23 +49,40 @@ const TRANSITIONS: Record<BookingStatus, BookingStatus[]> = {
   CANCELLED: [],
 };
 
-/** Which roles may initiate a transition out of a given state. */
-const TRANSITION_ROLES: Record<BookingStatus, Role[]> = {
-  REQUESTED: ['ADMIN', 'PROVIDER'],
-  CONFIRMED: ['ADMIN', 'PROVIDER'],
-  TECHNICIAN_ASSIGNED: ['ADMIN', 'PROVIDER'],
-  TECHNICIAN_ON_THE_WAY: ['ADMIN', 'PROVIDER', 'TECHNICIAN'],
-  ARRIVED: ['ADMIN', 'PROVIDER', 'TECHNICIAN'],
-  SERVICE_IN_PROGRESS: ['ADMIN', 'PROVIDER', 'TECHNICIAN'],
-  COMPLETED: ['ADMIN', 'PROVIDER', 'TECHNICIAN'],
-  INVOICE_GENERATED: ['ADMIN'],
-  PAYMENT_PENDING: ['ADMIN'],
-  // PAID is intentionally ABSENT: only a verified payment webhook may settle it.
-  PAID: [],
-  FEEDBACK_PENDING: ['ADMIN'],
-  CLOSED: ['ADMIN', 'CUSTOMER', 'PROVIDER'],
-  CANCELLED: ['ADMIN', 'CUSTOMER', 'PROVIDER'],
+/**
+ * Which roles may perform each individual transition.
+ *
+ * Keyed by the EDGE (`FROM->TO`), not merely by the source state. This matters:
+ * a technician legitimately moves `COMPLETED -> INVOICE_GENERATED` no, but they
+ * do own `SERVICE_IN_PROGRESS -> COMPLETED`, and a per-source-state map cannot
+ * express that difference.
+ *
+ * CRITICAL: there is deliberately NO entry for `PAYMENT_PENDING->PAID`. No user
+ * role - not even ADMIN - may mark a booking paid; that edge is reachable only
+ * through the verified payment webhook. A test asserts this, because an
+ * accidental entry here would let anyone bypass the payment flow entirely.
+ */
+const EDGE_ROLES: Record<string, Role[]> = {
+  // Confirmation and dispatch are provider/admin decisions.
+  'REQUESTED->CONFIRMED': ['ADMIN', 'PROVIDER'],
+  'CONFIRMED->TECHNICIAN_ASSIGNED': ['ADMIN', 'PROVIDER'],
+  'TECHNICIAN_ASSIGNED->TECHNICIAN_ON_THE_WAY': ['ADMIN', 'PROVIDER', 'TECHNICIAN'],
+  'TECHNICIAN_ON_THE_WAY->ARRIVED': ['ADMIN', 'PROVIDER', 'TECHNICIAN'],
+  'ARRIVED->SERVICE_IN_PROGRESS': ['ADMIN', 'PROVIDER', 'TECHNICIAN'],
+  // The technician who did the work marks it complete...
+  'SERVICE_IN_PROGRESS->COMPLETED': ['ADMIN', 'PROVIDER', 'TECHNICIAN'],
+  // ...but issuing the invoice is a commercial/admin action, not the technician's.
+  'COMPLETED->INVOICE_GENERATED': ['ADMIN'],
+  'INVOICE_GENERATED->PAYMENT_PENDING': ['ADMIN'],
+  // ABSENT: 'PAYMENT_PENDING->PAID' - webhook only.
+  'PAID->FEEDBACK_PENDING': ['ADMIN'],
+  'FEEDBACK_PENDING->CLOSED': ['ADMIN'],
+  'CLOSED->CANCELLED': [],
+  'CANCELLED->CLOSED': [],
 };
+
+/** Fallback for the cancellation edge, which is permitted from many states. */
+const CANCEL_ROLES: Role[] = ['ADMIN', 'CUSTOMER', 'PROVIDER'];
 
 export function canTransition(from: BookingStatus, to: BookingStatus): boolean {
   return TRANSITIONS[from]?.includes(to) ?? false;
@@ -75,8 +92,14 @@ export function allowedNextStatuses(from: BookingStatus): BookingStatus[] {
   return TRANSITIONS[from] ?? [];
 }
 
-export function rolesAllowedFor(from: BookingStatus): Role[] {
-  return TRANSITION_ROLES[from] ?? [];
+/**
+ * Roles permitted to perform `from -> to`. Empty means nobody via the API.
+ * Callers that drive an administrative console can additionally consult
+ * `CANCEL_ROLES` for the cancellation edge.
+ */
+export function rolesAllowedFor(from: BookingStatus, to: BookingStatus): Role[] {
+  if (to === 'CANCELLED') return CANCEL_ROLES;
+  return EDGE_ROLES[`${from}->${to}`] ?? [];
 }
 
 export function isTerminal(status: BookingStatus): boolean {
@@ -106,8 +129,8 @@ export function evaluateTransition(
       reason: `Cannot move a booking from ${from} to ${to}.`,
     };
   }
-  // PAID has no initiating role at all - webhook only.
-  const allowedRoles = TRANSITION_ROLES[from] ?? [];
+  // The PAID edge has no permitted role at all - webhook only.
+  const allowedRoles = rolesAllowedFor(from, to);
   if (!allowedRoles.includes(actorRole)) {
     return {
       ok: false,
@@ -119,10 +142,8 @@ export function evaluateTransition(
 }
 
 export function canCancel(from: BookingStatus, actorRole: Role): boolean {
-  return canTransition(from, 'CANCELLED') && CANCELLABLE_BY.includes(actorRole);
+  return canTransition(from, 'CANCELLED') && CANCEL_ROLES.includes(actorRole);
 }
-
-const CANCELLABLE_BY: Role[] = ['ADMIN', 'CUSTOMER', 'PROVIDER'];
 
 /** 0-based index in BOOKING_FLOW, or -1 for CANCELLED. */
 export function flowIndex(status: BookingStatus): number {

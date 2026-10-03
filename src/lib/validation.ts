@@ -35,17 +35,16 @@ export const emailSchema = z
 
 /**
  * Indian mobile number, normalized to 10 digits for storage.
- * Accepts +91 / 91 / 0 prefixes and separators, which are stripped.
+ *
+ * Accepts and strips a +91 / 91 country prefix, a leading 0 trunk prefix, and
+ * common separators (space, dash, brackets, dots).
  */
 export const phoneSchema = z
   .string()
   .trim()
   .transform((v) => v.replace(/[\s\-().]/g, ''))
-  .refine(
-    (v) => /^(?:\+?91)?[6-9]\d{9}$/.test(v),
-    'Enter a valid 10-digit Indian mobile number',
-  )
-  .transform((v) => v.replace(/^(?:\+?91|0)/, ''));
+  .transform((v) => v.replace(/^(?:\+?91|0)/, ''))
+  .refine((v) => /^[6-9]\d{9}$/.test(v), 'Enter a valid 10-digit Indian mobile number');
 
 export const pincodeSchema = z
   .string()
@@ -71,6 +70,13 @@ export const loginSchema = z.object({
   password: z.string().min(1, 'Enter your password').max(200),
 });
 
+/**
+ * Registration input.
+ *
+ * `.strict()` is deliberate: any unexpected key - including `role` - causes the
+ * whole payload to be rejected, so a client can never mass-assign its own
+ * privilege level during sign-up.
+ */
 export const registerSchema = z
   .object({
     name: nameSchema,
@@ -80,6 +86,7 @@ export const registerSchema = z
     confirmPassword: z.string(),
     referralCode: z.string().trim().max(32).optional(),
   })
+  .strict()
   .refine((d) => d.password === d.confirmPassword, {
     message: 'Passwords do not match',
     path: ['confirmPassword'],
