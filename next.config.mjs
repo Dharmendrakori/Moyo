@@ -81,12 +81,6 @@ const nextConfig = {
     ];
   },
 
-  eslint: {
-    // ESLint runs as its own step (`npm run lint`) in Next.js 16; the config
-    // file no longer accepts an `eslint` key.
-    ignoreDuringBuilds: true,
-  },
-
   // We do not accept arbitrary remote images, which removes a whole class of
   // image-proxied SSRF / exfiltration surface.
   images: {

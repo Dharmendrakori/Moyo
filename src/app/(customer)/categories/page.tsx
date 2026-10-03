@@ -1,0 +1,58 @@
+import type { Metadata } from 'next';
+import Link from 'next/link';
+import { Icon } from '@/components/ui/Icon';
+import { CategoryCard } from '@/components/customer/Cards';
+import { listCategories } from '@/lib/queries';
+
+export const metadata: Metadata = {
+  title: 'Service categories',
+  description:
+    'Browse all 20 official MOYO service categories, from home and household services to material ordering.',
+};
+
+/**
+ * CATEGORY INDEX
+ *
+ * Renders all 20 official categories from the database. This is the entry point
+ * of the booking funnel: category -> service -> charging option -> booking.
+ */
+export default async function CategoriesPage() {
+  const categories = await listCategories();
+  const totalServices = categories.reduce((sum, c) => sum + c.serviceCount, 0);
+
+  return (
+    <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
+      <nav aria-label="Breadcrumb" className="mb-5">
+        <ol className="flex items-center gap-1.5 text-xs text-ink-500">
+          <li>
+            <Link href="/" className="transition hover:text-brand-600">
+              Home
+            </Link>
+          </li>
+          <li aria-hidden>
+            <Icon name="chevron-right" size={12} className="text-ink-300" />
+          </li>
+          <li className="font-medium text-ink-700" aria-current="page">
+            Categories
+          </li>
+        </ol>
+      </nav>
+
+      <header>
+        <h1 className="text-2xl font-bold tracking-tight text-ink-900 sm:text-3xl">
+          Service categories
+        </h1>
+        <p className="mt-2 max-w-2xl text-sm text-ink-500">
+          {categories.length} categories covering {totalServices} services. Choose a category to see
+          its services and book.
+        </p>
+      </header>
+
+      <div className="mt-8 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        {categories.map((category) => (
+          <CategoryCard key={category.id} category={category} />
+        ))}
+      </div>
+    </div>
+  );
+}
