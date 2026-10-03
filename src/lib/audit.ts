@@ -24,15 +24,19 @@ export type AuditInput = {
   metadata?: Record<string, string | number | boolean | null>;
 };
 
-function clientIpHash(): string | undefined {
-  const h = headers();
+async function requestContext(): Promise<{ ipHash?: string; userAgent?: string }> {
+  const h = await headers();
   const fwd = h.get('x-forwarded-for');
-  const ip = fwd ? fwd.split(',')[0]?.trim() : (h.get('x-real-ip') ?? null);
-  return ip ? hashIp(ip) : undefined;
+  const ip = fwd ? fwd.split(',')[0]?.trim() : h.get('x-real-ip');
+  return {
+    ipHash: ip ? hashIp(ip) : undefined,
+    userAgent: h.get('user-agent')?.slice(0, 255) || undefined,
+  };
 }
 
 export async function audit(input: AuditInput): Promise<void> {
   try {
+    const ctx = await requestContext();
     await prisma.auditLog.create({
       data: {
         action: input.action,
@@ -41,8 +45,8 @@ export async function audit(input: AuditInput): Promise<void> {
         actorId: input.actorId ?? null,
         actorRole: input.actorRole ?? null,
         metadata: input.metadata ? JSON.stringify(input.metadata) : null,
-        ipHash: clientIpHash(),
-        userAgent: (headers().get('user-agent') ?? '').slice(0, 255) || null,
+        ipHash: ctx.ipHash ?? null,
+        userAgent: ctx.userAgent ?? null,
       },
     });
   } catch (err) {

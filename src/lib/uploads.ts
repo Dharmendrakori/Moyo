@@ -25,17 +25,18 @@ import { ApiError } from './api';
  * no SVG (XSS vector), no HTML, no executables, no archives.
  */
 const ALLOWED_TYPES = {
-  'image/jpeg': { ext: '.jpg', magic: [[0xff, 0xd8, 0xff]] },
-  'image/png': { ext: '.png', magic: [[0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]] },
+  'image/jpeg': { ext: '.jpg', magic: [0xff, 0xd8, 0xff] },
+  'image/png': { ext: '.png', magic: [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a] },
   'image/webp': {
     ext: '.webp',
     // "RIFF" .... "WEBP"
-    magic: [
-      [0x52, 0x49, 0x46, 0x46],
-    ],
+    magic: [0x52, 0x49, 0x46, 0x46],
     magicOffsetCheck: { offset: 8, bytes: [0x57, 0x45, 0x42, 0x50] },
   },
-} as const;
+} as const satisfies Record<
+  string,
+  { ext: string; magic: number[]; magicOffsetCheck?: { offset: number; bytes: number[] } }
+>;
 
 type AllowedMime = keyof typeof ALLOWED_TYPES;
 
@@ -96,7 +97,7 @@ export async function storeValidatedUpload(file: File): Promise<{
 
   // Extension allowlist must agree with the declared type.
   const originalExt = path.extname(file.name || '').toLowerCase();
-  const allowedExts = Object.values(ALLOWED_TYPES).map((t) => t.ext);
+  const allowedExts: string[] = Object.values(ALLOWED_TYPES).map((t) => t.ext);
   if (originalExt && !allowedExts.includes(originalExt)) {
     throw new ApiError('UNSUPPORTED_FILE_TYPE', 'File extension is not allowed', 415);
   }
@@ -113,7 +114,7 @@ export async function storeValidatedUpload(file: File): Promise<{
   }
 
   // Server-generated name. Never derived from user input.
-  const storageKey = `${randomBytes(16).toString('hex')}${rule.ext}`;
+  const storageKey = `${randomBytes(16).toString('hex')}${rule.ext as string}`;
   const root = uploadRoot();
   const target = path.resolve(root, storageKey);
 

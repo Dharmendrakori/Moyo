@@ -2,6 +2,7 @@ import 'server-only';
 import { cookies, headers } from 'next/headers';
 import { cache } from 'react';
 import type { Role } from './domain';
+import { isRole } from './domain';
 import { prisma } from './prisma';
 import { generateToken, hashIp, sha256 } from './crypto';
 import { env } from './env';
@@ -36,15 +37,19 @@ export type SessionUser = {
   technicianId: string | null;
 };
 
-function getClientIp(): string {
-  const h = headers();
+/**
+ * Next.js 15+ made `cookies()` and `headers()` async. These helpers keep the
+ * call sites clean and are memoized per request.
+ */
+async function clientIp(): Promise<string> {
+  const h = await headers();
   const fwd = h.get('x-forwarded-for');
-  if (fwd) return fwd.split(',')[0]?.trim() ?? '';
+  if (fwd) return fwd.split(',')[0]?.trim() ?? 'unknown';
   return h.get('x-real-ip') ?? 'unknown';
 }
 
 export async function createSession(userId: string): Promise<{ token: string; csrf: string }> {
-  const h = headers();
+  const h = await headers();
   const token = generateToken();
   const csrf = generateToken(24);
   const expiresAt = new Date(Date.now() + SESSION_TTL_MS);
@@ -56,7 +61,7 @@ export async function createSession(userId: string): Promise<{ token: string; cs
       csrfToken: csrf,
       expiresAt,
       userAgent: (h.get('user-agent') ?? '').slice(0, 255),
-      ipHash: hashIp(getClientIp()),
+      ipHash: hashIp(await clientIp()),
     },
   });
 
@@ -90,7 +95,7 @@ export function csrfCookieOptions() {
 
 /** Revokes the current session (logout). Idempotent. */
 export async function destroySession(): Promise<void> {
-  const jar = cookies();
+  const jar = await cookies();
   const token = jar.get(SESSION_COOKIE)?.value;
   if (token) {
     await prisma.session.updateMany({
@@ -108,7 +113,7 @@ export async function destroyAllSessions(userId: string): Promise<void> {
     where: { userId, revokedAt: null },
     data: { revokedAt: new Date() },
   });
-  const jar = cookies();
+  const jar = await cookies();
   jar.delete(SESSION_COOKIE);
   jar.delete(CSRF_COOKIE);
 }
@@ -120,7 +125,8 @@ export async function destroyAllSessions(userId: string): Promise<void> {
  * Returns null when absent, expired, revoked, or the account is inactive.
  */
 export const getCurrentUser = cache(async (): Promise<SessionUser | null> => {
-  const token = cookies().get(SESSION_COOKIE)?.value;
+  const jar = await cookies();
+  const token = jar.get(SESSION_COOKIE)?.value;
   if (!token) return null;
 
   const session = await prisma.session.findUnique({
@@ -132,6 +138,11 @@ export const getCurrentUser = cache(async (): Promise<SessionUser | null> => {
   if (!session.user.isActive) return null;
 
   const { user } = session;
+
+  // Re-validate the stored role before it is used for an authorization
+  // decision. A tampered or legacy row must never grant elevated access.
+  if (!isRole(user.role)) return null;
+
   return {
     id: user.id,
     name: user.name,
@@ -179,7 +190,8 @@ export async function requireAdmin(): Promise<SessionUser> {
  * Called from every mutating API route.
  */
 export async function assertCsrf(request: Request): Promise<void> {
-  const token = cookies().get(SESSION_COOKIE)?.value;
+  const jar = await cookies();
+  const token = jar.get(SESSION_COOKIE)?.value;
   if (!token) throw new AuthError('Authentication required', 401);
 
   const session = await prisma.session.findUnique({

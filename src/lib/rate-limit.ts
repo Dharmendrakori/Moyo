@@ -70,7 +70,7 @@ export async function rateLimit(
 
 /** Rate limit keyed by hashed client IP. Raw IPs are never stored. */
 export async function rateLimitByIp(rule: RateLimitRule): Promise<RateLimitResult> {
-  const h = headers();
+  const h = await headers();
   const fwd = h.get('x-forwarded-for');
   const ip = fwd ? (fwd.split(',')[0]?.trim() ?? 'unknown') : (h.get('x-real-ip') ?? 'unknown');
   return rateLimit(rule, hashIp(ip));

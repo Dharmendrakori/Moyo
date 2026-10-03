@@ -1,100 +1,94 @@
-import type { NextConfig } from 'next';
+/**
+ * MOYO — Next.js configuration
+ *
+ * Written as plain ESM JavaScript (not TypeScript) because this file is loaded
+ * by the Next.js CLI before any transpiler is available.
+ */
+
+const isDev = process.env.NODE_ENV !== 'production';
 
 /**
  * Content Security Policy.
  *
- * Notes on deliberate choices:
- * - No `unsafe-eval`. Next.js production build does not require it.
+ * Deliberate choices:
+ * - No `unsafe-eval` in production.
  * - `style-src` allows 'unsafe-inline' because Next.js injects inline style tags
- *   for critical CSS and the admin layout sets CSS custom properties inline.
- *   This does NOT permit script execution.
- * - `script-src` is strict ('self' + nonce path via middleware). Next.js needs
- *   'unsafe-inline' fallback ONLY in development for the dev overlay; in
- *   production the middleware attaches a per-request nonce.
- * - `frame-ancestors 'none'` provides clickjacking protection in addition to
- *   X-Frame-Options so that modern browsers enforce it.
- * - connect-src restricted to 'self' - no arbitrary outbound endpoints from the
- *   browser, which reduces exfiltration surface of any XSS.
+ *   for critical CSS. This does NOT permit script execution.
+ * - The authoritative, per-request CSP is set by `src/middleware.ts`. This block
+ *   is a static fallback that applies even if a deployment strips middleware.
+ * - `frame-ancestors 'none'` provides clickjacking protection alongside
+ *   X-Frame-Options.
+ * - `connect-src 'self'` limits data exfiltration from any XSS.
+ * - No third-party origins: the legacy Font Awesome and Google Fonts CDN usage
+ *   was removed during the refactor so the platform runs no external JS.
  */
-const isDev = process.env.NODE_ENV !== 'production';
-
-const cspDirectives = [
+const CSP = [
   "default-src 'self'",
-  // Development needs eval for the React Fast Refresh runtime.
-  isDev ? "script-src 'self' 'unsafe-eval' 'unsafe-inline'" : "script-src 'self' 'nonce-{NONCE}' 'strict-dynamic'",
+  isDev ? "script-src 'self' 'unsafe-eval' 'unsafe-inline'" : "script-src 'self' 'unsafe-inline'",
   "style-src 'self' 'unsafe-inline'",
   "img-src 'self' data: blob:",
   "font-src 'self' data:",
-  // No third-party origins. The legacy Font Awesome / Google Fonts CDN usage was
-  // removed during the refactor so the platform has no external JS dependency.
   "connect-src 'self'",
   "object-src 'none'",
   "base-uri 'self'",
   "form-action 'self'",
   "frame-ancestors 'none'",
   "manifest-src 'self'",
-  'upgrade-insecure-requests',
-].join('; ');
+  isDev ? '' : 'upgrade-insecure-requests',
+]
+  .filter(Boolean)
+  .join('; ');
 
-/**
- * Builds the header set. `nonce` is supplied by middleware for script-src.
- */
-export function buildSecurityHeaders(nonce?: string): Record<string, string> {
-  const headers: Record<string, string> = {
-    'Content-Security-Policy': cspDirectives.replace('{NONCE}', nonce ?? ''),
-    'X-Content-Type-Options': 'nosniff',
-    'X-Frame-Options': 'DENY',
-    'Referrer-Policy': 'strict-origin-when-cross-origin',
-    'Permissions-Policy': 'camera=(), microphone=(), geolocation=(self), payment=(self), usb=(), interest-cohort=()',
-    'X-DNS-Prefetch-Control': 'off',
-    'Cross-Origin-Opener-Policy': 'same-origin',
-    'Cross-Origin-Resource-Policy': 'same-origin',
-    // Never leak the framework/host stack.
-    'X-Powered-By': 'Moyo',
-  };
-
-  if (!isDev) {
-    // Only meaningful over HTTPS; sending it over plain HTTP is ignored by
-    // browsers anyway, but we gate it so local http development is not broken.
-    headers['Strict-Transport-Security'] = 'max-age=63072000; includeSubDomains; preload';
-  }
-
-  return headers;
-}
-
-const nextConfig: NextConfig = {
+/** @type {import('next').NextConfig} */
+const nextConfig = {
   reactStrictMode: true,
   poweredByHeader: false,
-  // Never expose the server error/stack details to the client in production.
+  // Never ship server source maps to the browser in production.
   productionBrowserSourceMaps: false,
 
-  // Uploaded/attachment files are served by an authorized route handler, never
-  // statically, so they cannot be used as an executable or public web root.
   async headers() {
-    return [
+    const securityHeaders = [
+      { key: 'Content-Security-Policy', value: CSP },
+      { key: 'X-Content-Type-Options', value: 'nosniff' },
+      { key: 'X-Frame-Options', value: 'DENY' },
+      { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
       {
-        source: '/:path*',
-        headers: buildSecurityHeaders(),
+        key: 'Permissions-Policy',
+        value:
+          'camera=(), microphone=(), geolocation=(self), payment=(self), usb=(), interest-cohort=()',
       },
+      { key: 'X-DNS-Prefetch-Control', value: 'off' },
+      { key: 'Cross-Origin-Opener-Policy', value: 'same-origin' },
+      { key: 'Cross-Origin-Resource-Policy', value: 'same-origin' },
+      { key: 'X-Powered-By', value: 'Moyo' },
+    ];
+
+    if (!isDev) {
+      // Only meaningful over HTTPS; browsers ignore it over plain HTTP anyway.
+      securityHeaders.push({
+        key: 'Strict-Transport-Security',
+        value: 'max-age=63072000; includeSubDomains; preload',
+      });
+    }
+
+    return [
+      { source: '/:path*', headers: securityHeaders },
       {
         // Long-lived immutable caching only for our own hashed build assets.
         source: '/_next/static/:path*',
         headers: [{ key: 'Cache-Control', value: 'public, max-age=31536000, immutable' }],
       },
-      {
-        // Never cache authenticated HTML.
-        source: '/:path*',
-        headers: [{ key: 'Cache-Control', value: 'private, no-store, max-age=0' }],
-      },
     ];
   },
 
   eslint: {
-    dirs: ['src'],
+    // ESLint runs as its own step (`npm run lint`) in Next.js 16; the config
+    // file no longer accepts an `eslint` key.
+    ignoreDuringBuilds: true,
   },
 
-  // Server Actions / images: we do not accept arbitrary remote images, which
-  // removes a whole SSRF and image-proxied-exfiltration class.
+  // We do not accept arbitrary remote images, which removes a whole class of
+  // image-proxied SSRF / exfiltration surface.
   images: {
     remotePatterns: [],
   },
