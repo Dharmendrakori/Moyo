@@ -363,6 +363,23 @@ function randomPassword(): string {
  * There is NO hard-coded admin password. An admin account is created only when
  * `SEED_ADMIN_EMAIL` and `SEED_ADMIN_PASSWORD` are provided in the
  * environment, and the password is never printed to the log.
+ *
+ * PRIVILEGE-ESCALATION GUARD:
+ * `User.email` is unique, so an upsert keyed on it will MATCH an existing account
+ * and take the `update` branch - which would set `role: 'ADMIN'` on whatever
+ * account already owned that address, while silently ignoring the supplied
+ * password. In this deployment `dharmendra.kori@outlook.com` is a real CUSTOMER
+ * account, so pointing `SEED_ADMIN_EMAIL` at it would hand that customer
+ * administrator rights without anybody asking for it.
+ *
+ * This function therefore REFUSES to touch an address that already belongs to a
+ * non-ADMIN account. An intentional promotion is possible, but only by opting in
+ * explicitly with `SEED_ADMIN_ALLOW_PROMOTE=true`, which makes it a recorded
+ * decision rather than an accident of a shared email address.
+ *
+ * The provider contact address is unaffected: `Provider.contactEmail` is a
+ * display field and is independent of `User.email`, so an administrator does not
+ * need to use it to sign in.
  */
 async function seedAdmin() {
   const email = process.env.SEED_ADMIN_EMAIL?.trim().toLowerCase();
@@ -377,11 +394,41 @@ async function seedAdmin() {
     throw new Error('SEED_ADMIN_PASSWORD must be at least 12 characters.');
   }
 
-  console.log('Seeding admin account...');
-  await prisma.user.upsert({
+  const allowPromote = process.env.SEED_ADMIN_ALLOW_PROMOTE === 'true';
+
+  // Refuse to escalate an account that is not already an administrator.
+  const existing = await prisma.user.findUnique({
     where: { email },
-    update: { role: 'ADMIN', isActive: true },
-    create: {
+    select: { id: true, role: true, email: true },
+  });
+
+  if (existing && existing.role !== 'ADMIN' && !allowPromote) {
+    throw new Error(
+      `Refusing to seed an admin: the email "${email}" already belongs to an existing ` +
+        `${existing.role} account.\n` +
+        `Promoting it would silently grant administrator rights to that account and ` +
+        `would ignore SEED_ADMIN_PASSWORD.\n` +
+        `Choose a different, unused SEED_ADMIN_EMAIL. The provider contact address is ` +
+        `only a display field - the admin login does not have to match it.\n` +
+        `If this promotion is genuinely intended, re-run with ` +
+        `SEED_ADMIN_ALLOW_PROMOTE=true.`,
+    );
+  }
+
+  console.log('Seeding admin account...');
+
+  if (existing) {
+    // Already an ADMIN: refresh the credentials, do not touch anything else.
+    await prisma.user.update({
+      where: { id: existing.id },
+      data: { passwordHash: await bcrypt.hash(password, 12), isActive: true },
+    });
+    console.log(`  admin: ${email} (existing admin, credentials refreshed)`);
+    return;
+  }
+
+  await prisma.user.create({
+    data: {
       email,
       passwordHash: await bcrypt.hash(password, 12),
       phone: process.env.SEED_ADMIN_PHONE?.trim() || '9999999999',
@@ -390,7 +437,7 @@ async function seedAdmin() {
       isActive: true,
     },
   });
-  console.log(`  admin: ${email}`);
+  console.log(`  admin: ${email} (created)`);
 }
 
 async function seedSettings() {
