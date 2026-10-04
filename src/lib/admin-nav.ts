@@ -1,19 +1,38 @@
-import Link from 'next/link';
 import type { IconName } from '@/components/ui/Icon';
 
 /**
  * ADMIN INFORMATION ARCHITECTURE
  *
- * Grouped exactly as specified. Defined once as data so the sidebar, the
- * mobile drawer and any command palette stay in sync.
+ * Defined once as data so the sidebar, the mobile drawer and the breadcrumb all
+ * stay in sync.
+ *
+ * `status` is load-bearing. A module is either:
+ *
+ *   'live'    - a real screen exists, backed by server-side queries
+ *   'planned' - not built yet
+ *
+ * Planned modules are rendered as DISABLED, non-navigable entries with an
+ * explicit "Soon" marker. They are deliberately NOT links to pages that do not
+ * exist, because a navigation item that leads to a 404 is a broken promise: it
+ * advertises a capability the console does not have. No planned module is
+ * dressed up with fake functionality, sample rows or placeholder metrics.
+ *
+ * This is a usability device ONLY. Every 'live' route and every
+ * `/api/admin/**` endpoint independently re-checks the session and role on the
+ * server, so the disabled state is never what protects a screen.
  */
+
+export type AdminNavStatus = 'live' | 'planned';
 
 export type AdminNavItem = {
   href: string;
   label: string;
   icon: IconName;
+  status: AdminNavStatus;
   /** Marks the item in the sidebar as the active page. */
   exact?: boolean;
+  /** One line explaining what this module will do. Shown for planned items. */
+  hint?: string;
 };
 
 export type AdminNavGroup = {
@@ -24,60 +43,93 @@ export type AdminNavGroup = {
 export const ADMIN_NAV: AdminNavGroup[] = [
   {
     heading: 'Overview',
-    items: [{ href: '/admin', label: 'Dashboard', icon: 'chart', exact: true }],
-  },
-  {
-    heading: 'Operations',
-    items: [
-      { href: '/admin/bookings', label: 'Bookings', icon: 'clipboard' },
-      { href: '/admin/dispatch', label: 'Dispatch', icon: 'truck' },
-      { href: '/admin/technicians', label: 'Technicians', icon: 'user' },
-      { href: '/admin/providers', label: 'Service providers', icon: 'office' },
-    ],
+    items: [{ href: '/admin', label: 'Dashboard', icon: 'chart', status: 'live', exact: true }],
   },
   {
     heading: 'Catalog',
     items: [
-      { href: '/admin/categories', label: 'Categories', icon: 'grid' },
-      { href: '/admin/subcategories', label: 'Subcategories', icon: 'list' },
-      { href: '/admin/services', label: 'Services', icon: 'bolt' },
-      { href: '/admin/charging-options', label: 'Charging options', icon: 'receipt' },
-      { href: '/admin/materials', label: 'Materials', icon: 'package' },
+      { href: '/admin/categories', label: 'Categories', icon: 'grid', status: 'live' },
+      { href: '/admin/services', label: 'Services', icon: 'bolt', status: 'live' },
+      { href: '/admin/charging-options', label: 'Charging options', icon: 'receipt', status: 'live' },
+      { href: '/admin/pricing', label: 'Pricing', icon: 'wallet', status: 'live' },
+    ],
+  },
+  {
+    heading: 'Operations',
+    items: [
+      {
+        href: '/admin/bookings',
+        label: 'Bookings',
+        icon: 'clipboard',
+        status: 'planned',
+        hint: 'Dispatch queue and technician assignment',
+      },
+      {
+        href: '/admin/technicians',
+        label: 'Technicians',
+        icon: 'user',
+        status: 'planned',
+        hint: 'Roster, availability and assignment',
+      },
+      {
+        href: '/admin/customers',
+        label: 'Customers',
+        icon: 'people',
+        status: 'planned',
+        hint: 'Accounts and booking history',
+      },
+      {
+        href: '/admin/materials',
+        label: 'Materials',
+        icon: 'package',
+        status: 'planned',
+        hint: 'Parts catalogue and stock',
+      },
     ],
   },
   {
     heading: 'Commerce',
     items: [
-      { href: '/admin/orders', label: 'Orders', icon: 'truck' },
-      { href: '/admin/invoices', label: 'Invoices', icon: 'receipt' },
-      { href: '/admin/payments', label: 'Payments', icon: 'wallet' },
+      {
+        href: '/admin/invoices',
+        label: 'Invoices',
+        icon: 'receipt',
+        status: 'planned',
+        hint: 'Issue, track and void invoices',
+      },
+      {
+        href: '/admin/payments',
+        label: 'Payments',
+        icon: 'wallet',
+        status: 'planned',
+        hint: 'Settlement reconciliation',
+      },
     ],
   },
   {
-    heading: 'Customers',
+    heading: 'Platform',
     items: [
-      { href: '/admin/users', label: 'Users', icon: 'people' },
-      { href: '/admin/reviews', label: 'Reviews', icon: 'star' },
-      { href: '/admin/referrals', label: 'Referrals', icon: 'sparkle' },
-    ],
-  },
-  {
-    heading: 'Communication',
-    items: [
-      { href: '/admin/notifications', label: 'Notifications', icon: 'bell' },
-      { href: '/admin/messages', label: 'Messages', icon: 'message' },
-      { href: '/admin/support', label: 'Support', icon: 'shield' },
-    ],
-  },
-  {
-    heading: 'Analytics',
-    items: [{ href: '/admin/reports', label: 'Reports', icon: 'chart' }],
-  },
-  {
-    heading: 'System',
-    items: [
-      { href: '/admin/audit-logs', label: 'Audit logs', icon: 'clipboard' },
-      { href: '/admin/settings', label: 'Settings', icon: 'settings' },
+      {
+        href: '/admin/reviews',
+        label: 'Reviews',
+        icon: 'star',
+        status: 'planned',
+        hint: 'Moderation of submitted ratings',
+      },
+      {
+        href: '/admin/audit-log',
+        label: 'Audit log',
+        icon: 'shield',
+        status: 'planned',
+        hint: 'Operator activity and price history',
+      },
+      {
+        href: '/admin/settings',
+        label: 'Settings',
+        icon: 'settings',
+        status: 'planned',
+        hint: 'Platform configuration',
+      },
     ],
   },
 ];
@@ -90,14 +142,22 @@ export function flattenAdminNav(): AdminNavItem[] {
 /** Finds the nav item matching a pathname, for breadcrumbs and highlighting. */
 export function findAdminNavItem(pathname: string): AdminNavItem | null {
   const all = flattenAdminNav();
-  // Longest match wins so /admin/bookings beats /admin.
+  // Longest match wins so /admin/services beats /admin.
   return (
     all
-      .filter((i) => (i.exact ? pathname === i.href : pathname === i.href || pathname.startsWith(`${i.href}/`)))
+      .filter((i) =>
+        i.exact ? pathname === i.href : pathname === i.href || pathname.startsWith(`${i.href}/`),
+      )
       .sort((a, b) => b.href.length - a.href.length)[0] ?? null
   );
 }
 
-/** Convenience export for the "back to site" link. */
+/** Whether a nav item should be rendered as the current page. */
+export function isNavItemActive(item: AdminNavItem, pathname: string): boolean {
+  return item.exact
+    ? pathname === item.href
+    : pathname === item.href || pathname.startsWith(`${item.href}/`);
+}
+
+/** The admin root. */
 export const ADMIN_HOME = '/admin';
-export const ADMIN_LOGIN_HINT = Link;

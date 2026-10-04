@@ -1,4 +1,4 @@
-import Link from 'next/link';
+import { requireAdminPage } from '@/lib/admin-page-guard';
 import { StatCard, StatusBadge, toneForStatus } from '@/components/ui/StatusBadge';
 import { EmptyState } from '@/components/ui/States';
 import { getDashboardMetrics } from '@/lib/admin-metrics';
@@ -12,25 +12,76 @@ import { formatINRCompact } from '@/lib/format';
  * Every metric is a live database aggregate (see lib/admin-metrics.ts). Nothing
  * here is a placeholder or a sample number - if the database is empty the tiles
  * read zero, which is the honest state.
+ *
+ * TILES LINK ONLY TO SCREENS THAT EXIST. This page previously linked to modules
+ * such as Dispatch, Providers, Orders and Invoices that have not been built. A
+ * dashboard tile pointing at a 404 is a broken promise, so figures whose
+ * screens are still planned are shown as plain, non-navigable values instead.
+ *
+ * The page also re-checks the admin role itself, so it stays safe even if the
+ * layout guard were removed.
  */
 export const dynamic = 'force-dynamic';
 
 export default async function AdminDashboardPage() {
+  await requireAdminPage();
+
   const metrics = await getDashboardMetrics();
   const maxTrend = Math.max(1, ...metrics.bookingTrend.map((d) => d.count));
-
   return (
     <div className="space-y-6">
       <header>
         <h1 className="text-xl font-bold tracking-tight text-ink-900">Operations dashboard</h1>
         <p className="mt-1 text-sm text-ink-500">
-          Live figures from the database. These update as bookings and payments are recorded.
+          Live figures from the database. These update as bookings, catalogue changes and payments
+          are recorded.
         </p>
       </header>
 
-      <section aria-labelledby="metrics-heading">
-        <h2 id="metrics-heading" className="sr-only">
-          Key metrics
+      <section aria-labelledby="catalog-heading">
+        <h2 id="catalog-heading" className="sr-only">
+          Catalogue
+        </h2>
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <StatCard
+            label="Services"
+            value={metrics.totalServices}
+            hint={`${metrics.activeServices} active and bookable`}
+            icon="bolt"
+            href="/admin/services"
+          />
+          <StatCard
+            label="Categories"
+            value={metrics.categories}
+            hint={`${metrics.activeCategories} active in the catalogue`}
+            icon="grid"
+            href="/admin/categories"
+          />
+          <StatCard
+            label="Published prices"
+            value={metrics.publishedPrices}
+            hint={
+              metrics.unpublishedPrices === 0
+                ? 'Every offered option is priced'
+                : `${metrics.unpublishedPrices} options still unpriced`
+            }
+            icon="receipt"
+            href="/admin/pricing"
+          />
+          <StatCard
+            label="Unpublished prices"
+            value={metrics.unpublishedPrices}
+            hint="Customers see “on request”"
+            icon="wallet"
+            tone={metrics.unpublishedPrices === 0 ? 'success' : 'warning'}
+            href="/admin/charging-options"
+          />
+        </div>
+      </section>
+
+      <section aria-labelledby="operations-heading">
+        <h2 id="operations-heading" className="sr-only">
+          Operations
         </h2>
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <StatCard
@@ -39,46 +90,13 @@ export default async function AdminDashboardPage() {
             hint={`${metrics.newBookingsToday} placed today`}
             icon="clipboard"
             tone="brand"
-            href="/admin/bookings"
           />
           <StatCard
-            label="Revenue (settled)"
-            value={formatINRCompact(metrics.revenuePaise)}
-            hint={`${metrics.pendingPayments} invoices awaiting payment`}
-            icon="wallet"
-            tone="success"
-            href="/admin/invoices"
-          />
-          <StatCard
-            label="Active providers"
-            value={metrics.activeProviders}
-            hint="Providers currently accepting work"
-            icon="office"
-            tone="info"
-            href="/admin/providers"
-          />
-          <StatCard
-            label="Active technicians"
-            value={metrics.activeTechnicians}
-            hint="Technicians enabled for dispatch"
-            icon="user"
-            tone="info"
-            href="/admin/technicians"
-          />
-        </div>
-      </section>
-
-      <section aria-labelledby="secondary-heading">
-        <h2 id="secondary-heading" className="sr-only">
-          Secondary metrics
-        </h2>
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          <StatCard
-            label="Total customers"
-            value={metrics.totalUsers}
-            hint={`${metrics.activeCustomers} active`}
-            icon="people"
-            href="/admin/users"
+            label="Awaiting confirmation"
+            value={metrics.pendingBookings}
+            hint="Bookings still in REQUESTED"
+            icon="clock"
+            tone={metrics.pendingBookings > 0 ? 'warning' : 'neutral'}
           />
           <StatCard
             label="Completed bookings"
@@ -88,19 +106,44 @@ export default async function AdminDashboardPage() {
             tone="success"
           />
           <StatCard
+            label="Total customers"
+            value={metrics.totalUsers}
+            hint={`${metrics.activeCustomers} active accounts`}
+            icon="people"
+          />
+        </div>
+      </section>
+
+      <section aria-labelledby="commerce-heading">
+        <h2 id="commerce-heading" className="sr-only">
+          Commerce and platform
+        </h2>
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <StatCard
+            label="Revenue (settled)"
+            value={formatINRCompact(metrics.revenuePaise)}
+            hint="Paid invoices only"
+            icon="wallet"
+            tone="success"
+          />
+          <StatCard
+            label="Invoices unpaid"
+            value={metrics.pendingPayments}
+            hint="Issued or overdue"
+            icon="receipt"
+            tone={metrics.pendingPayments > 0 ? 'warning' : 'neutral'}
+          />
+          <StatCard
+            label="Active technicians"
+            value={metrics.activeTechnicians}
+            hint="Enabled for dispatch"
+            icon="user"
+          />
+          <StatCard
             label="Material orders"
             value={metrics.materialOrders}
             hint="Category 20 orders"
             icon="package"
-            href="/admin/orders"
-          />
-          <StatCard
-            label="Open support requests"
-            value={metrics.openSupportRequests}
-            hint={`${metrics.pendingReviews} reviews awaiting approval`}
-            icon="shield"
-            tone={metrics.openSupportRequests > 0 ? 'warning' : 'neutral'}
-            href="/admin/support"
           />
         </div>
       </section>
@@ -110,32 +153,28 @@ export default async function AdminDashboardPage() {
         <StatusBreakdown rows={metrics.statusBreakdown} />
       </div>
 
-      {metrics.pendingPayments > 0 && (
+      {metrics.pendingReviews > 0 && (
         <section className="rounded-card border border-warning/30 bg-warning-bg p-5">
           <h2 className="flex items-center gap-2 text-sm font-semibold text-ink-900">
             <span className="h-2 w-2 rounded-full bg-warning" aria-hidden />
             Requires attention
           </h2>
           <p className="mt-2 text-sm text-ink-600">
-            {metrics.pendingPayments} invoice{metrics.pendingPayments === 1 ? '' : 's'} issued but
-            not yet settled. Payment status is confirmed only by the payment provider.
+            {metrics.pendingReviews} review{metrics.pendingReviews === 1 ? '' : 's'} awaiting
+            moderation, and {metrics.openSupportRequests} open support thread
+            {metrics.openSupportRequests === 1 ? '' : 's'}. Review moderation and support handling
+            are not yet built into the console.
           </p>
-          <Link
-            href="/admin/invoices"
-            className="mt-3 inline-flex items-center gap-1.5 text-sm font-semibold text-warning hover:underline"
-          >
-            Review invoices
-          </Link>
         </section>
       )}
     </div>
   );
-}
 
 /**
  * Dependency-free bar chart. Rendered as plain elements rather than a charting
  * library, which keeps the admin bundle small and avoids a third-party script
- * (a supply-chain and CSP liability).
+ * (a supply-chain and CSP liability). An all-zero week renders an honest empty
+ * state instead of a flat, meaningless chart.
  */
 function BookingTrendChart({
   data,
@@ -187,6 +226,7 @@ function BookingTrendChart({
   );
 }
 
+/** Bookings grouped by status. Empty until bookings exist. */
 function StatusBreakdown({ rows }: { rows: Array<{ status: string; count: number }> }) {
   return (
     <section className="rounded-card border border-ink-200 bg-white p-5">
@@ -214,4 +254,6 @@ function StatusBreakdown({ rows }: { rows: Array<{ status: string; count: number
       )}
     </section>
   );
+}
+
 }

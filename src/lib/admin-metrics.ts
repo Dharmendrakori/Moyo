@@ -17,13 +17,24 @@ export type DashboardMetrics = {
   activeTechnicians: number;
   newBookingsToday: number;
   activeBookings: number;
+  /** Bookings still awaiting provider confirmation. */
+  pendingBookings: number;
   completedBookings: number;
   pendingPayments: number;
   revenuePaise: number;
   materialOrders: number;
   openSupportRequests: number;
   pendingReviews: number;
-  /** Bookings created per day for the last 7 days, oldest first. */
+  /** The official categories actually present in the database. */
+  categories: number;
+  activeCategories: number;
+  totalServices: number;
+  activeServices: number;
+  /** Enabled charging options that carry a published price. */
+  publishedPrices: number;
+  /** Enabled charging options with no published price yet. */
+  unpublishedPrices: number;
+  /** Bookings, last 7 days, oldest first. */
   bookingTrend: Array<{ date: string; count: number }>;
   /** Bookings grouped by status, for the operations breakdown. */
   statusBreakdown: Array<{ status: string; count: number }>;
@@ -56,12 +67,19 @@ export async function getDashboardMetrics(): Promise<DashboardMetrics> {
     activeTechnicians,
     newBookingsToday,
     activeBookings,
+    pendingBookings,
     completedBookings,
     pendingPayments,
     revenue,
     materialOrders,
     openSupportRequests,
     pendingReviews,
+    categories,
+    activeCategories,
+    totalServices,
+    activeServices,
+    publishedPrices,
+    unpublishedPrices,
     trendRows,
     statusRows,
   ] = await Promise.all([
@@ -71,6 +89,7 @@ export async function getDashboardMetrics(): Promise<DashboardMetrics> {
     prisma.technician.count({ where: { isActive: true } }),
     prisma.booking.count({ where: { createdAt: { gte: today } } }),
     prisma.booking.count({ where: { status: { in: ACTIVE_BOOKING_STATUSES } } }),
+    prisma.booking.count({ where: { status: 'REQUESTED' } }),
     prisma.booking.count({ where: { status: 'COMPLETED' } }),
     prisma.invoice.count({ where: { status: { in: ['ISSUED', 'OVERDUE'] } } }),
     // Revenue = invoices actually settled by the payment provider.
@@ -81,6 +100,14 @@ export async function getDashboardMetrics(): Promise<DashboardMetrics> {
     prisma.materialOrder.count(),
     prisma.messageThread.count({ where: { status: { in: ['OPEN', 'PENDING'] } } }),
     prisma.review.count({ where: { isApproved: false } }),
+    // Catalogue coverage. These are real counts from the catalogue tables, so
+    // an empty database honestly reads zero rather than showing a placeholder.
+    prisma.category.count(),
+    prisma.category.count({ where: { isActive: true } }),
+    prisma.service.count(),
+    prisma.service.count({ where: { isActive: true } }),
+    prisma.serviceOption.count({ where: { isActive: true, pricePaise: { not: null } } }),
+    prisma.serviceOption.count({ where: { isActive: true, pricePaise: null } }),
     prisma.booking.findMany({
       where: { createdAt: { gte: weekAgo } },
       select: { createdAt: true },
@@ -106,12 +133,19 @@ export async function getDashboardMetrics(): Promise<DashboardMetrics> {
     activeTechnicians,
     newBookingsToday,
     activeBookings,
+    pendingBookings,
     completedBookings,
     pendingPayments,
     revenuePaise: revenue._sum.totalPaise ?? 0,
     materialOrders,
     openSupportRequests,
     pendingReviews,
+    categories,
+    activeCategories,
+    totalServices,
+    activeServices,
+    publishedPrices,
+    unpublishedPrices,
     bookingTrend: [...trendMap.entries()].map(([date, count]) => ({ date, count })),
     statusBreakdown: statusRows
       .map((r) => ({ status: r.status, count: r._count._all }))

@@ -5,7 +5,8 @@ import { usePathname } from 'next/navigation';
 import { useState, type ReactNode } from 'react';
 import { Icon } from '@/components/ui/Icon';
 import { LogoutButton } from '@/components/admin/LogoutButton';
-import type { AdminNavGroup } from '@/lib/admin-nav';
+import { isNavItemActive, type AdminNavGroup } from '@/lib/admin-nav';
+import { ROLE_LABEL } from '@/lib/domain';
 
 /**
  * ADMIN CHROME
@@ -15,21 +16,29 @@ import type { AdminNavGroup } from '@/lib/admin-nav';
  * metadata with no sensitive values.
  *
  * The sidebar is a fixed column on desktop and an off-canvas drawer on mobile.
+ *
+ * NOTHING HERE IS AN AUTHORIZATION CONTROL. This component renders navigation
+ * for whoever the server already proved is an administrator. A non-admin never
+ * receives this tree at all, and every admin page and API re-checks the role
+ * independently, so hiding or disabling a link changes nothing about access.
  */
 export function AdminShell({
   nav,
   userName,
   userInitials,
+  userRole,
   children,
 }: {
   nav: AdminNavGroup[];
   userName: string;
   userInitials: string;
+  userRole: string;
   children: ReactNode;
 }) {
   const pathname = usePathname();
   const [drawerOpen, setDrawerOpen] = useState(false);
   const activeItem = findActive(nav, pathname);
+  const roleLabel = ROLE_LABEL[userRole as keyof typeof ROLE_LABEL] ?? userRole;
 
   return (
     <div className="min-h-screen bg-ink-50">
@@ -116,6 +125,7 @@ export function AdminShell({
         onOpenNav={() => setDrawerOpen(true)}
         userName={userName}
         userInitials={userInitials}
+        roleLabel={roleLabel}
       />
 
       <main id="admin-main" className="px-4 pb-12 pt-4 sm:px-6 lg:ml-64 lg:p-8">
@@ -155,7 +165,31 @@ function NavList({ nav, pathname }: { nav: AdminNavGroup[]; pathname: string }) 
           </p>
           <ul className="space-y-0.5">
             {group.items.map((item) => {
-              const active = isActive(item.href, item.exact, pathname);
+              const active = isNavItemActive(item, pathname);
+
+              /*
+               * A planned module is a disabled <span>, not a <Link>. Rendering it
+               * as a link to a screen that does not exist would advertise a
+               * capability the console does not have.
+               */
+              if (item.status === 'planned') {
+                return (
+                  <li key={item.href}>
+                    <span
+                      aria-disabled="true"
+                      title={item.hint ? `Coming soon - ${item.hint}` : 'Coming soon'}
+                      className="flex cursor-not-allowed items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-medium text-ink-600"
+                    >
+                      <Icon name={item.icon} size={16} className="text-ink-600" />
+                      <span className="flex-1 truncate">{item.label}</span>
+                      <span className="rounded bg-ink-800 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-ink-400">
+                        Soon
+                      </span>
+                    </span>
+                  </li>
+                );
+              }
+
               return (
                 <li key={item.href}>
                   <Link
@@ -185,11 +219,13 @@ function Topbar({
   onOpenNav,
   userName,
   userInitials,
+  roleLabel,
 }: {
   title: string;
   onOpenNav: () => void;
   userName: string;
   userInitials: string;
+  roleLabel: string;
 }) {
   return (
     <header className="sticky top-0 z-20 flex h-16 items-center gap-3 border-b border-ink-200 bg-white px-4 sm:px-6 lg:ml-64 lg:px-8">
@@ -205,11 +241,18 @@ function Topbar({
       <h2 className="text-base font-semibold text-ink-900">{title}</h2>
 
       <div className="ml-auto flex items-center gap-3">
+        {/*
+          Authenticated operator identity and role. Rendered as text, never as
+          an image, and derived from the session the server already verified.
+        */}
         <div className="hidden text-right sm:block">
-          <p className="text-xs font-semibold text-ink-800">{userName}</p>
-          <p className="text-[10px] uppercase tracking-wider text-ink-400">Administrator</p>
+          <p className="max-w-[12rem] truncate text-xs font-semibold text-ink-800">{userName}</p>
+          <p className="text-[10px] uppercase tracking-wider text-ink-400">{roleLabel}</p>
         </div>
-        <span className="grid h-9 w-9 place-items-center rounded-full bg-ink-900 text-xs font-bold text-white">
+        <span
+          className="grid h-9 w-9 place-items-center rounded-full bg-ink-900 text-xs font-bold text-white"
+          aria-hidden
+        >
           {userInitials}
         </span>
         <LogoutButton />
@@ -218,16 +261,12 @@ function Topbar({
   );
 }
 
-function isActive(href: string, exact: boolean | undefined, pathname: string): boolean {
-  return exact ? pathname === href : pathname === href || pathname.startsWith(`${href}/`);
-}
-
-/** Longest-prefix match wins so /admin/bookings beats /admin. */
+/** Longest-prefix match wins so /admin/services beats /admin. */
 function findActive(nav: AdminNavGroup[], pathname: string) {
   const all = nav.flatMap((g) => g.items);
   return (
     all
-      .filter((i) => isActive(i.href, i.exact, pathname))
+      .filter((i) => isNavItemActive(i, pathname))
       .sort((a, b) => b.href.length - a.href.length)[0] ?? null
   );
 }

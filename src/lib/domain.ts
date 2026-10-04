@@ -99,6 +99,17 @@ export const AUDIT_ACTIONS = [
   'ROLE_CHANGED',
   'PROVIDER_UPDATED',
   'TECHNICIAN_ASSIGNED',
+  /**
+   * Catalog and commercial administration. These are deliberately distinct
+   * actions rather than a generic "admin updated row": a price publication and
+   * a price withdrawal are different events with different risk, and collapsing
+   * them would make the log useless for reconstructing who changed what.
+   */
+  'CATEGORY_STATUS_CHANGED',
+  'SERVICE_STATUS_CHANGED',
+  'CHARGING_OPTION_CHANGED',
+  'PRICE_PUBLISHED',
+  'PRICE_UNPUBLISHED',
   'BOOKING_CREATED',
   'BOOKING_STATUS_CHANGED',
   'BOOKING_CANCELLED',

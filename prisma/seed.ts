@@ -228,7 +228,9 @@ async function seedProvider() {
   // reused when one is already present, so re-seeding never orphans it.
   let providerUser = await prisma.user.findFirst({
     where: { role: 'PROVIDER' },
-    select: { id: true },
+    // `email` is selected so the reconciliation warning below can report the
+    // address this operator account actually signs in with.
+    select: { id: true, email: true },
   });
 
   if (!providerUser) {
@@ -247,7 +249,7 @@ async function seedProvider() {
         role: 'PROVIDER',
         isActive: true,
       },
-      select: { id: true },
+      select: { id: true, email: true },
     });
   } else {
     // Keep the owning account in step with the provider identity: display name,
@@ -275,9 +277,14 @@ async function seedProvider() {
       // it is NOT taken from them. The customer-facing contact details live on
       // the Provider record (correctly set above); this operator login keeps its
       // own address. Flagged because it is otherwise invisible.
+      //
+      // The retained ADDRESS is reported, not the record id: the operator needs
+      // to know which login address this account actually uses in order to
+      // authenticate with it, and an id is not usable for that.
       console.warn(
-        `  note: provider account kept email "${providerUser.id}" - ` +
-          `contact email is already registered to another account`,
+        `  note: provider account kept its existing login email ` +
+          `("${providerUser.email}") - the authoritative contact email is already ` +
+          `registered to another account and was not taken from it.`,
       );
     }
   }

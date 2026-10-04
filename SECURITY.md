@@ -17,7 +17,7 @@ Verification performed for this release:
 | --- | --- | --- |
 | Type safety | `npm run typecheck` | PASS |
 | Lint | `npm run lint` | PASS (0 errors) |
-| Unit tests | `npm test` | PASS (98 tests) |
+| Unit tests | `npm test` | PASS (140 tests, 9 suites) |
 | Production build | `npm run build` | PASS |
 | Dependency audit (runtime) | `npm audit --omit=dev` | 0 vulnerabilities |
 
@@ -64,6 +64,67 @@ Roles: `CUSTOMER`, `PROVIDER`, `TECHNICIAN`, `ADMIN`.
 - **Route guards are defence in depth**: `/admin` is gated in the layout *and*
   re-checked in every admin page and API route. Hiding a nav link is never the
   control.
+
+### 1.2a Admin authorization and the operations console
+
+The admin surface added in this milestone enforces authorization at the server
+boundary at every layer.
+
+- **One guard, one chain** (`src/lib/admin-api.ts`). Every `/api/admin/**` route
+  calls `adminReadGuard()` or `adminWriteGuard()`, which run
+  `assertSameOrigin → requireAdmin → assertCsrf → rate limit` **before the
+  request body is parsed and before any database write is attempted**. There is
+  no admin route that authorises itself any other way.
+- **Role comes from the database, every request.** `getCurrentUser()`
+  re-validates the stored role with `isRole()` before it is used in any decision,
+  and sessions are opaque and database-backed, so logout, demotion and suspension
+  take effect on the next request. There is no JWT that could carry a stale claim.
+- **Three independent layers.** The Edge `proxy.ts` (cookie *presence* only, no
+  database), the admin layout, and per-page/per-route checks. Removing any one
+  does not remove the protection.
+- **401 vs 403 are distinguishable.** No session → `401`; wrong role → `403` with
+  an explicit access-denied page that renders no admin chrome and no data. A
+  signed-in non-admin is not silently bounced to `/login`, which would loop and
+  hide the reason.
+- **No client-side authorization.** The nav renders disabled entries for modules
+  that are not built, but that is a usability device. Nothing is protected by it,
+  and there is no role check in the browser.
+- **Row ids are format-validated** (`readIdParam`) before any lookup, and a
+  malformed id returns the same `404` as a real-but-missing one, so the endpoints
+  cannot be used to probe the id format or enumerate records.
+
+### 1.2b Commercial mutations
+
+- **No mass assignment.** Every admin mutation schema is `.strict()` and exposes
+  only the commercially editable fields. An unexpected key (`serviceId`, `id`,
+  `role`, `isActive` on the wrong endpoint) **rejects the whole request** rather
+  than being silently ignored - otherwise a caller could believe a change had
+  been made when it had not. The targeted record always comes from the URL path,
+  never from the body.
+- **Authoritative catalogue fields are not writable at all.** `Category.name`,
+  `.code`, `.position` and `Service.name`, `.slug`, `.serviceType` are absent from
+  every mutation schema. They cannot be changed even by a hand-crafted request.
+- **Price is not settable from the charging-options endpoint.** Enabling an option
+  and publishing its price are separate operations, with separate schemas and
+  separate audit actions, so activation can never expose a price as a side effect.
+- **Publish guards.** A price cannot be published against a disabled option or a
+  deactivated service, so a customer is never shown a price the booking domain
+  would reject as unavailable. Customer Budget cannot carry a fixed price at all.
+- **Customer Budget range semantics are enforced server-side.** Budget bounds are
+  rejected on Visit Charge and Fixed Charge, and a budget option cannot be enabled
+  without bounds, because the booking domain would reject every resulting request.
+- **Historical quotes are immutable.** `Booking.quotedPaise`,
+  `budgetMinPaise` and `budgetMaxPaise` are snapshots taken at creation. The
+  pricing mutation path writes only to `ServiceOption` and never reads or writes a
+  `Booking` row, so re-pricing the catalogue cannot retroactively change an agreed
+  quote. A test asserts this, and the test mock throws on any booking write so a
+  future regression fails loudly.
+- **Minimisation.** Every admin query uses an explicit `select`. No password hash,
+  session token, IP hash or unrelated personal column is ever fetched, so none can
+  reach the browser.
+- **Generic errors.** Unexpected failures are logged server-side and returned as a
+  fixed `500`. No stack trace, SQL fragment or Prisma message is serialized to a
+  client, and the admin UI renders API messages as text, never as HTML.
 
 ### 1.3 Booking state machine
 
@@ -323,10 +384,26 @@ Stated plainly rather than presented as complete:
 ### 6.5 Operations
 
 14. Set `SEED_ADMIN_EMAIL` / `SEED_ADMIN_PASSWORD` once to bootstrap the first
-    admin, then **remove them from the environment**.
-15. Implement password reset and email verification flows (routes not yet
-    built).
-16. Define audit-log retention and ship logs to an append-only store.
+    admin, then **remove them from the environment**. The current development
+    database has **no ADMIN account** (`admins: 0`) precisely because these are
+    blank; the console is unreachable until this is done. Note that the admin
+    login address does **not** have to be the provider contact address - the
+    account that already uses `dharmendra.kori@outlook.com` is a CUSTOMER and
+    must stay one.
+15. **Rotate the provider operator account's login address.** It still holds a
+    retired address from before the MOYO rename. It is not used to authenticate
+    against the console and was deliberately not rewritten automatically,
+    because changing a live account's login is an identity decision rather than a
+    cosmetic one. Do it deliberately.
+16. Implement password reset and email verification flows (routes not yet
+    built). Note that the provider account is provisioned with an unusable random
+    password, so it is currently only reachable via reset.
+16. Define audit-log retention and ship logs to an append-only store. The
+    commercial audit events added in this milestone
+    (`PRICE_PUBLISHED`, `PRICE_UNPUBLISHED`, `CHARGING_OPTION_CHANGED`,
+    `CATEGORY_STATUS_CHANGED`, `SERVICE_STATUS_CHANGED`) are written to the
+    database today, but there is **no screen to browse them yet** and no
+    retention policy.
 17. Add dependency scanning to CI (`npm audit` is not currently a build gate).
 18. Add SAST/DAST and a dependency-update bot.
 19. Perform an independent penetration test before handling real payments.

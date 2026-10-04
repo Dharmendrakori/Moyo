@@ -34,7 +34,14 @@ A service operations platform for booking, tracking and managing field services.
 | Material ordering / cart | **Not yet implemented** |
 | Support messaging | **Not yet implemented** |
 | Account profile, password reset, email verification | **Not yet implemented** |
-| Provider pricing administration | **Requires production configuration** - the admin panel exists; real prices are a commercial decision and are deliberately left unpublished by the seed |
+| **Admin authorization (server-enforced RBAC)** | **Implemented** |
+| **Admin dashboard (live database metrics)** | **Implemented** |
+| **Admin category management** | **Implemented** - read-only catalogue identity + activation |
+| **Admin service management** | **Implemented** - search, filter, paging, detail, activation |
+| **Admin charging-option management** | **Implemented** |
+| **Admin published-pricing management** | **Implemented** |
+| Admin bookings / dispatch / technicians / customers | **Not yet implemented** - shown as disabled "Soon" |
+| Admin invoices / payments / reviews / audit log / settings | **Not yet implemented** - shown as disabled "Soon" |
 | Payment provider integration | **Requires production configuration** |
 | Deployment hardening (Redis rate limiting, PostgreSQL, native enums) | **Requires production configuration** - see [SECURITY.md](./SECURITY.md) §6 |
 
@@ -113,6 +120,207 @@ unpriced**. This is deliberate: a price is a commercial decision, and inventing
 one would misrepresent the business. Until an administrator publishes pricing,
 the wizard reaches step 3 and honestly reports that no charging option is
 available, and the tracking screens say the price is not published.
+
+---
+
+## The admin console
+
+`/admin` is a real operations console backed by the same server-side domain model
+as the customer site. It is not a visual mockup and it runs on no mock data.
+
+### Admin routes
+
+| Route | What it does |
+| --- | --- |
+| `/admin` | Dashboard - live aggregates from the database |
+| `/admin/categories` | The 20 official categories, read from the database |
+| `/admin/services` | Service table: search, filters, pagination |
+| `/admin/services/[id]` | Service detail, charging configuration, published pricing |
+| `/admin/charging-options` | Which options MOYO offers, and Customer Budget ranges |
+| `/admin/pricing` | Publish / withdraw published prices |
+
+Modules that are **not yet built** (Bookings, Dispatch, Technicians, Customers,
+Materials, Invoices, Payments, Reviews, Audit log, Settings) appear in the
+sidebar as **disabled entries marked "Soon"**. They are deliberately not links:
+a navigation item that leads to a 404 advertises a capability the console does
+not have. No planned module is dressed up with fake functionality, sample rows or
+placeholder metrics.
+
+### Admin API
+
+| Endpoint | Purpose |
+| --- | --- |
+| `GET /api/admin/categories` | Category list with live service counts |
+| `PATCH /api/admin/categories/[id]` | Activate / deactivate a category |
+| `GET /api/admin/services` | Service table (search, filter, page) |
+| `GET /api/admin/services/[id]` | Service detail + count of existing quoted bookings |
+| `PATCH /api/admin/services/[id]` | Activate / deactivate a service |
+| `GET /api/admin/charging-options` | Every `ServiceOption` with its service context |
+| `PATCH /api/admin/charging-options/[id]` | Availability, budget bounds, duration |
+| `GET /api/admin/pricing` | Pricing table (filter by state, category, option) |
+| `PATCH /api/admin/pricing/[id]` | Publish or withdraw a published price |
+
+### Admin authorization
+
+Authorization is enforced **on the server at every boundary**. Hiding a link in
+React is never the control, and there is no client-side role check anywhere.
+
+| Situation | Result |
+| --- | --- |
+| No session, admin page | `redirect` to `/login?next=/admin` (validated relative path, never an absolute URL) |
+| No session, admin API | `401 UNAUTHENTICATED` |
+| CUSTOMER / PROVIDER / TECHNICIAN, admin page | Explicit access-denied screen with no admin chrome and no database content |
+| CUSTOMER / PROVIDER / TECHNICIAN, admin API | `403 FORBIDDEN` - no data, no write, no audit event |
+| ADMIN | Allowed |
+
+There are three independent layers, and removing any one does not remove the
+protection:
+
+1. **`src/proxy.ts`** - redirects a request that has no session cookie. It runs
+   in the Edge runtime with **no database access**; it only checks that a cookie
+   is *present*, so it is a UX optimisation, not a security control.
+2. **`src/app/admin/layout.tsx`** - resolves the session and refuses non-admins
+   before any page content or query runs.
+3. **Per page and per route** - every admin page calls `requireAdminPage()`, and
+   every admin API calls `adminReadGuard()` / `adminWriteGuard()`. This is the
+   layer the automated tests exercise.
+
+The role is read from the **database on every request** via `getCurrentUser`,
+which re-validates the stored role with `isRole()` before it is used for any
+decision. Sessions are opaque and database-backed, so a logout or a role change
+takes effect on the very next request - there is no token that could carry a
+stale claim.
+
+### Roles
+
+`CUSTOMER`, `PROVIDER`, `TECHNICIAN`, `ADMIN`. Only `ADMIN` may reach `/admin`
+or `/api/admin/**`. `PROVIDER` and `TECHNICIAN` are scoped owners elsewhere in
+the booking model, but are **not** administrators.
+
+### Mutations
+
+Every admin mutation runs this chain, in this order, **before the request body
+is parsed**:
+
+```
+assertSameOrigin -> requireAdmin -> assertCsrf -> rate limit
+                  -> Zod .strict() parse -> catalog write model
+```
+
+Authorization is therefore checked before application logic runs, let alone
+before any write. A non-admin request is rejected as `UNAUTHENTICATED` /
+`FORBIDDEN` without leaking whether its CSRF token was also wrong.
+
+Each mutation has a confirmation dialog, disables its button while in flight,
+reports the server's message verbatim as text on failure, and never updates
+optimistically - the table re-renders from the database.
+
+### What is editable, and what is not
+
+Only two things are commercially editable, and each is the server's decision:
+
+| Field | Editable | Notes |
+| --- | --- | --- |
+| `Category.name`, `.code`, `.position` | **No** | Authoritative official catalogue identity. Absent from the mutation schema, so they cannot be mass-assigned. |
+| `Service.name`, `.slug`, `.serviceType`, placement | **No** | Same: absent from every mutation schema. |
+| `Category.isActive`, `Service.isActive` | Yes | Deactivation hides a record from customers; nothing is deleted and all booking history is kept. |
+| `ServiceOption.isActive` | Yes | Availability of a charging option. |
+| `ServiceOption.budgetMin/MaxPaise` | Yes | **Customer Budget only.** Rejected server-side on the other two options. |
+| `ServiceOption.pricePaise` | Yes, **only** via `PATCH /api/admin/pricing/[id]` | Deliberately absent from the charging-options schema, so enabling an option can never expose a price. |
+
+Because every schema is `.strict()`, an unexpected key **rejects the whole
+request** rather than being ignored. Ignoring it would leave a caller believing a
+change had been made when it had not.
+
+### Pricing rules
+
+- **Server-authoritative.** The browser never supplies an amount.
+  `resolveBookingPricing()` (`src/lib/pricing.ts`) is the single source of truth
+  and takes **no price parameter at all**. `quoteSchema` and `createBookingSchema`
+  are `.strict()` and have no price field, so posting one is rejected outright.
+- **Unpublished is the default.** The seed creates every `ServiceOption` as
+  inactive with `pricePaise = null`. No sample price is seeded to make the
+  console look populated. Until a price is published, the customer service page
+  shows its neutral **"On request"** state and the wizard reports that no
+  charging option is available.
+- **Historical quotes are immutable.** A booking stores the price it was quoted
+  at creation (`quotedPaise`, `budgetMinPaise`, `budgetMaxPaise`). A price
+  mutation writes **only** to `ServiceOption`; the pricing code path never reads
+  or writes a `Booking` row. Re-pricing the catalogue cannot retroactively change
+  an agreed quote. The service detail screen shows how many existing bookings
+  hold a quote, so the consequence is visible before the change is made.
+- **Publish guards.** A price cannot be published for a disabled option or a
+  deactivated service, so a customer is never shown a price for something the
+  booking domain would reject as unavailable.
+- **Customer Budget carries no fixed price.** In that mode the customer states a
+  budget and the provider confirms scope, so `resolveBookingPricing` always
+  returns `quotedPaise: null`. Publishing a figure there is rejected
+  (`PRICE_NOT_APPLICABLE`), because it would advertise a number that can never be
+  quoted.
+
+### The three official charging concepts
+
+Preserved exactly as the domain model defines them in `src/lib/domain.ts`:
+**Visit Charge**, **Fixed Charge**, **Customer Budget**. They are read back from
+the seeded `ServiceOption` rows rather than restated as a new set. Customer Budget
+keeps its existing min/max/range semantics: both bounds are required, must sit
+inside the published range, and the server clamps them to the platform floor and
+ceiling.
+
+### Audit logging
+
+Commercial and catalogue mutations write to the existing `AuditLog` model through
+`src/lib/audit.ts`. Five actions were added for this milestone:
+
+| Action | Recorded when |
+| --- | --- |
+| `CATEGORY_STATUS_CHANGED` | A category is activated or deactivated |
+| `SERVICE_STATUS_CHANGED` | A service is activated or deactivated |
+| `CHARGING_OPTION_CHANGED` | Availability, budget bounds or duration change |
+| `PRICE_PUBLISHED` | A price becomes visible to customers |
+| `PRICE_UNPUBLISHED` | A price is withdrawn |
+
+Publication and withdrawal are deliberately **distinct** actions rather than one
+generic "price updated": they are different events with different risk, and
+collapsing them would make the log useless for reconstructing who changed what.
+Each row records the previous and the new value, plus
+`historicalBookingsUnchanged` for price events, so a disputed quote can be
+reconstructed. No secrets, passwords, session tokens or personal data are ever
+written.
+
+### Operator identity and the provider contact email
+
+`dharmendra.kori@outlook.com` is **both** the provider's published contact
+address and the login address of an existing **CUSTOMER** account. These are
+different things, and the architecture keeps them separate:
+
+- `Provider.contactEmail` is a **display field**, rendered into the customer
+  site's contact details and never used to authenticate anyone.
+- `User.email` is the **login** address, and it is `@unique`.
+- `User.role = 'ADMIN'` is **orthogonal to both**. `requireAdmin()` resolves
+  authorization from the session's role only; it never compares an email against
+  the provider record.
+
+The consequence: **an operator login does not need the provider contact email.**
+An administrator is created with whatever free address is configured in
+`SEED_ADMIN_EMAIL`, and nothing about the existing customer account has to
+change. That account is therefore left exactly as it is - not deleted, not
+converted to ADMIN, and its login is not broken. `prisma/seed.ts` also refuses to
+take the contact address from it, and now reports the address the provider
+account actually retained, so the operator can see which login to use.
+
+**No admin account exists in the current development database** (`admins: 0`),
+because `SEED_ADMIN_EMAIL` / `SEED_ADMIN_PASSWORD` are intentionally blank in
+`.env`. Set them once, run `npm run db:seed`, then remove them. There is no
+default password anywhere in this repository.
+
+### The 20 categories
+
+The category list is read from the database at request time via
+`listAdminCategories()`. There is **no client-side copy** of the 20 categories
+anywhere in the admin console: a duplicated constant would drift and could show
+a category the catalogue does not contain. The seed in `prisma/catalog.ts`
+remains the only place the official list is defined.
 
 ---
 
@@ -309,14 +517,35 @@ tests/
 
 ### Testing approach
 
-The suites run without a database. `booking-api.test.ts` drives the **real route
-handlers**, mocking only Prisma, `next/headers` and `server-only`, so the genuine
-guard chain (`requireUser → assertCsrf → rate limit → Zod → domain service`)
-executes. Coverage includes unauthenticated access, missing/forged CSRF,
-cross-origin rejection, invalid input, invalid charging options, budget validation
-at both the schema and domain layers, server-side pricing (asserting the stored
-price is the one the server resolved), mass-assignment defence, ownership
-isolation, invalid booking ids, and rate limiting.
+The suites run without a database. Several drive the **real route handlers**,
+mocking only Prisma, `next/headers` and `server-only`, so the genuine guard chain
+executes end to end.
+
+| Suite | Tests | What it drives |
+| --- | --- | --- |
+| `booking-state.test.ts` | 15 | The booking state machine, including that no role may mark a booking paid |
+| `security.test.ts` | 10 | Open-redirect prevention and role/status narrowing |
+| `booking-tracking.test.ts` | 15 | Customer-facing status rendering |
+| `provider-identity.test.ts` | 14 | MOYO identity and contact values, and that retired values are absent from source |
+| `validation.test.ts` | 21 | Request schemas |
+| `booking-api.test.ts` | 23 | Real `/api/bookings*` routes: `requireUser → assertCsrf → rate limit → Zod → domain` |
+| **`admin-auth.test.ts`** | **16** | **Real `/api/admin/*` routes: 401, 403 for CUSTOMER, ADMIN access, CSRF, Origin, malformed ids** |
+| **`admin-pricing.test.ts`** | **16** | **Price publish/withdraw, strict validation, mass-assignment refusal, budget rules, audit actions, historical-quote immutability** |
+| **`pricing-visibility.test.ts`** | **10** | **Published vs unpublished prices, and that the customer cannot influence the quote** |
+| **Total** | **140** | |
+
+The admin suites assert the properties that must not regress: a CUSTOMER gets
+`403` on every admin endpoint and writes nothing, an unauthenticated caller gets
+`401`, an ADMIN succeeds, a missing or guessed CSRF token fails even for an
+ADMIN, a cross-origin mutation is refused, an unexpected key rejects the whole
+request rather than being ignored, each mutation records the correct audit action,
+and a price change leaves existing booking quotes untouched.
+
+Two test-harness details are deliberate: the mock's `serviceOption.findUnique`
+returns a **copy** so an update cannot retroactively mutate the "previous value"
+snapshot the audit trail records, and the mock's `booking` model **throws on any
+write**, so a future refactor that started rewriting bookings would fail loudly
+rather than quietly change historical prices.
 
 ### Note on "enums"
 
@@ -342,7 +571,7 @@ Current state (verified for the customer booking wizard + tracking milestone):
 | --- | --- |
 | `npm run typecheck` | PASS |
 | `npm run lint` | PASS (0 errors, 0 warnings) |
-| `npm test` | PASS (98 tests, 6 suites) |
+| `npm test` | PASS (140 tests, 9 suites) |
 | `npm run build` | PASS (no warnings) |
 | `npm run audit:prod` | 0 vulnerabilities |
 | `npm run db:seed` | PASS (idempotent) |
@@ -414,31 +643,47 @@ Renaming or reordering them is a data change.
 
 1. **No pricing is published by default.** The seed leaves every charging option
    inactive and unpriced, so a fresh install cannot complete a booking until an
-   administrator publishes prices. This is intentional, not a defect.
+   administrator publishes prices. This is intentional, not a defect. Real prices
+   are a commercial decision and have not been invented.
 2. **Technician records are not seeded.** The platform does not know a technician's
    real availability, so none are invented. The tracking UI is built for them and
    shows the honest placeholder until one is assigned.
 3. **Rate limiting is per-process.** See `SECURITY.md` §5.
-4. **No operator dispatch UI.** Bookings can be created and tracked, but
-   confirming and assigning technicians requires direct API use today.
+4. **Most admin modules are not built.** The console covers the dashboard,
+   catalogue, charging options and pricing. Bookings, dispatch, technicians,
+   customers, materials, invoices, payments, reviews, the audit-log viewer and
+   settings are shown as disabled "Soon" entries. They have no screens and no
+   fake behaviour. The audit events *are* written to the database for every
+   mutation this milestone introduces - only the screen to browse them is missing.
 5. **Invoice, payment and feedback have no customer UI.** The schema, state
    machine and webhook exist; the screens do not.
-6. `/privacy` and `/terms` are linked in the footer but not implemented.
-7. SQLite and string-backed "enums" are development-only - see `SECURITY.md` §6.3.
+6. **`/privacy` and `/terms` are linked in the footer but not implemented.**
+7. **No admin account exists in the development database** (`admins: 0`) because
+   `SEED_ADMIN_EMAIL` / `SEED_ADMIN_PASSWORD` are blank in `.env`. Set them once,
+   run `npm run db:seed`, then remove them. There is no default password in the
+   repository.
+8. **The provider operator account still holds a retired login address.** It is
+   not used for authentication by the console (see
+   *Operator identity and the provider contact email* above) and was deliberately
+   not changed, because rewriting a live account's login address is an identity
+   decision, not a cosmetic one. Rotate it deliberately before launch.
+9. SQLite and string-backed "enums" are development-only - see `SECURITY.md` §6.3.
 
 ---
 
 ## Roadmap
 
-**Next milestone (operator side)**
+**Next milestone (dispatch)**
 - Technician dispatch console: confirm a booking, assign a technician, advance
   the on-site states
-- Provider pricing administration, so the wizard can be completed end to end
+- Admin bookings list with status filters, and an audit-log viewer over the events
+  this milestone now writes
 - Customer invoice view and payment initiation
 - Customer cancellation flow
 
 **Later**
-- Feedback capture once `FEEDBACK_PENDING` is reachable
+- Technician roster and customer management screens
+- Review moderation (schema and `FEEDBACK_PENDING` state already exist)
 - Material ordering / cart (schema already present)
 - Support messaging (schema already present)
 - Account profile, password reset, email verification

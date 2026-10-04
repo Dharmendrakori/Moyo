@@ -389,6 +389,158 @@ export const adminOrderUpdateSchema = z
 export const adminSettingSchema = z.object({ key: safeString(80), value: safeString(2000) }).strict();
 
 // ---------------------------------------------------------------------------
+// Catalog administration (categories, services, charging options, pricing)
+//
+// EVERY schema here is `.strict()`. That is the mass-assignment control: an
+// unexpected key - `role`, `isActive` on the wrong endpoint, `serviceId`,
+// `slug` - rejects the entire request instead of being silently dropped. The
+// schemas also deliberately expose ONLY the fields that are commercially
+// editable. Fields that are authoritative and must not drift (Category.name,
+// Category.code, Category.position, Service.slug, Service.serviceType) are
+// absent, so they cannot be posted even if a caller tries.
+//
+// The target row is taken from the URL path, never from the body, so a body
+// cannot redirect a mutation at a different record.
+// ---------------------------------------------------------------------------
+
+/** Absolute ceiling for a published price (₹1 crore), matching the budget bound. */
+export const PRICE_CEILING_PAISE = BUDGET_CEILING_PAISE;
+
+/**
+ * Category status. The 20 official categories keep their authoritative names;
+ * only availability is operationally changeable.
+ */
+export const adminCategoryStatusSchema = z.object({ isActive: z.boolean() }).strict();
+
+/** Service activation. Name, slug, type and catalogue placement are read-only. */
+export const adminServiceStatusSchema = z.object({ isActive: z.boolean() }).strict();
+
+/**
+ * Charging-option configuration.
+ *
+ * Budget bounds apply only to CUSTOMER_BUDGET; the server re-checks that
+ * against the row's actual `charging` value before writing. `pricePaise` is
+ * intentionally NOT here - publishing a price is a separate, separately
+ * audited action (see `adminPriceSchema`) so that enabling an option can
+ * never implicitly expose a price.
+ */
+export const adminChargingOptionSchema = z
+  .object({
+    isActive: z.boolean(),
+    budgetMinPaise: z.coerce
+      .number()
+      .int()
+      .min(BUDGET_FLOOR_PAISE, 'Budget minimum is below the permitted floor')
+      .max(BUDGET_CEILING_PAISE, 'Budget minimum is above the permitted ceiling')
+      .nullable()
+      .optional(),
+    budgetMaxPaise: z.coerce
+      .number()
+      .int()
+      .min(BUDGET_FLOOR_PAISE, 'Budget maximum is below the permitted floor')
+      .max(BUDGET_CEILING_PAISE, 'Budget maximum is above the permitted ceiling')
+      .nullable()
+      .optional(),
+    durationMinMinutes: z.coerce.number().int().min(5).max(1440).nullable().optional(),
+  })
+  .strict()
+  .superRefine((data, ctx) => {
+    const min = data.budgetMinPaise;
+    const max = data.budgetMaxPaise;
+    // Null/undefined on one side means "fall back to the platform default", so
+    // only a pair that is actually present is range-checked here. The server
+    // still re-validates against the row's charging type before writing.
+    if (min == null || max == null) return;
+    if (min > max) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'Budget minimum cannot exceed budget maximum',
+        path: ['budgetMaxPaise'],
+      });
+      return;
+    }
+    if (max - min < 5000) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'Budget range must be at least Rs 50 wide',
+        path: ['budgetMaxPaise'],
+      });
+    }
+  });
+
+/**
+ * Price publication / withdrawal.
+ *
+ * The intent is explicit so there is no ambiguous "pricePaise: null means
+ * delete" semantics, and the amount is a bounded integer of paise - never a
+ * float, never a client-formatted string.
+ */
+export const adminPriceSchema = z
+  .object({
+    action: z.enum(['PUBLISH', 'UNPUBLISH']),
+    pricePaise: z.coerce
+      .number()
+      .int('Price must be a whole number of paise')
+      .min(100, 'Price must be at least Rs 1')
+      .max(PRICE_CEILING_PAISE, 'Price is above the permitted ceiling')
+      .optional(),
+  })
+  .strict()
+  .superRefine((data, ctx) => {
+    if (data.action === 'PUBLISH' && data.pricePaise == null) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'Enter a price to publish',
+        path: ['pricePaise'],
+      });
+    }
+    // Refuse a withdrawal that also carries a figure: the two contradict, and
+    // silently ignoring one of them would make the audit trail a lie.
+    if (data.action === 'UNPUBLISH' && data.pricePaise != null) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'Do not send a price when unpublishing',
+        path: ['pricePaise'],
+      });
+    }
+  });
+
+/** Query parameters for the admin service table. */
+export const adminServiceQuerySchema = z
+  .object({
+    q: z
+      .string()
+      .trim()
+      .max(80)
+      .transform((s) => s.replace(controlChars, ''))
+      .optional(),
+    category: z.string().trim().max(64).optional(),
+    status: z.enum(['ALL', 'ACTIVE', 'INACTIVE']).default('ALL'),
+    charging: z.enum(['ALL', ...CHARGING_OPTIONS]).default('ALL'),
+    page: z.coerce.number().int().min(1).max(10_000).default(1),
+    pageSize: z.coerce.number().int().min(1).max(100).default(20),
+  })
+  .strict();
+
+/** Query parameters for the admin pricing table. */
+export const adminPricingQuerySchema = z
+  .object({
+    q: z
+      .string()
+      .trim()
+      .max(80)
+      .transform((s) => s.replace(controlChars, ''))
+      .optional(),
+    category: z.string().trim().max(64).optional(),
+    /** ALL | PUBLISHED | UNPUBLISHED | DISABLED */
+    state: z.enum(['ALL', 'PUBLISHED', 'UNPUBLISHED', 'DISABLED']).default('ALL'),
+    charging: z.enum(['ALL', ...CHARGING_OPTIONS]).default('ALL'),
+    page: z.coerce.number().int().min(1).max(10_000).default(1),
+    pageSize: z.coerce.number().int().min(1).max(100).default(20),
+  })
+  .strict();
+
+// ---------------------------------------------------------------------------
 // Shared query params
 // ---------------------------------------------------------------------------
 
