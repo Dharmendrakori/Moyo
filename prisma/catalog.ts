@@ -1,7 +1,7 @@
 /**
  * THE 20 OFFICIAL MAIN CATEGORIES
  *
- * Source of truth: the SERIC TECH SOLUTIONS service specification.
+ * Source of truth: the official Moyo service specification.
  * These names and their order MUST NOT be renamed or reordered. Sub-catalogues
  * are the operational groupings used to make the catalog navigable.
  */

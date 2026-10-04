@@ -327,8 +327,8 @@ export function BookingWizard({
           <span className="font-mono font-bold text-ink-900">{created.reference}</span>.
         </p>
         <p className="mx-auto mt-3 max-w-md text-sm text-ink-600">
-          The provider will confirm this request. SERIC TECH SOLUTIONS operates this booking on the
-          Moyo platform; technician details appear here once a technician is assigned.
+          The provider will confirm this request. MOYO is the service identity you are booking
+          with; technician details appear here once a technician is assigned.
         </p>
         <div className="mt-6 flex flex-wrap justify-center gap-2">
           <Link
@@ -851,8 +851,7 @@ export function BookingWizard({
             className="mt-0.5 h-4 w-4 shrink-0 accent-brand-600"
           />
           <span className="text-sm text-ink-700">
-            I confirm these details are correct and I want to place this booking with SERIC TECH
-            SOLUTIONS on the Moyo platform.
+            I confirm these details are correct and I want to place this booking with MOYO.
           </span>
         </label>
       </div>

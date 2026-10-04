@@ -159,7 +159,7 @@ export function BottomNav() {
   );
 }
 
-/** Footer. Makes clear MOYO is the platform and SERIC is a provider on it. */
+/** Footer. Presents MOYO as the service identity customers book with. */
 export function CustomerFooter() {
   return (
     <footer className="border-t border-ink-200 bg-white">
@@ -173,8 +173,8 @@ export function CustomerFooter() {
               <span className="text-base font-bold text-ink-900">MOYO</span>
             </div>
             <p className="mt-3 text-sm text-ink-500">
-              MOYO is a service operations platform. Providers operate on MOYO and deliver the
-              services they publish.
+              MOYO is a service operations platform delivering field services across 20 official
+              categories.
             </p>
           </div>
 
@@ -246,7 +246,6 @@ export async function ProviderContactCard() {
     provider.whatsappNumber,
     'Hello, I would like to book a service on MOYO.',
   );
-
   return (
     <section className="rounded-card border border-ink-200 bg-white p-5">
       <h2 className="text-sm font-semibold text-ink-900">Service provider</h2>

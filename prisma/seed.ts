@@ -13,8 +13,8 @@ import { CHARGING_OPTIONS, type ServiceType } from '../src/lib/domain';
  * WHAT IS AND IS NOT SEEDED:
  * - The 20 official categories and their sub-catalogues are seeded exactly as
  *   specified. Service names are specification-derived, not invented.
- * - SERIC TECH SOLUTIONS is seeded as the provider, using only the business
- *   details that were supplied (name, registered address, email, contacts).
+ * - MOYO is seeded as the current service provider, using only the business
+ *   details that were supplied (identity, registered address, email, contacts).
  *   No ratings, certifications, ETAs or guarantees are fabricated.
  * - Admin credentials are created ONLY when SEED_ADMIN_PASSWORD is set in the
  *   environment. There is no hard-coded password anywhere in this repository.
@@ -140,34 +140,81 @@ async function seedCatalog() {
 }
 
 /**
- * SERIC TECH SOLUTIONS
- *
- * This is a PROVIDER on the Moyo platform, not the platform itself.
+ * MOYO - the current customer-facing service provider.
  *
  * Only the business details that were actually supplied to us are recorded.
  * Fields that would require verification (GSTIN, certifications, ratings,
  * ETAs, availability guarantees) are intentionally left NULL. The customer
  * UI renders neutral copy for any null value instead of inventing one.
+ *
+ * IDENTITY: for the current deployment MOYO is the service identity customers
+ * interact with. It is the value stored in `Provider.displayName` /
+ * `legalName` and the value every customer-facing surface renders.
  */
-const SERIC_PROVIDER = {
-  legalName: 'SERIC TECH SOLUTIONS',
-  displayName: 'SERIC TECH SOLUTIONS',
-  slug: 'seric-tech-solutions',
+const MOYO_PROVIDER = {
+  legalName: 'MOYO',
+  displayName: 'MOYO',
+  slug: 'moyo',
   description:
-    'Service provider operating on the Moyo platform across the 20 official service categories, covering electrical, electronic, solar, plumbing and allied works.',
+    'Service provider operating across the 20 official service categories, covering electrical, electronic, solar, plumbing and allied works.',
   registeredAddress: 'Top Floor, Multicare Hospital, Royal Market, Bhopal, Madhya Pradesh 462030',
   contactEmail: 'dharmendra.kori@outlook.com',
-  contactPhone: '9993043078',
-  whatsappNumber: '9993043078',
+  // Stored with the country code so `telLink()`/`whatsappLink()` produce the
+  // correct international targets: tel:+917047172454 and wa.me/917047172454.
+  contactPhone: '917047172454',
+  whatsappNumber: '917047172454',
   // Not verified in this deployment - the UI must not claim verification.
   isVerified: false,
   isActive: true,
 };
 
-async function seedProvider() {
-  console.log('Seeding provider: SERIC TECH SOLUTIONS...');
+/**
+ * Provider slugs used by earlier deployments of this seed.
+ *
+ * `Provider.slug` is `@unique` and is referenced by nothing else in the app, so
+ * renaming it is safe - but only if the EXISTING row is migrated in place.
+ * Upserting on the new slug alone would silently CREATE a second provider,
+ * orphaning the first one's `ProviderService` links and `Booking.providerId`
+ * foreign keys. `migrateLegacyProviderSlug()` moves the row instead, so every
+ * relationship and the provider id survive the rename.
+ */
+const LEGACY_PROVIDER_SLUGS = ['seric-tech-solutions'] as const;
 
-  const email = SERIC_PROVIDER.contactEmail.toLowerCase();
+async function migrateLegacyProviderSlug(): Promise<void> {
+  for (const legacy of LEGACY_PROVIDER_SLUGS) {
+    if (legacy === MOYO_PROVIDER.slug) continue;
+
+    const existing = await prisma.provider.findUnique({
+      where: { slug: legacy },
+      select: { id: true },
+    });
+    if (!existing) continue;
+
+    // Only migrate if the target slug is free; otherwise the current row is
+    // already correct and must not be disturbed.
+    const target = await prisma.provider.findUnique({
+      where: { slug: MOYO_PROVIDER.slug },
+      select: { id: true },
+    });
+    if (target) continue;
+
+    await prisma.provider.update({
+      where: { id: existing.id },
+      data: { slug: MOYO_PROVIDER.slug },
+    });
+    console.log(`  migrated provider slug "${legacy}" -> "${MOYO_PROVIDER.slug}" (id preserved)`);
+  }
+}
+
+async function seedProvider() {
+  console.log(`Seeding provider: ${MOYO_PROVIDER.displayName}...`);
+
+  // Move any legacy-slug row onto the current slug BEFORE upserting, so the
+  // rename preserves the provider id and all of its foreign keys instead of
+  // creating a second provider row.
+  await migrateLegacyProviderSlug();
+
+  const email = MOYO_PROVIDER.contactEmail.toLowerCase();
 
   // The provider PROFILE is keyed on its slug, not on the owning user.
   //
@@ -187,47 +234,80 @@ async function seedProvider() {
   if (!providerUser) {
     providerUser = await prisma.user.upsert({
       where: { email },
-      update: { name: SERIC_PROVIDER.legalName, isActive: true },
+      update: { name: MOYO_PROVIDER.legalName, isActive: true },
       create: {
         email,
         // Unusable random password. This account is managed via password reset.
         // It can never be logged into with a known credential from the codebase.
         passwordHash: await bcrypt.hash(randomPassword(), 12),
-        phone: SERIC_PROVIDER.contactPhone,
-        name: SERIC_PROVIDER.legalName,
+        // User.phone is @unique and stores a bare 10-digit number, so the
+        // international form used for provider contact links is stripped here.
+        phone: MOYO_PROVIDER.contactPhone.replace(/^91/, ''),
+        name: MOYO_PROVIDER.legalName,
         role: 'PROVIDER',
         isActive: true,
       },
       select: { id: true },
     });
+  } else {
+    // Keep the owning account in step with the provider identity: display name,
+    // phone and the authoritative contact email. Otherwise a provider account
+    // created under a superseded address would keep that address forever, and
+    // it is active login data.
+    const emailTakenByOther = await prisma.user.findFirst({
+      where: { email, NOT: { id: providerUser.id } },
+      select: { id: true },
+    });
+
+    await prisma.user.update({
+      where: { id: providerUser.id },
+      data: {
+        name: MOYO_PROVIDER.legalName,
+        phone: MOYO_PROVIDER.contactPhone.replace(/^91/, ''),
+        isActive: true,
+        // `User.email` is @unique; only claim it when it is genuinely free.
+        ...(emailTakenByOther ? {} : { email }),
+      },
+    });
+
+    if (emailTakenByOther) {
+      // The authoritative contact address already belongs to another account, so
+      // it is NOT taken from them. The customer-facing contact details live on
+      // the Provider record (correctly set above); this operator login keeps its
+      // own address. Flagged because it is otherwise invisible.
+      console.warn(
+        `  note: provider account kept email "${providerUser.id}" - ` +
+          `contact email is already registered to another account`,
+      );
+    }
   }
 
   const provider = await prisma.provider.upsert({
-    where: { slug: SERIC_PROVIDER.slug },
+    where: { slug: MOYO_PROVIDER.slug },
     update: {
       userId: providerUser.id,
-      legalName: SERIC_PROVIDER.legalName,
-      displayName: SERIC_PROVIDER.displayName,
-      description: SERIC_PROVIDER.description,
-      registeredAddress: SERIC_PROVIDER.registeredAddress,
-      contactEmail: SERIC_PROVIDER.contactEmail,
-      contactPhone: SERIC_PROVIDER.contactPhone,
-      whatsappNumber: SERIC_PROVIDER.whatsappNumber,
-      isVerified: SERIC_PROVIDER.isVerified,
-      isActive: SERIC_PROVIDER.isActive,
+      legalName: MOYO_PROVIDER.legalName,
+      displayName: MOYO_PROVIDER.displayName,
+      description: MOYO_PROVIDER.description,
+      registeredAddress: MOYO_PROVIDER.registeredAddress,
+      contactEmail: MOYO_PROVIDER.contactEmail,
+      contactPhone: MOYO_PROVIDER.contactPhone,
+      whatsappNumber: MOYO_PROVIDER.whatsappNumber,
+      isVerified: MOYO_PROVIDER.isVerified,
+      isActive: MOYO_PROVIDER.isActive,
     },
     create: {
       userId: providerUser.id,
-      legalName: SERIC_PROVIDER.legalName,
-      displayName: SERIC_PROVIDER.displayName,
-      slug: SERIC_PROVIDER.slug,
-      description: SERIC_PROVIDER.description,
-      registeredAddress: SERIC_PROVIDER.registeredAddress,
-      contactEmail: SERIC_PROVIDER.contactEmail,
-      contactPhone: SERIC_PROVIDER.contactPhone,
-      whatsappNumber: SERIC_PROVIDER.whatsappNumber,
-      isVerified: SERIC_PROVIDER.isVerified,
-      isActive: SERIC_PROVIDER.isActive,
+      legalName: MOYO_PROVIDER.legalName,
+      displayName: MOYO_PROVIDER.displayName,
+      slug: MOYO_PROVIDER.slug,
+      description: MOYO_PROVIDER.description,
+      registeredAddress: MOYO_PROVIDER.registeredAddress,
+      contactEmail: MOYO_PROVIDER.contactEmail,
+      contactPhone: MOYO_PROVIDER.contactPhone,
+      whatsappNumber: MOYO_PROVIDER.whatsappNumber,
+      isVerified: MOYO_PROVIDER.isVerified,
+      isActive: MOYO_PROVIDER.isActive,
     },
   });
 
@@ -312,13 +392,16 @@ async function seedSettings() {
     ['platform.currency', 'INR'],
     ['platform.taxRateBps', '1800'],
     ['support.email', 'dharmendra.kori@outlook.com'],
-    ['support.phone', '9993043078'],
+    ['support.phone', '917047172454'],
     ['booking.autoAssign', 'false'],
   ];
   for (const [key, value] of defaults) {
     await prisma.setting.upsert({
       where: { key },
-      update: {},
+      // `update: { value }` is deliberate. With an empty update the row is only
+      // ever created, so a superseded contact address written by an earlier
+      // deployment would persist forever and stay live in the database.
+      update: { value },
       create: { key, value },
     });
   }

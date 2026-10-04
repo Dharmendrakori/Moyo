@@ -2,7 +2,7 @@
   "name": "moyo-platform",
   "version": "1.0.0",
   "private": true,
-  "description": "MOYO - service operations platform. SERIC TECH SOLUTIONS operates as a provider on Moyo.",
+  "description": "MOYO - service operations platform for booking, tracking and managing field services.",
   "scripts": {
     "dev": "next dev",
     "build": "prisma generate && next build",

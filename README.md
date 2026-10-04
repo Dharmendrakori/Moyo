@@ -2,15 +2,21 @@
 
 A service operations platform for booking, tracking and managing field services.
 
-> ## MOYO = THE PLATFORM
-> ## SERIC TECH SOLUTIONS = A SERVICE PROVIDER OPERATING ON MOYO
+> ## MOYO = THE CUSTOMER-FACING SERVICE PROVIDER / SERVICE IDENTITY
 >
-> MOYO is the platform, brand and marketplace. SERIC TECH SOLUTIONS is a service
-> provider whose jobs are dispatched through it. The two identities are never
-> merged: the word "Moyo" is never used as a provider name, and the provider is
-> never presented as the platform. This rule is enforced in the copy, in the
-> component naming and in the data model (`Provider` is a record *on* the
-> platform, not the platform itself).
+> For the current deployment, **MOYO is the service identity customers interact
+> with**. It is the name stored in `Provider.displayName` / `Provider.legalName`
+> and the name rendered on every customer-facing provider surface: the provider
+> card, the service pages, the booking wizard, the confirmation summary and the
+> booking tracking screen.
+>
+> No other provider name is shown to customers. The `Provider` model still
+> supports multiple providers - it is a general schema - but the current seeded
+> deployment has exactly one, and it is MOYO.
+>
+> Contact details are the authoritative business contact for Moyo. They are
+> stored on the `Provider` record and rendered into the Call and WhatsApp
+> actions, both of which resolve to `+917047172454`.
 
 ---
 
@@ -87,8 +93,8 @@ npm run dev
 ```
 
 The seed loads all **20 official categories** (98 services) exactly as specified
-in `prisma/catalog.ts`, and registers SERIC TECH SOLUTIONS as a provider using
-only the business details actually supplied.
+in `prisma/catalog.ts`, and registers MOYO as the service provider using only
+the business details actually supplied.
 
 ### Creating an admin account
 
@@ -295,6 +301,7 @@ tests/
 ├── booking-state.test.ts    State machine invariants
 ├── booking-tracking.test.ts Tracking view model
 ├── booking-api.test.ts      Real route handlers (auth, CSRF, IDOR, pricing)
+├── provider-identity.test.ts Provider identity, contacts and link targets
 ├── security.test.ts         Redirect and narrowing defences
 ├── validation.test.ts       Input validation and mass-assignment
 └── stubs/                   Test-only shims for `server-only` and `next/headers`
@@ -335,7 +342,7 @@ Current state (verified for the customer booking wizard + tracking milestone):
 | --- | --- |
 | `npm run typecheck` | PASS |
 | `npm run lint` | PASS (0 errors, 0 warnings) |
-| `npm test` | PASS (84 tests, 5 suites) |
+| `npm test` | PASS (98 tests, 6 suites) |
 | `npm run build` | PASS (no warnings) |
 | `npm run audit:prod` | 0 vulnerabilities |
 | `npm run db:seed` | PASS (idempotent) |
@@ -367,6 +374,7 @@ vulnerability-free is made** - see `SECURITY.md` for what is still outstanding.
 | `ATTACHMENT_UPLOADED` audit action | Uploads are recorded without storing user-supplied paths |
 | Attachment status gate | Uploads are refused once work has begun (`SERVICE_IN_PROGRESS` and later) |
 | Tracking view model | `projectLifecycle()` cannot report a future stage as complete - asserted by test |
+| Provider identity pinning | `provider-identity.test.ts` asserts the seeded identity and contacts, the generated Call and WhatsApp targets, and scans every active source file for retired values |
 
 ---
 
@@ -438,27 +446,47 @@ Renaming or reordering them is a data change.
 
 ---
 
-## Platform and provider identity
+## Service provider identity and contact
 
-This distinction is the single most important rule in the codebase.
-
-| | |
-| --- | --- |
-| **MOYO** | The platform. Owns the brand, the catalog, the booking lifecycle, sessions and payments. |
-| **SERIC TECH SOLUTIONS** | A service provider operating on Moyo. Fulfils bookings, employs technicians, publishes prices. |
-
-Recorded provider facts (seeded from `prisma/seed.ts`, nothing invented):
+MOYO is the customer-facing service identity for the current deployment. The
+values below live on the `Provider` record and are rendered by
+`getPrimaryProvider()` into every customer-facing provider surface.
 
 | Field | Value |
 | --- | --- |
-| Legal / display name | SERIC TECH SOLUTIONS |
+| Display name (customer-facing) | **MOYO** |
+| Legal name | **MOYO** |
+| Slug | `moyo` |
 | Registered address | Top Floor, Multicare Hospital, Royal Market, Bhopal, Madhya Pradesh 462030 |
 | Email | `dharmendra.kori@outlook.com` |
-| Contact phone / WhatsApp | `+91 9993043078` |
+| Phone / Call | `+917047172454` (`tel:+917047172454`) |
+| WhatsApp | `+917047172454` (`https://wa.me/917047172454`) |
 
-The UI states "Service provider operating on the Moyo platform" wherever the
-provider appears in a customer-facing surface. Booking reference numbers are
-prefixed `MOYO-` because they are platform-issued.
+Call and WhatsApp deliberately use the **same number**. `Provider.contactPhone`
+and `Provider.whatsappNumber` are both stored as `917047172454` - the digits
+include the country code, because `telLink()` and `whatsappLink()` in
+`src/lib/format.ts` normalise to digits and emit the international form.
+
+### Renaming the provider without breaking relationships
+
+`Provider.slug` is `@unique` and is not referenced anywhere else in the
+application, so renaming it is safe - **but only if the existing row is migrated
+in place**. Upserting on a new slug alone would create a *second* provider,
+orphaning the original's `ProviderService` links and every `Booking.providerId`
+foreign key that points at it.
+
+`prisma/seed.ts` therefore keeps an explicit `LEGACY_PROVIDER_SLUGS` allowlist
+and runs `migrateLegacyProviderSlug()` before the upsert, which moves the row and
+preserves its id. Re-seeding is idempotent: a second run changes nothing.
+
+### A note on the operator login account
+
+The seed owns a `PROVIDER`-role `User` that owns the provider profile. Its
+display name and phone are kept in step with the provider identity. Its **email
+is only updated when the authoritative address is genuinely free** - `User.email`
+is `@unique`, and taking the address from another account would break that
+account's login. The customer-facing contact details live on the `Provider`
+record and are always correct regardless.
 
 ---
 

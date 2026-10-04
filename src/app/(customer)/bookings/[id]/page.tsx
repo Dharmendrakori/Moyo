@@ -164,7 +164,7 @@ export default async function BookingDetailPage({
               {booking.provider?.displayName ?? 'Not yet assigned'}
             </p>
             <p className="mt-1 text-xs text-ink-500">
-              Service provider operating on the Moyo platform.
+              Service provider across the 20 official service categories.
             </p>
           </section>
         </div>

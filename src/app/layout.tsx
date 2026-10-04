@@ -24,7 +24,7 @@ export const metadata: Metadata = {
     template: '%s | MOYO',
   },
   description:
-    'MOYO is a service operations platform for booking, tracking and managing field services. SERIC TECH SOLUTIONS operates as a provider on Moyo.',
+    'MOYO is a service operations platform for booking, tracking and managing field services across 20 official service categories.',
   applicationName: 'MOYO',
   referrer: 'strict-origin-when-cross-origin',
   robots: {

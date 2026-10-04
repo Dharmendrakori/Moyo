@@ -109,7 +109,7 @@ model CustomerAddress {
 // Provider / Technician
 // ---------------------------------------------------------------------------
 
-/// A service provider operating on Moyo. SERIC TECH SOLUTIONS is one of these.
+/// A service provider operating on Moyo. MOYO is the current one.
 model Provider {
   id             String  @id @default(cuid())
   userId         String  @unique
@@ -176,7 +176,7 @@ model Technician {
 
 model Category {
   id          String  @id @default(cuid())
-  /// 1..20 exactly as defined by the SERIC specification. Never renamed.
+  /// 1..20 exactly as defined by the official service specification. Never renamed.
   code        String  @unique
   position    Int     @unique
   name        String
