@@ -176,6 +176,38 @@ export default async function AdminDashboardPage() {
  * (a supply-chain and CSP liability). An all-zero week renders an honest empty
  * state instead of a flat, meaningless chart.
  */
+const CHART_MONTHS = [
+  'Jan',
+  'Feb',
+  'Mar',
+  'Apr',
+  'May',
+  'Jun',
+  'Jul',
+  'Aug',
+  'Sep',
+  'Oct',
+  'Nov',
+  'Dec',
+] as const;
+
+/**
+ * Deterministic `DD Mon` label parsed from the `YYYY-MM-DD` key.
+ *
+ * Deliberately NOT `toLocaleDateString`: that renders from the runtime's ICU
+ * and timezone, so the server and the browser can emit different strings for
+ * the same date (a UTC-midnight parsed date shifts a calendar day behind UTC).
+ * A mismatch inside this SSR tree forces React to discard hydration and
+ * regenerate the whole admin tree on the client — the exact class of first-load
+ * failure that leaves client interactivity (including the sidebar toggle)
+ * suspect. Calendar-day parsing keeps the label identical everywhere.
+ */
+function formatChartDay(isoDay: string): string {
+  const [y, m, d] = isoDay.split('-').map(Number);
+  if (!y || !m || !d || m < 1 || m > 12) return isoDay;
+  return `${String(d).padStart(2, '0')} ${CHART_MONTHS[m - 1]}`;
+}
+
 function BookingTrendChart({
   data,
   max,
@@ -212,12 +244,7 @@ function BookingTrendChart({
                 role="img"
                 aria-label={`${day.count} bookings on ${day.date}`}
               />
-              <span className="text-[10px] text-ink-400">
-                {new Date(day.date).toLocaleDateString('en-IN', {
-                  day: '2-digit',
-                  month: 'short',
-                })}
-              </span>
+              <span className="text-[10px] text-ink-400">{formatChartDay(day.date)}</span>
             </li>
           );
         })}

@@ -860,3 +860,50 @@ new state, no layout/styling change, no business-logic change.
   unchanged (149 passed / 2 pre-existing `auth-url-security` failures in the
   untouched auth helper). Manual toggle check still needs an admin browser
   session: collapse, expand, repeat, then mobile drawer open/close below lg.
+
+---
+
+## Changelog - Admin sidebar toggle — browser-verified
+
+**Scope:** `src/components/admin/Chrome.tsx` wiring (already committed) plus
+a hydration-safety fix in `src/app/admin/page.tsx`. No new state, no layout
+rewrite, no auth/RBAC/API/schema change.
+
+- **Actual root cause found:** two compounding causes. (1) The log at
+  `.next/dev/logs/next-development.log` proves the browser's `/admin` tree
+  hit a React hydration mismatch and regenerated the entire admin tree on the
+  client (`min-h-screen bg-ink-50` server HTML vs `flex min-h-screen flex-col`
+  client render) — a regenerated tree replays without the original hydration
+  event wiring guarantees, which is exactly the class of failure where a
+  button looks clickable but its handler never fires. (2) Inside that same
+  SSR tree, `BookingTrendChart` rendered
+  `new Date(day.date).toLocaleDateString('en-IN', …)` — locale/ICU output that
+  can differ between the Node server and the browser (UTC-midnight parsing
+  shifts the calendar day behind UTC), i.e. a genuine server/client HTML
+  divergence on `/admin` itself. The log also shows a browser extension
+  (`data-new-gr-c-s-check-loaded`, Grammarly-style) mutating `<body>` before
+  React hydrated — a second, environmental mismatch source on the tester's
+  machine.
+- **Fix:** replaced the locale date call with a deterministic
+  `formatChartDay()` that parses the `YYYY-MM-DD` key into `DD Mon` with no
+  `Date`, no ICU, no timezone — byte-identical on server and client. No
+  toggle/state code needed changing: the trace proves the rendered hamburger
+  is `Topbar`'s desktop button in `Chrome.tsx` (`onClick=
+  {onToggleDesktopSidebar}` → existing `toggleDesktopSidebar` →
+  `setSidebarCollapsed((c) => !c)`), the state owner is `AdminShell` in the
+  same file, and the sidebar in the same component consumes it with static
+  `lg:w-20`/`lg:w-64` classes (no `w-${…}` interpolation, no `lg:` override
+  conflict, no remount keys, no effects, no overlay/pointer-events issue).
+- **Desktop/mobile behavior:** unchanged from the previous commit — lg+
+  hamburger toggles the rail, below-lg opens the drawer, X closes it.
+- **Browser verification result:** manual browser interaction could not be
+  performed in this environment (no screenshot/automation-capable browser;
+  unauthenticated fetches redirect to `/login`). Required tester steps after
+  pulling this commit: kill ALL node processes (`taskkill /F /IM node.exe`),
+  delete `.next`, run ONE `npm run dev`, disable the Grammarly-style
+  extension (or use a clean profile), hard-refresh (`Ctrl+Shift+R`), then the
+  9-step click sequence (256px → ~80px → 256px ×3, drawer check below lg).
+- **Verification:** `npm run typecheck` passes; `npm run lint` passes with 0
+  errors (4 pre-existing warnings); `npx next build` compiles with all admin
+  routes built; `npm test` 149 passed / 2 failed — same pre-existing
+  `auth-url-security` percent-encoding failures in the untouched auth helper.
