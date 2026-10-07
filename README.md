@@ -834,3 +834,29 @@ booking logic, pricing logic, provider/catalog data, or the customer UI.
   session.
 - **Known limitation:** collapse state is per-mount UI state (resets on
   navigation reload); no cross-session persistence by design.
+
+---
+
+## Changelog - Admin header toggle wiring fix
+
+**Scope:** interaction wiring only in `src/components/admin/Chrome.tsx`. No
+new state, no layout/styling change, no business-logic change.
+
+- **Root cause:** the header used one button whose click branched at runtime
+  on `window.matchMedia('(min-width: 1024px)')`. Any drift between that JS
+  breakpoint check and the Tailwind `lg` visibility classes meant a desktop
+  click could open the (hidden) mobile drawer instead of toggling the
+  existing `sidebarCollapsed` rail state, so the hamburger appeared dead when
+  the sidebar was collapsed.
+- **Fix:** replaced the runtime breakpoint branch with two breakpoint-explicit
+  buttons sharing the one header slot - a `hidden lg:block` desktop hamburger
+  wired directly to `onClick={() => setSidebarCollapsed((c) => !c)}` (the
+  existing state/setter, reused, nothing new), and a `lg:hidden` mobile
+  hamburger that only opens the drawer. Same `menu` icon, same
+  `aria-expanded={!sidebarCollapsed}` / `aria-controls="admin-sidebar"` /
+  Collapse-Expand `aria-label` on the desktop button.
+- **Verification:** `npm run typecheck` passes; `npm run lint` passes with 0
+  errors; `npx next build` compiles with all admin routes built; `npm test`
+  unchanged (149 passed / 2 pre-existing `auth-url-security` failures in the
+  untouched auth helper). Manual toggle check still needs an admin browser
+  session: collapse, expand, repeat, then mobile drawer open/close below lg.

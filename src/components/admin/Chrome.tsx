@@ -48,15 +48,14 @@ export function AdminShell({
   const activeItem = findActive(nav, pathname);
   const roleLabel = ROLE_LABEL[userRole as keyof typeof ROLE_LABEL] ?? userRole;
 
-  // A single responsive toggle: below lg it opens the drawer overlay, on lg+
-  // it collapses/expands the structural sidebar column.
-  const handleToggle = () => {
-    if (typeof window !== 'undefined' && window.matchMedia('(min-width: 1024px)').matches) {
-      setSidebarCollapsed((v) => !v);
-    } else {
-      setDrawerOpen((v) => !v);
-    }
-  };
+  // ONE header slot, TWO breakpoint-explicit callbacks sharing it:
+  // - desktop (lg+) toggles the existing `sidebarCollapsed` rail state;
+  // - mobile (below lg) opens the `drawerOpen` overlay.
+  // Visibility is decided by Tailwind responsive classes on the buttons
+  // themselves (see Topbar), so a desktop click can never open the mobile
+  // drawer and vice versa — no runtime breakpoint check to drift.
+  const toggleDesktopSidebar = () => setSidebarCollapsed((collapsed) => !collapsed);
+  const openMobileDrawer = () => setDrawerOpen(true);
 
   return (
     <div className="flex min-h-screen flex-col bg-ink-50">
@@ -69,8 +68,9 @@ export function AdminShell({
 
       <Topbar
         title={activeItem?.label ?? 'Dashboard'}
-        onToggleNav={handleToggle}
-        // Exposed for aria-expanded/aria-controls on the single toggle.
+        onToggleDesktopSidebar={toggleDesktopSidebar}
+        onOpenMobileDrawer={openMobileDrawer}
+        // Exposed for aria-expanded/aria-controls on the desktop toggle.
         sidebarCollapsed={sidebarCollapsed}
         userName={userName}
         userInitials={userInitials}
@@ -291,7 +291,8 @@ function NavList({
 
 function Topbar({
   title,
-  onToggleNav,
+  onToggleDesktopSidebar,
+  onOpenMobileDrawer,
   sidebarCollapsed,
   userName,
   userInitials,
@@ -299,10 +300,14 @@ function Topbar({
 }: {
   title: string;
   /**
-   * The SINGLE collapse/expand control. Responsive by design: below lg it
-   * opens/closes the drawer overlay; on lg+ it toggles the desktop rail.
+   * The desktop (lg+) collapse/expand control for the existing
+   * `sidebarCollapsed` state. Always mounted and always wired; visibility is
+   * handled by the `hidden lg:block` wrapper so a desktop click can only ever
+   * reach this callback — never the mobile drawer.
    */
-  onToggleNav: () => void;
+  onToggleDesktopSidebar: () => void;
+  /** Below-lg control that opens the mobile drawer overlay. */
+  onOpenMobileDrawer: () => void;
   /** Desktop collapsed state, reflected in aria-expanded. */
   sidebarCollapsed: boolean;
   userName: string;
@@ -311,16 +316,31 @@ function Topbar({
 }) {
   return (
     <header className="sticky top-0 z-20 flex h-16 shrink-0 items-center gap-3 border-b border-ink-200 bg-white px-4 sm:px-6 lg:px-8">
-      <button
-        type="button"
-        onClick={onToggleNav}
-        aria-label={sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
-        aria-expanded={!sidebarCollapsed}
-        aria-controls="admin-sidebar"
-        className="rounded-lg p-2 text-ink-600 hover:bg-ink-100"
-      >
-        <Icon name="menu" size={20} />
-      </button>
+      {/* Desktop hamburger: visible at lg+, drives the rail state directly. */}
+      <span className="hidden lg:block">
+        <button
+          type="button"
+          onClick={onToggleDesktopSidebar}
+          aria-label={sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+          aria-expanded={!sidebarCollapsed}
+          aria-controls="admin-sidebar"
+          className="rounded-lg p-2 text-ink-600 hover:bg-ink-100"
+        >
+          <Icon name="menu" size={20} />
+        </button>
+      </span>
+      {/* Mobile hamburger: visible below lg, opens the drawer overlay. */}
+      <span className="lg:hidden">
+        <button
+          type="button"
+          onClick={onOpenMobileDrawer}
+          aria-label="Open navigation"
+          aria-controls="admin-sidebar"
+          className="rounded-lg p-2 text-ink-600 hover:bg-ink-100"
+        >
+          <Icon name="menu" size={20} />
+        </button>
+      </span>
 
       <h2 className="text-base font-semibold text-ink-900">{title}</h2>
 
