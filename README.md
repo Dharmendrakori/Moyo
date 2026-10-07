@@ -744,3 +744,93 @@ git checkout backup/pre-moyo-refactor
 ```
 
 The refactor work is on `feature/moyo-platform`. `main` was never modified.
+
+---
+
+## Changelog - Admin shell sidebar layout fix
+
+**Scope:** layout/CSS only in `src/components/admin/Chrome.tsx`. No change to
+business logic, Prisma schema, seed data, authentication, RBAC, APIs, pricing
+logic, booking logic, or the customer UI.
+
+- **Root cause:** the desktop sidebar was `position: fixed` (`fixed inset-y-0
+  left-0`) while the header and `main` content relied on a compensating
+  `lg:ml-64` offset instead of occupying structural layout space, so dashboard
+  content rendered underneath the sidebar whenever the offset drifted.
+- **Fix:** the admin shell is now a structural flex column - the header spans
+  the full width on top, and below it a `flex flex-1` row holds the sidebar as
+  a real `w-64 shrink-0` column next to a `min-w-0 flex-1` main column. The
+  desktop sidebar is `position: sticky` (`lg:sticky lg:top-16
+  lg:h-[calc(100vh-4rem)]`), so it stays visible while scrolling yet still
+  occupies its own width. All `fixed` positioning and `lg:ml-64` offsets were
+  removed from the desktop shell; `fixed` + `z-40` remain only for the mobile
+  drawer (below `lg`), which is a legitimate overlay.
+- **Responsive behavior:** on desktop (`lg` and up) the sidebar is always
+  visible in its own column and the main content uses the remaining width; on
+  mobile/tablet the sidebar is hidden and the main content takes the full
+  width, with the existing hamburger button opening the drawer overlay. Tables
+  keep their own `overflow-x-auto` inside `DataTable`, so wide tables scroll
+  internally instead of pushing the page wider than the viewport.
+- **Verification:** `npm run typecheck` passes; `npm run lint` passes with 0
+  errors (4 pre-existing warnings in untouched files); `npm test` gives
+  149 passed / 2 failed where both failures are pre-existing
+  `tests/auth-url-security.test.ts` percent-encoding expectations in an
+  untouched auth-redirect helper; `npx next build` compiles successfully with
+  all admin routes (`/admin`, `/admin/categories`, `/admin/services`,
+  `/admin/charging-options`, `/admin/pricing`, `/admin/services/[id]`) built.
+  `npm run build` itself was not green end-to-end because `prisma generate`
+  hit a Windows `EPERM` file-lock rename on
+  `node_modules/.prisma/client/query_engine-windows.dll.node` (environmental,
+  unrelated to this change). Browser verification at 1366/1440/1920px and
+  375/768px was not possible in this environment (no screenshot-capable
+  browser; the admin guard also redirects unauthenticated fetches to `/login`),
+  so layout was verified from compiled output and source inspection instead.
+- **Remaining limitation:** visual pixel-level confirmation (sidebar/content
+  alignment, viewport scrolling, drawer behavior at 375/768px) still needs a
+  manual pass in a real browser with an admin session.
+
+---
+
+## Changelog - Admin sidebar collapse/expand interaction
+
+**Scope:** UI/layout interaction only in `src/components/admin/Chrome.tsx`.
+No change to Prisma schema, seed data, authentication, RBAC, admin API guards,
+booking logic, pricing logic, provider/catalog data, or the customer UI.
+
+- **Root cause:** the header hamburger only opened the mobile drawer
+  (`lg:hidden` button wired to `drawerOpen`) and had no desktop effect, while
+  the desktop sidebar was a permanently expanded `w-64` column with its own
+  separate X/close affordance nearby - two disconnected navigation behaviors
+  instead of one coherent collapse/expand system.
+- **Desktop expanded:** full `w-64` sidebar column - MOYO/Admin-console
+  branding, section headings, icon + label items, SOON badges and "View
+  customer site" all visible; main uses the remaining width.
+- **Desktop collapsed:** narrow `w-20` icon rail, still a structural sticky
+  flex column (never `fixed`, never an overlay) - logo icon stays centered,
+  all nav icons stay visible/clickable, every text label/heading/SOON badge is
+  hidden, and main expands into the freed width via the natural flex layout
+  with a subtle `transition-[width] duration-200`.
+- **Mobile/tablet (below lg):** unchanged drawer behavior - sidebar hidden,
+  the same header hamburger opens the `fixed` overlay drawer, X closes it.
+  Desktop `sidebarCollapsed` and mobile `drawerOpen` are separate state and
+  never drive each other; the responsive toggle branches on a
+  `(min-width: 1024px)` media query.
+- **Accessibility:** the toggle carries `aria-controls="admin-sidebar"`,
+  `aria-expanded` reflecting the desktop state, and a dynamic
+  Collapse/Expand `aria-label`; the sidebar has `id="admin-sidebar"`;
+  collapsed icons get `title`/`aria-label` tooltips (no new dependency - the
+  project has no tooltip component); active-item highlighting and keyboard
+  navigation are unchanged.
+- **Files changed:** `src/components/admin/Chrome.tsx` only (plus this
+  README entry). No persistence was added - plain `useState`, no
+  database/schema change, no sensitive data stored.
+- **Verification:** `npm run typecheck` passes; `npm run lint` passes with 0
+  errors; `npm test` gives 149 passed / 2 failed where both failures are the
+  same pre-existing `tests/auth-url-security.test.ts` percent-encoding
+  expectations in the untouched auth-redirect helper; `npx next build`
+  compiles with all admin routes built. Authenticated manual verification at
+  375/768/1024/1366/1440/1920px (hamburger toggles rail on desktop, drawer on
+  mobile, no overlap/scrollbar) still needs a real browser pass with an admin
+  session.
+- **Known limitation:** collapse state is per-mount UI state (resets on
+  navigation reload); no cross-session persistence by design.

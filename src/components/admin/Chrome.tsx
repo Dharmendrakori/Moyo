@@ -15,7 +15,10 @@ import { ROLE_LABEL } from '@/lib/domain';
  * highlighting needs `usePathname`; everything it renders is static navigation
  * metadata with no sensitive values.
  *
- * The sidebar is a fixed column on desktop and an off-canvas drawer on mobile.
+ * Layout is structural: the header spans the full width, and below it a flex
+ * row holds a sticky desktop sidebar column plus the main content column.
+ * The sidebar therefore occupies its own width and can never overlay the
+ * dashboard. The only overlay is the mobile drawer (below `lg`).
  *
  * NOTHING HERE IS AN AUTHORIZATION CONTROL. This component renders navigation
  * for whoever the server already proved is an administrator. A non-admin never
@@ -36,12 +39,27 @@ export function AdminShell({
   children: ReactNode;
 }) {
   const pathname = usePathname();
+  // Desktop collapse and the mobile drawer are SEPARATE concepts:
+  // `sidebarCollapsed` switches the desktop (lg+) sidebar between the full
+  // w-64 column and the w-20 icon rail; `drawerOpen` only controls the
+  // below-lg overlay drawer. One never drives the other.
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const activeItem = findActive(nav, pathname);
   const roleLabel = ROLE_LABEL[userRole as keyof typeof ROLE_LABEL] ?? userRole;
 
+  // A single responsive toggle: below lg it opens the drawer overlay, on lg+
+  // it collapses/expands the structural sidebar column.
+  const handleToggle = () => {
+    if (typeof window !== 'undefined' && window.matchMedia('(min-width: 1024px)').matches) {
+      setSidebarCollapsed((v) => !v);
+    } else {
+      setDrawerOpen((v) => !v);
+    }
+  };
+
   return (
-    <div className="min-h-screen bg-ink-50">
+    <div className="flex min-h-screen flex-col bg-ink-50">
       <a
         href="#admin-main"
         className="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-50 focus:rounded-lg focus:bg-brand-600 focus:px-4 focus:py-2 focus:text-sm focus:font-semibold focus:text-white"
@@ -49,36 +67,96 @@ export function AdminShell({
         Skip to content
       </a>
 
-      {/* ---------- Desktop sidebar ---------- */}
-      <aside className="fixed inset-y-0 left-0 z-30 hidden w-64 flex-col border-r border-ink-800 bg-ink-900 lg:flex">
-        <div className="flex h-16 shrink-0 items-center gap-2 border-b border-ink-800 px-5">
-          <span className="grid h-8 w-8 place-items-center rounded-lg bg-brand-600 text-white">
-            <Icon name="bolt" size={18} />
-          </span>
-          <div className="min-w-0">
-            <p className="text-sm font-bold tracking-tight text-white">MOYO</p>
-            <p className="text-[10px] font-medium uppercase tracking-wider text-ink-400">
-              Admin console
-            </p>
-          </div>
-        </div>
+      <Topbar
+        title={activeItem?.label ?? 'Dashboard'}
+        onToggleNav={handleToggle}
+        // Exposed for aria-expanded/aria-controls on the single toggle.
+        sidebarCollapsed={sidebarCollapsed}
+        userName={userName}
+        userInitials={userInitials}
+        roleLabel={roleLabel}
+      />
 
-        <nav className="flex-1 overflow-y-auto px-3 py-4" aria-label="Admin navigation">
-          <NavList nav={nav} pathname={pathname} />
-        </nav>
-
-        <div className="shrink-0 border-t border-ink-800 p-3">
-          <Link
-            href="/"
-            className="flex items-center gap-2 rounded-lg px-3 py-2 text-xs font-medium text-ink-400 transition hover:bg-ink-800 hover:text-white"
+      <div className="flex flex-1 items-stretch">
+        {/*
+          Desktop sidebar: a structural column, never an overlay.
+          Expanded = w-64 with icon + labels; collapsed = w-20 icon rail.
+          The width transition animates the column so <main> grows/shrinks
+          naturally — no margins, no absolute positioning, no lg:ml-64.
+        */}
+        <aside
+          id="admin-sidebar"
+          aria-label="Admin navigation"
+          className={`hidden shrink-0 flex-col overflow-hidden border-r border-ink-800 bg-ink-900 transition-[width] duration-200 lg:sticky lg:top-16 lg:flex lg:h-[calc(100vh-4rem)] ${
+            sidebarCollapsed ? 'lg:w-20' : 'lg:w-64'
+          }`}
+        >
+          <div
+            className={`flex h-16 shrink-0 items-center border-b border-ink-800 ${
+              sidebarCollapsed ? 'justify-center px-2' : 'gap-2 px-5'
+            }`}
           >
-            <Icon name="external" size={14} />
-            View customer site
-          </Link>
-        </div>
-      </aside>
+            <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-brand-600 text-white">
+              <Icon name="bolt" size={18} />
+            </span>
+            {/* Branding text hides in the collapsed rail; the logo stays. */}
+            <div className={`min-w-0 ${sidebarCollapsed ? 'hidden' : ''}`}>
+              <p className="whitespace-nowrap text-sm font-bold tracking-tight text-white">MOYO</p>
+              <p className="whitespace-nowrap text-[10px] font-medium uppercase tracking-wider text-ink-400">
+                Admin console
+              </p>
+            </div>
+          </div>
 
-      {/* ---------- Mobile drawer ---------- */}
+          <nav
+            className={`flex-1 overflow-y-auto py-4 ${sidebarCollapsed ? 'px-2' : 'px-3'}`}
+            aria-label="Admin navigation"
+          >
+            <NavList nav={nav} pathname={pathname} collapsed={sidebarCollapsed} />
+          </nav>
+
+          <div className={`shrink-0 border-t border-ink-800 ${sidebarCollapsed ? 'p-2' : 'p-3'}`}>
+            <Link
+              href="/"
+              title={sidebarCollapsed ? 'View customer site' : undefined}
+              aria-label={sidebarCollapsed ? 'View customer site' : undefined}
+              className={`flex items-center gap-2 rounded-lg py-2 text-xs font-medium text-ink-400 transition hover:bg-ink-800 hover:text-white ${
+                sidebarCollapsed ? 'justify-center px-0' : 'px-3'
+              }`}
+            >
+              <Icon name="external" size={14} />
+              <span className={sidebarCollapsed ? 'hidden' : ''}>View customer site</span>
+            </Link>
+          </div>
+        </aside>
+
+        <div className="flex min-w-0 flex-1 flex-col">
+          <main id="admin-main" className="min-w-0 flex-1 px-4 pb-12 pt-4 sm:px-6 lg:p-8">
+            <nav aria-label="Breadcrumb" className="mb-4">
+              <ol className="flex items-center gap-1.5 text-xs text-ink-500">
+                <li>
+                  <Link href="/admin" className="transition hover:text-brand-600">
+                    Admin
+                  </Link>
+                </li>
+                {activeItem && activeItem.href !== '/admin' && (
+                  <>
+                    <li aria-hidden className="text-ink-300">
+                      /
+                    </li>
+                    <li className="font-medium text-ink-700" aria-current="page">
+                      {activeItem.label}
+                    </li>
+                  </>
+                )}
+              </ol>
+            </nav>
+            {children}
+          </main>
+        </div>
+      </div>
+
+      {/* ---------- Mobile drawer (overlay only, z-index legitimate here) ---------- */}
       {drawerOpen && (
         <div className="fixed inset-0 z-40 lg:hidden">
           <div
@@ -119,48 +197,31 @@ export function AdminShell({
           </aside>
         </div>
       )}
-
-      <Topbar
-        title={activeItem?.label ?? 'Dashboard'}
-        onOpenNav={() => setDrawerOpen(true)}
-        userName={userName}
-        userInitials={userInitials}
-        roleLabel={roleLabel}
-      />
-
-      <main id="admin-main" className="px-4 pb-12 pt-4 sm:px-6 lg:ml-64 lg:p-8">
-        <nav aria-label="Breadcrumb" className="mb-4">
-          <ol className="flex items-center gap-1.5 text-xs text-ink-500">
-            <li>
-              <Link href="/admin" className="transition hover:text-brand-600">
-                Admin
-              </Link>
-            </li>
-            {activeItem && activeItem.href !== '/admin' && (
-              <>
-                <li aria-hidden className="text-ink-300">
-                  /
-                </li>
-                <li className="font-medium text-ink-700" aria-current="page">
-                  {activeItem.label}
-                </li>
-              </>
-            )}
-          </ol>
-        </nav>
-        {children}
-      </main>
     </div>
   );
 }
 
 /** Renders the grouped navigation list. Shared by desktop and mobile. */
-function NavList({ nav, pathname }: { nav: AdminNavGroup[]; pathname: string }) {
+function NavList({
+  nav,
+  pathname,
+  collapsed = false,
+}: {
+  nav: AdminNavGroup[];
+  pathname: string;
+  /** Collapsed desktop rail: icons only; labels, headings and SOON hidden. */
+  collapsed?: boolean;
+}) {
   return (
     <>
       {nav.map((group) => (
         <div key={group.heading} className="mb-5">
-          <p className="px-3 pb-1.5 text-[10px] font-semibold uppercase tracking-wider text-ink-500">
+          <p
+            className={`px-3 pb-1.5 text-[10px] font-semibold uppercase tracking-wider text-ink-500 ${
+              collapsed ? 'hidden' : ''
+            }`}
+            aria-hidden={collapsed || undefined}
+          >
             {group.heading}
           </p>
           <ul className="space-y-0.5">
@@ -173,16 +234,26 @@ function NavList({ nav, pathname }: { nav: AdminNavGroup[]; pathname: string }) 
                * capability the console does not have.
                */
               if (item.status === 'planned') {
+                const soonLabel = `${item.label} - coming soon`;
                 return (
                   <li key={item.href}>
                     <span
                       aria-disabled="true"
-                      title={item.hint ? `Coming soon - ${item.hint}` : 'Coming soon'}
-                      className="flex cursor-not-allowed items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-medium text-ink-600"
+                      aria-label={collapsed ? soonLabel : undefined}
+                      title={item.hint ? `Coming soon - ${item.hint}` : soonLabel}
+                      className={`flex cursor-not-allowed items-center gap-2.5 rounded-lg py-2 text-sm font-medium text-ink-600 ${
+                        collapsed ? 'justify-center px-0' : 'px-3'
+                      }`}
                     >
-                      <Icon name={item.icon} size={16} className="text-ink-600" />
-                      <span className="flex-1 truncate">{item.label}</span>
-                      <span className="rounded bg-ink-800 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-ink-400">
+                      <Icon name={item.icon} size={16} className="shrink-0 text-ink-600" />
+                      <span className={`flex-1 truncate ${collapsed ? 'hidden' : ''}`}>
+                        {item.label}
+                      </span>
+                      <span
+                        className={`rounded bg-ink-800 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-ink-400 ${
+                          collapsed ? 'hidden' : ''
+                        }`}
+                      >
                         Soon
                       </span>
                     </span>
@@ -195,14 +266,18 @@ function NavList({ nav, pathname }: { nav: AdminNavGroup[]; pathname: string }) 
                   <Link
                     href={item.href}
                     aria-current={active ? 'page' : undefined}
-                    className={`flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-medium transition ${
+                    aria-label={collapsed ? item.label : undefined}
+                    title={collapsed ? item.label : undefined}
+                    className={`flex items-center gap-2.5 rounded-lg py-2 text-sm font-medium transition ${
+                      collapsed ? 'justify-center px-0' : 'px-3'
+                    } ${
                       active
                         ? 'bg-brand-600 text-white'
                         : 'text-ink-300 hover:bg-ink-800 hover:text-white'
                     }`}
                   >
-                    <Icon name={item.icon} size={16} />
-                    {item.label}
+                    <Icon name={item.icon} size={16} className="shrink-0" />
+                    <span className={`truncate ${collapsed ? 'hidden' : ''}`}>{item.label}</span>
                   </Link>
                 </li>
               );
@@ -216,24 +291,33 @@ function NavList({ nav, pathname }: { nav: AdminNavGroup[]; pathname: string }) 
 
 function Topbar({
   title,
-  onOpenNav,
+  onToggleNav,
+  sidebarCollapsed,
   userName,
   userInitials,
   roleLabel,
 }: {
   title: string;
-  onOpenNav: () => void;
+  /**
+   * The SINGLE collapse/expand control. Responsive by design: below lg it
+   * opens/closes the drawer overlay; on lg+ it toggles the desktop rail.
+   */
+  onToggleNav: () => void;
+  /** Desktop collapsed state, reflected in aria-expanded. */
+  sidebarCollapsed: boolean;
   userName: string;
   userInitials: string;
   roleLabel: string;
 }) {
   return (
-    <header className="sticky top-0 z-20 flex h-16 items-center gap-3 border-b border-ink-200 bg-white px-4 sm:px-6 lg:ml-64 lg:px-8">
+    <header className="sticky top-0 z-20 flex h-16 shrink-0 items-center gap-3 border-b border-ink-200 bg-white px-4 sm:px-6 lg:px-8">
       <button
         type="button"
-        onClick={onOpenNav}
-        className="rounded-lg p-2 text-ink-600 hover:bg-ink-100 lg:hidden"
-        aria-label="Open navigation"
+        onClick={onToggleNav}
+        aria-label={sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+        aria-expanded={!sidebarCollapsed}
+        aria-controls="admin-sidebar"
+        className="rounded-lg p-2 text-ink-600 hover:bg-ink-100"
       >
         <Icon name="menu" size={20} />
       </button>
