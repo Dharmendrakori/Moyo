@@ -910,6 +910,79 @@ rewrite, no auth/RBAC/API/schema change.
 
 ---
 
+## Changelog - Admin sidebar — unified collapse/expand control
+
+**Scope:** `src/components/admin/Chrome.tsx` only (plus this changelog entry).
+No changes to any `/admin/*` page, chart logic (`CHART_MONTHS` untouched),
+auth/RBAC, redirects, pricing, booking data, schema, or the pre-existing
+auth-security files.
+
+- **Previous problem:** the desktop three-lines toggle lived in the page
+  header (`Topbar`, rendered above the whole app), while the sidebar was a
+  column *below* the header with a brand row that owned no control. The
+  hamburger therefore read as an unrelated header navigation button, not as
+  the sidebar's own collapse control.
+- **Final Admin shell structure:** a flex row whose first column is
+  `<aside id="admin-sidebar">` and whose second column (`min-w-0 flex-1`)
+  contains the header plus `<main>`. The sidebar is a real structural
+  column — never `fixed`, never an overlay, no `lg:ml-64`, no absolute
+  positioning, no negative margins.
+- **Component owning the state:** `AdminShell` in
+  `src/components/admin/Chrome.tsx`, with the single boolean
+  `const [sidebarCollapsed, setSidebarCollapsed] = useState(false)`. The
+  only other nav state is `drawerOpen`, which is the separate below-`lg`
+  mobile overlay — not a duplicate.
+- **Component rendering the three-lines button:** the sidebar's own brand
+  row inside `AdminShell`'s `<aside id="admin-sidebar">` (☰ ⚡ MOYO /
+  Admin console when expanded, ☰ ⚡ when collapsed). `Topbar` no longer
+  receives any desktop-toggle props and renders no desktop hamburger; it
+  keeps only the page title, administrator identity/role/avatar/logout, and
+  the below-`lg` drawer hamburger.
+- **Widths:** expanded `w-64` (256px), collapsed `w-20` (~80px icon rail),
+  complete static Tailwind classes in one conditional
+  (`sidebarCollapsed ? 'w-20' : 'w-64'`), plus `shrink-0 overflow-hidden
+  transition-[width] duration-200` and `lg:sticky lg:top-0 lg:h-screen`.
+- **Toggle semantics:** the same button performs both directions via
+  `onClick={() => setSidebarCollapsed((collapsed) => !collapsed)}`, with
+  `aria-controls="admin-sidebar"`, `aria-expanded={!sidebarCollapsed}` and
+  `aria-label` flipping between "Expand admin sidebar" and
+  "Collapse admin sidebar". Collapsed icons keep their `title`/`aria-label`
+  tooltips (already provided by `NavList`); the button is keyboard
+  focusable and operable.
+- **Mobile behavior (below `lg`):** the desktop rail never renders (aside is
+  `hidden` below `lg`); the header hamburger opens the overlay drawer and
+  the drawer's X closes it. Desktop `sidebarCollapsed` is untouched by the
+  drawer. No desktop X exists or was added.
+- **Browser verification (all performed against the dev server with a real
+  headless Chromium, logged in as the admin seed account):**
+  - Desktop: 5 pages (`/admin`, `/admin/categories`, `/admin/services`,
+    `/admin/charging-options`, `/admin/pricing`) × 4 widths (1024, 1366,
+    1440, 1920) × 3 full click cycles each — every cycle: expanded w-64 →
+    SAME button click → collapsed w-80 icon rail → SAME button click →
+    expanded w-64, with matching `aria-expanded`/`aria-label`, hidden
+    labels/headings/SOON/site text when collapsed, restored when expanded,
+    main width growing on collapse, no overlap, no horizontal overflow, no
+    navigation/reload.
+  - Mobile: 375 and 768 — no desktop rail, hamburger opens drawer, X
+    closes it, no overflow, drawer never touches desktop state.
+  - Keyboard: focus reaches the sidebar toggle and toggling changes width
+    (256 → 80).
+  - Total: **977 checks passed**; the single failing probe was the console
+    network check because the app ships no `favicon.ico` (pre-existing
+    `/favicon.ico` → 404 on every admin page load, unrelated to this
+    change). No uncaught exceptions, no hydration errors in the clean
+    session. Expanded/collapsed screenshots at 1440×900 were captured and
+    visually reviewed (full sidebar with sidebar-owned ☰ toggle; clean
+    icon rail beside an expanded dashboard).
+- **Static verification:** `npm run typecheck` ✅, `npm run lint` ✅ (0
+  errors; the same 4 pre-existing warnings in unrelated files), `npm test`
+  ✅ (149 passed / the same 2 pre-existing `auth-url-security` failures in
+  the untouched auth helper), `npx next build` ✅ (19/19 pages, all admin
+  routes).
+- **Caution:** creating the page twice in the same browser tab (e.g. a
+  duplicated automated tab) can interleave state — run one browser tab per
+  session in manual testing.
+
 ## Changelog - Chart month initialization runtime fix
 
 **Scope:** `src/app/admin/page.tsx` only. No sidebar/layout, auth/RBAC,

@@ -15,10 +15,12 @@ import { ROLE_LABEL } from '@/lib/domain';
  * highlighting needs `usePathname`; everything it renders is static navigation
  * metadata with no sensitive values.
  *
- * Layout is structural: the header spans the full width, and below it a flex
- * row holds a sticky desktop sidebar column plus the main content column.
- * The sidebar therefore occupies its own width and can never overlay the
- * dashboard. The only overlay is the mobile drawer (below `lg`).
+ * Layout is structural: a flex row holds the sidebar as the FIRST column and
+ * a right-hand column containing the header plus main content. The sidebar
+ * therefore occupies its own width and can never overlay the dashboard, and it
+ * OWNS its desktop collapse control — the three-lines button lives in the
+ * sidebar's brand row, not in the header. The only overlay is the mobile
+ * drawer (below `lg`).
  *
  * NOTHING HERE IS AN AUTHORIZATION CONTROL. This component renders navigation
  * for whoever the server already proved is an administrator. A non-admin never
@@ -42,19 +44,17 @@ export function AdminShell({
   // Desktop collapse and the mobile drawer are SEPARATE concepts:
   // `sidebarCollapsed` switches the desktop (lg+) sidebar between the full
   // w-64 column and the w-20 icon rail; `drawerOpen` only controls the
-  // below-lg overlay drawer. One never drives the other.
+  // below-lg overlay drawer. One never drives the other. There is exactly ONE
+  // desktop collapse boolean, and its toggle button is rendered inside the
+  // sidebar's brand row below — the sidebar owns its own collapse control.
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const activeItem = findActive(nav, pathname);
   const roleLabel = ROLE_LABEL[userRole as keyof typeof ROLE_LABEL] ?? userRole;
 
-  // ONE header slot, TWO breakpoint-explicit callbacks sharing it:
-  // - desktop (lg+) toggles the existing `sidebarCollapsed` rail state;
-  // - mobile (below lg) opens the `drawerOpen` overlay.
-  // Visibility is decided by Tailwind responsive classes on the buttons
-  // themselves (see Topbar), so a desktop click can never open the mobile
-  // drawer and vice versa — no runtime breakpoint check to drift.
-  const toggleDesktopSidebar = () => setSidebarCollapsed((collapsed) => !collapsed);
+  // Mobile-only callback: the below-lg hamburger in the header opens the
+  // drawer overlay. The desktop collapse control is deliberately NOT routed
+  // through the header — it lives in <aside id="admin-sidebar">.
   const openMobileDrawer = () => setDrawerOpen(true);
 
   return (
@@ -66,17 +66,6 @@ export function AdminShell({
         Skip to content
       </a>
 
-      <Topbar
-        title={activeItem?.label ?? 'Dashboard'}
-        onToggleDesktopSidebar={toggleDesktopSidebar}
-        onOpenMobileDrawer={openMobileDrawer}
-        // Exposed for aria-expanded/aria-controls on the desktop toggle.
-        sidebarCollapsed={sidebarCollapsed}
-        userName={userName}
-        userInitials={userInitials}
-        roleLabel={roleLabel}
-      />
-
       <div className="flex flex-1 items-stretch">
         {/*
           Desktop sidebar: a structural column, never an overlay.
@@ -87,15 +76,35 @@ export function AdminShell({
         <aside
           id="admin-sidebar"
           aria-label="Admin navigation"
-          className={`hidden shrink-0 flex-col overflow-hidden border-r border-ink-800 bg-ink-900 transition-[width] duration-200 lg:sticky lg:top-16 lg:flex lg:h-[calc(100vh-4rem)] ${
-            sidebarCollapsed ? 'lg:w-20' : 'lg:w-64'
+          className={`hidden shrink-0 flex-col overflow-hidden border-r border-ink-800 bg-ink-900 transition-[width] duration-200 lg:sticky lg:top-0 lg:flex lg:h-screen ${
+            sidebarCollapsed ? 'w-20' : 'w-64'
           }`}
         >
           <div
             className={`flex h-16 shrink-0 items-center border-b border-ink-800 ${
-              sidebarCollapsed ? 'justify-center px-2' : 'gap-2 px-5'
+              sidebarCollapsed ? 'justify-center gap-1 px-1' : 'gap-2 px-5'
             }`}
           >
+            {/*
+              THE desktop sidebar toggle. It lives INSIDE the sidebar, so the
+              three-lines control visually and structurally belongs to what it
+              operates. Single source of truth: AdminShell's `sidebarCollapsed`
+              — no header state, no second boolean. The same button performs
+              BOTH directions: expanded → collapsed → expanded, no reload.
+            */}
+            <button
+              type="button"
+              onClick={() => setSidebarCollapsed((collapsed) => !collapsed)}
+              aria-controls="admin-sidebar"
+              aria-expanded={!sidebarCollapsed}
+              aria-label={
+                sidebarCollapsed ? 'Expand admin sidebar' : 'Collapse admin sidebar'
+              }
+              title={sidebarCollapsed ? 'Expand admin sidebar' : 'Collapse admin sidebar'}
+              className="shrink-0 rounded-lg p-2 text-ink-400 hover:bg-ink-800 hover:text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-500"
+            >
+              <Icon name="menu" size={18} />
+            </button>
             <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-brand-600 text-white">
               <Icon name="bolt" size={18} />
             </span>
@@ -131,6 +140,19 @@ export function AdminShell({
         </aside>
 
         <div className="flex min-w-0 flex-1 flex-col">
+          {/*
+            The header sits INSIDE the right-hand column, beside the sidebar.
+            It carries only the page title, administrator identity and logout —
+            plus the below-lg hamburger that opens the mobile drawer. It never
+            owns a desktop sidebar-toggle state.
+          */}
+          <Topbar
+            title={activeItem?.label ?? 'Dashboard'}
+            onOpenMobileDrawer={openMobileDrawer}
+            userName={userName}
+            userInitials={userInitials}
+            roleLabel={roleLabel}
+          />
           <main id="admin-main" className="min-w-0 flex-1 px-4 pb-12 pt-4 sm:px-6 lg:p-8">
             <nav aria-label="Breadcrumb" className="mb-4">
               <ol className="flex items-center gap-1.5 text-xs text-ink-500">
@@ -291,44 +313,25 @@ function NavList({
 
 function Topbar({
   title,
-  onToggleDesktopSidebar,
   onOpenMobileDrawer,
-  sidebarCollapsed,
   userName,
   userInitials,
   roleLabel,
 }: {
   title: string;
   /**
-   * The desktop (lg+) collapse/expand control for the existing
-   * `sidebarCollapsed` state. Always mounted and always wired; visibility is
-   * handled by the `hidden lg:block` wrapper so a desktop click can only ever
-   * reach this callback — never the mobile drawer.
+   * Below-lg control that opens the mobile drawer overlay. The DESKTOP
+   * sidebar toggle is deliberately NOT here: it lives in the sidebar's own
+   * brand row (see AdminShell), so the header never owns desktop collapse
+   * state and there is exactly one hamburger per breakpoint.
    */
-  onToggleDesktopSidebar: () => void;
-  /** Below-lg control that opens the mobile drawer overlay. */
   onOpenMobileDrawer: () => void;
-  /** Desktop collapsed state, reflected in aria-expanded. */
-  sidebarCollapsed: boolean;
   userName: string;
   userInitials: string;
   roleLabel: string;
 }) {
   return (
     <header className="sticky top-0 z-20 flex h-16 shrink-0 items-center gap-3 border-b border-ink-200 bg-white px-4 sm:px-6 lg:px-8">
-      {/* Desktop hamburger: visible at lg+, drives the rail state directly. */}
-      <span className="hidden lg:block">
-        <button
-          type="button"
-          onClick={onToggleDesktopSidebar}
-          aria-label={sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
-          aria-expanded={!sidebarCollapsed}
-          aria-controls="admin-sidebar"
-          className="rounded-lg p-2 text-ink-600 hover:bg-ink-100"
-        >
-          <Icon name="menu" size={20} />
-        </button>
-      </span>
       {/* Mobile hamburger: visible below lg, opens the drawer overlay. */}
       <span className="lg:hidden">
         <button
