@@ -907,3 +907,27 @@ rewrite, no auth/RBAC/API/schema change.
   errors (4 pre-existing warnings); `npx next build` compiles with all admin
   routes built; `npm test` 149 passed / 2 failed — same pre-existing
   `auth-url-security` percent-encoding failures in the untouched auth helper.
+
+---
+
+## Changelog - Chart month initialization runtime fix
+
+**Scope:** `src/app/admin/page.tsx` only. No sidebar/layout, auth/RBAC,
+pricing, booking-data or schema changes.
+
+- **Root cause:** runtime `ReferenceError: Cannot access 'CHART_MONTHS'
+  before initialization` at `formatChartDay()` (`page.tsx`) — a temporal
+  dead zone crash: the `const CHART_MONTHS` binding was referenced while
+  still uninitialized in the executed dev bundle. Typecheck/lint cannot
+  catch this; it only throws at runtime.
+- **Fix:** hoisted the single `const CHART_MONTHS` declaration to the top of
+  the module, above `AdminDashboardPage`, `formatChartDay()` and
+  `BookingTrendChart()`, so it is initialized before any invocation can
+  occur regardless of bundler or hot-reload evaluation order. Exactly one
+  declaration exists in the module (verified); the deterministic
+  `formatChartDay()` `DD Mon` logic and chart data model are unchanged.
+- **Verification:** `npm run typecheck`, `npm run lint` (0 errors),
+  `npx next build` all pass; exactly one dev server listens on :3000;
+  unauthenticated `/admin` returns the expected 307 to `/login`. The
+  authenticated 9-step hamburger click sequence still requires a tester
+  browser session and was not performed here.

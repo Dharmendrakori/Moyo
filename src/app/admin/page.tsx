@@ -23,6 +23,30 @@ import { formatINRCompact } from '@/lib/format';
  */
 export const dynamic = 'force-dynamic';
 
+/**
+ * Static month labels for the bookings trend chart, in calendar order.
+ *
+ * Declared at the top of the module — before every component and helper —
+ * so it is initialized before any invocation of `formatChartDay()` can occur,
+ * regardless of bundler chunking or hot-reload evaluation order. A `const` in
+ * the temporal dead zone throws `ReferenceError` at runtime (which
+ * typecheck/lint cannot catch), so placement here is load-bearing.
+ */
+const CHART_MONTHS = [
+  'Jan',
+  'Feb',
+  'Mar',
+  'Apr',
+  'May',
+  'Jun',
+  'Jul',
+  'Aug',
+  'Sep',
+  'Oct',
+  'Nov',
+  'Dec',
+] as const;
+
 export default async function AdminDashboardPage() {
   await requireAdminPage();
 
@@ -176,20 +200,6 @@ export default async function AdminDashboardPage() {
  * (a supply-chain and CSP liability). An all-zero week renders an honest empty
  * state instead of a flat, meaningless chart.
  */
-const CHART_MONTHS = [
-  'Jan',
-  'Feb',
-  'Mar',
-  'Apr',
-  'May',
-  'Jun',
-  'Jul',
-  'Aug',
-  'Sep',
-  'Oct',
-  'Nov',
-  'Dec',
-] as const;
 
 /**
  * Deterministic `DD Mon` label parsed from the `YYYY-MM-DD` key.
