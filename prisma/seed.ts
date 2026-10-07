@@ -462,8 +462,36 @@ async function seedSettings() {
   console.log('Seeded platform settings.');
 }
 
+/**
+ * Enforces the storage invariant that `setChargingOption` maintains: budget
+ * bounds belong to the CUSTOMER_BUDGET option alone.
+ *
+ * The admin API refuses to write bounds onto a VISIT_CHARGE or FIXED_CHARGE
+ * row (BUDGET_NOT_APPLICABLE), so a non-null value there can only be residue
+ * from a write path that predates that guard. `resolveBookingPricing` ignores
+ * bounds for those modes, so the residue is inert - but it violates an invariant
+ * the rest of the codebase relies on, and `seedCatalog`'s empty `update: {}`
+ * would otherwise preserve it forever. Clearing it here means every seed run
+ * re-establishes the invariant instead of merely assuming it.
+ */
+async function normaliseOptionBounds() {
+  const { count } = await prisma.serviceOption.updateMany({
+    where: {
+      charging: { not: 'CUSTOMER_BUDGET' },
+      OR: [{ budgetMinPaise: { not: null } }, { budgetMaxPaise: { not: null } }],
+    },
+    data: { budgetMinPaise: null, budgetMaxPaise: null },
+  });
+  if (count > 0) {
+    console.log(
+      `  normalised ${count} charging option(s) that carried budget bounds outside Customer Budget.`,
+    );
+  }
+}
+
 async function main() {
   await seedCatalog();
+  await normaliseOptionBounds();
   await seedProvider();
   await seedSettings();
   await seedAdmin();
