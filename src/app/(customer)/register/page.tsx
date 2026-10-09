@@ -15,9 +15,13 @@ export default async function RegisterPage({ searchParams }: { searchParams: Sea
   const user = await getCurrentUser();
   const params = await searchParams;
   const raw = params.next;
-  const nextPath = safeRedirectPath(Array.isArray(raw) ? raw[0] : raw, '/account');
+  // Default with no explicit `next` is the public homepage `/`, never
+  // `/account` or `/admin`. After registering, the user is sent to `/login`
+  // to authenticate; this path is preserved through that hop.
+  const nextPath = safeRedirectPath(Array.isArray(raw) ? raw[0] : raw, '/');
 
-  // Already signed in: resolve against the server role (ADMIN -> /admin).
+  // Already signed in: honour a safe, role-authorized `next`; with none this
+  // lands on the public homepage `/` (never `/account` or `/admin`).
   if (user) redirect(resolvePostLoginRedirect(Array.isArray(raw) ? raw[0] : raw, user.role));
 
   return (

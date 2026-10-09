@@ -450,6 +450,40 @@ progress bar that would imply forward progress.
 
 Mobile navigation: `Home · Menu · Booking · Bookings · Account`.
 
+### Post-login and registration redirect rules
+
+The `next` query parameter is attacker-controlled and the user's role is always
+resolved server-side from the database session. `resolvePostLoginRedirect(next, role)`
+in `src/lib/redirect.ts` is the single authority for both login and registration
+destinations:
+
+- **Login, no explicit `next`:** **both** `ADMIN` and `CUSTOMER` land on the public
+  homepage `/`. Neither `/account` nor `/admin` is ever an automatic destination.
+- **Login, valid `next`:** honoured only when it is a safe local path **and** the
+  role may use it. `?next=/account` works for every role; `?next=/admin` is honoured
+  only for `ADMIN` and falls back to `/` for everyone else.
+- **Registration:** succeeds **without** creating a session. The browser is sent to
+  `/login?registered=1` (a non-sensitive flag drives the success message — never a
+  credential). If a safe `next` was requested it is preserved through that hop and
+  applied only after a real, role-authorized login.
+- **Unsafe `next`** (external, `//host`, backslash, control chars, or any
+  credential-bearing query) always falls back to the homepage `/`.
+
+Credentials travel only in the POST body; the `next` path rides on the API URL and
+is re-validated with `safeRedirectPath()` server-side, so it can never become an
+open redirect or leak a secret.
+
+### Account navigation
+
+The **Account** entry in the shared customer shell (desktop header avatar/name and
+the mobile bottom bar) always points at the personal `/account` page for a signed-in
+user of **any** role, including `ADMIN`, and at `/login?next=%2Faccount` for
+anonymous visitors.
+Anonymous clicks therefore land on `/login?next=%2Faccount` and return to `/account`
+after a successful login. The personal Account page is deliberately separate from the
+Admin Console: `/admin` remains reachable only through its own ADMIN-only link and its
+server-side guards.
+
 ---
 
 ## API endpoints
@@ -537,7 +571,12 @@ executes end to end.
 | **`admin-auth.test.ts`** | **16** | **Real `/api/admin/*` routes: 401, 403 for CUSTOMER, ADMIN access, CSRF, Origin, malformed ids** |
 | **`admin-pricing.test.ts`** | **16** | **Price publish/withdraw, strict validation, mass-assignment refusal, budget rules, audit actions, historical-quote immutability** |
 | **`pricing-visibility.test.ts`** | **10** | **Published vs unpublished prices, and that the customer cannot influence the quote** |
-| **Total** | **140** | |
+| `auth-url-security.test.ts` | 11 | Credential-free auth URLs, `next` scrubbing on `/login`/`/register` |
+| **`account.test.ts`** | **16** | **Real `/api/account/*` routes: self-only isolation, mass-assignment refusal, password change + session revocation** |
+| **`post-login-redirect.test.ts`** | **7** | **Homepage-first defaults, role-aware `next`, `/admin` guard, unsafe-destination fallback** |
+| **`registration-flow.test.ts`** | **6** | **Real `/api/auth/register`: no session minted, `registered` flag, `next` hop, no privilege escalation** |
+| **`navigation.test.ts`** | **7** | **Shared customer shell: Account nav is `/account` for every signed-in role, `/login?next=%2Faccount` anonymous, never `/admin`; shell wiring for the `(customer)` route group** |
+| **Total** | **187** | |
 
 The admin suites assert the properties that must not regress: a CUSTOMER gets
 `403` on every admin endpoint and writes nothing, an unauthenticated caller gets
@@ -1029,9 +1068,10 @@ auth-security weakening.
   history shows an honest empty state, never invented rows. Links go only to
   real pages (`/categories`, `/book`, `/bookings`).
 - **Redirect rules fixed (`src/lib/redirect.ts`):** new `resolvePostLoginRedirect()`
-  honours a safe `next` only when the server-resolved role may use it. ADMIN
-  defaults to `/admin`; everyone else defaults to `/account`; `/admin`
-  destinations are never handed to non-ADMIN callers. Wired into
+  honours a safe `next` only when the server-resolved role may use it; `/admin`
+  destinations are never handed to non-ADMIN callers. (Landing defaults were
+  later changed to the public homepage `/` for both roles — see the
+  homepage-first entry below.) Wired into
   `POST /api/auth/login` (DB role), `POST /api/auth/register` (hard-coded
   CUSTOMER — signup still cannot choose ADMIN), and the already-signed-in hop
   on `/login` and `/register`.
@@ -1058,8 +1098,9 @@ auth-security weakening; no Admin Console change.
 
 - **Why Account previously redirected to Admin:** `src/app/(customer)/account/page.tsx`
   line 29 ran `if (user.role === 'ADMIN') redirect('/admin')`. That line confused
-  the post-login *landing* decision (ADMIN → `/admin`, which correctly stays in
-  `resolvePostLoginRedirect`) with the *navigation* destination: an admin who
+  the post-login *landing* decision (ADMIN → `/admin` at the time — since
+  changed to the public homepage `/` for every role, see the homepage-first
+  entry below) with the *navigation* destination: an admin who
   explicitly opened Account was bounced to the console and could never reach
   their own profile. The line is removed; the login default is untouched.
 - **Routes:** `/account` now serves every authenticated role (anonymous →
@@ -1095,3 +1136,51 @@ auth-security weakening; no Admin Console change.
 - **Remaining limitations:** browser verification not performed here; no
   password-recovery or email-change flows (documented read-only); rate limiter
   stays per-process (see SECURITY.md §6).
+
+---
+
+## Changelog - Homepage-first login + registration flow
+
+**Scope:** post-login/registration destinations in `src/lib/redirect.ts`, the
+auth APIs, and the `/login` + `/register` pages. Account navigation and all
+open-redirect/CSRF/Origin/RBAC protections unchanged.
+
+- **Login defaults now homepage-first:** `defaultLandingForRole()` returns `/`
+  for **every** role. ADMIN and CUSTOMER with no explicit `next` both land on
+  the public homepage `/`. Neither `/account` nor `/admin` is ever an automatic
+  post-login destination — the personal Account page and the Admin Console are
+  reached deliberately via their own navigation links. (This supersedes the
+  earlier role-based landing rule recorded in the two changelog entries above.)
+- **Explicit `next` still honoured:** a valid, safe local `next` is honoured when
+  the server-resolved role may use it — `?next=/account` works for any role,
+  `?next=/admin` only for ADMIN (everyone else falls back to `/`). Unsafe
+  `next` (external, `//host`, backslash, control chars, credential-bearing) is
+  rejected and falls back to `/`. Role is always read from the DB session, never
+  from client input.
+- **Registration → Login → Homepage:** `POST /api/auth/register` still creates
+  the CUSTOMER account but does **not** mint a session — the new user must
+  authenticate explicitly. The browser is sent to `/login?registered=1`; the
+  Login page shows a clear success message driven by that non-sensitive flag. A
+  safe, explicitly requested `next` is preserved through the hop
+  (`/login?registered=1&next=…`) and applied only after a real, role-authorized
+  login. No credentials ever appear in a URL (they travel only in the POST body).
+- **Global Account navigation:** the shared customer shell's Account item is
+  `/account` on both desktop (header avatar) and mobile (bottom nav) for any
+  signed-in role; anonymous users are sent to `/login?next=%2Faccount` and
+  returned to `/account` after login. A separate Admin Console link remains for
+  ADMIN; customers can never reach `/admin` via navigation or a crafted `next`.
+- **Tests:** `tests/post-login-redirect.test.ts` (7 cases) and
+  `tests/registration-flow.test.ts` (6 cases) pin the homepage-first defaults,
+  safe-`next` handling, role guard, and the registration→login (no-session)
+  sequence. New `tests/navigation.test.ts` (7 cases) renders the real
+  `CustomerHeader`/`BottomNav` server components and pins the Account
+  destination per session state (`/account` for every signed-in role,
+  `/login?next=%2Faccount` anonymous, never `/admin`) plus the `(customer)`
+  layout wiring that carries it on every public/customer route. Earlier
+  redirect-security suites are untouched.
+- **Verification:** `npm run typecheck`, `npm run lint` (0 errors; 4
+  pre-existing warnings in files this change does not touch) and `npm test`
+  (187/187 across 14 files) all pass; `npx next build` succeeds. Browser
+  verification of the ADMIN/CUSTOMER/anonymous login, registration, and
+  Account navigation flows was not performed here (no browser available in
+  this environment) and should be run before merging.

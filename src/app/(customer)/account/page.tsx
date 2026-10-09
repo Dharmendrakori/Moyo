@@ -25,8 +25,8 @@ export const dynamic = 'force-dynamic';
  *
  * - Anonymous visitors go to `/login?next=/account`.
  * - No authenticated role is ever bounced to `/admin` from here. The
- *   post-login *landing* decision (ADMIN -> `/admin`) lives in
- *   `resolvePostLoginRedirect` and is a different concern from this
+ *   post-login *landing* decision (homepage-first: `/` for every role) lives
+ *   in `resolvePostLoginRedirect` and is a different concern from this
  *   *navigation* destination: an admin who explicitly opens Account must
  *   reach their own profile, not the console.
  * - Every query is scoped to the session user's OWN id. Only real data

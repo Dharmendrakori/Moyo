@@ -138,16 +138,24 @@ export function stripCredentialParams(rawUrl: string): string | null {
  * appropriate for the *server-resolved* role. The role always comes from the
  * verified database session - never from a client parameter - so a CUSTOMER
  * cannot reach `/admin` by crafting `?next=/admin`, and an ADMIN who signs in
- * without an explicit destination lands on `/admin` instead of a customer page.
+ * without an explicit destination lands on the public homepage `/` - the same
+ * homepage-first default as every other role.
  */
 
 export function isAdminPath(path: string): boolean {
   return path === '/admin' || path.startsWith('/admin/');
 }
 
-/** Default landing page for a server-resolved role. */
-export function defaultLandingForRole(role: string | null | undefined): string {
-  return role === 'ADMIN' ? '/admin' : '/account';
+/**
+ * Default landing page for a server-resolved role.
+ *
+ * Both roles land on the public homepage `/` after a successful login with no
+ * explicit `next`. Personal account management is reached deliberately via the
+ * Account navigation link, and the Admin Console via its own link - neither is
+ * ever a default post-login destination.
+ */
+export function defaultLandingForRole(_role: string | null | undefined): string {
+  return '/';
 }
 
 /**

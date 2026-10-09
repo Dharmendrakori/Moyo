@@ -1,5 +1,6 @@
 import { LoginForm } from '@/components/customer/AuthForms';
 import { redirect } from 'next/navigation';
+import { Icon } from '@/components/ui/Icon';
 import { getCurrentUser } from '@/lib/auth';
 import { resolvePostLoginRedirect, safeRedirectPath } from '@/lib/redirect';
 
@@ -20,12 +21,19 @@ export default async function LoginPage({ searchParams }: { searchParams: Search
   const user = await getCurrentUser();
   const params = await searchParams;
   // The form's `nextPath` must stay a safe local path for the API round-trip;
-  // the final hop is re-resolved against the session role just below.
-  const nextPath = safeRedirectPath(firstValue(params.next), '/account');
+  // the final hop is re-resolved against the session role just below. The
+  // default with no explicit `next` is the public homepage `/`, never
+  // `/account` or `/admin`.
+  const nextPath = safeRedirectPath(firstValue(params.next), '/');
 
   // Already signed in: honour a safe `next`, but resolve it against the
-  // server role so an ADMIN lands on `/admin`, never on a stale customer path.
+  // server role so a non-ADMIN can never be sent to `/admin`. With no `next`
+  // this lands on the homepage `/`.
   if (user) redirect(resolvePostLoginRedirect(firstValue(params.next), user.role));
+
+  // Registration success is signalled with a non-sensitive `registered` flag
+  // (no credentials in the URL). Shown once, then cleared from the address bar.
+  const showRegistered = firstValue(params.registered) === '1';
 
   return (
     <div className="mx-auto flex min-h-[70vh] max-w-md flex-col justify-center px-4 py-12 sm:px-6">
@@ -34,6 +42,15 @@ export default async function LoginPage({ searchParams }: { searchParams: Search
         <p className="mt-1 text-sm text-ink-500">
           Access your bookings, invoices and material orders.
         </p>
+        {showRegistered && (
+          <div
+            role="status"
+            className="mt-4 flex items-start gap-2 rounded-lg bg-success-bg p-3 text-sm text-success"
+          >
+            <Icon name="check-circle" size={16} className="mt-0.5 shrink-0" />
+            <span>Your account has been created. Sign in to continue.</span>
+          </div>
+        )}
         <div className="mt-6">
           <LoginForm nextPath={nextPath} />
         </div>

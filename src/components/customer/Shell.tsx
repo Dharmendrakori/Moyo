@@ -34,7 +34,8 @@ const PRIMARY_NAV: NavItem[] = [
  * "Booking" points at the wizard (`/book`), which is the central customer
  * action. The Account item resolves per session: signed-in users go to their
  * personal `/account` page (every role, including ADMIN), anonymous visitors
- * go to `/login`. BottomNav is a server component so it can read the session.
+ * go to `/login?next=%2Faccount` so the requested page survives the login hop.
+ * BottomNav is a server component so it can read the session.
  */
 const BOTTOM_NAV: NavItem[] = [
   { href: '/', label: 'Home', icon: 'home' },
@@ -43,9 +44,17 @@ const BOTTOM_NAV: NavItem[] = [
   { href: '/bookings', label: 'Bookings', icon: 'clipboard' },
 ];
 
-/** Account destination: personal page when signed in, login otherwise. */
+/**
+ * Account destination: personal page when signed in, login otherwise.
+ * The anonymous entry preserves `/account` as a safe `next` so a successful
+ * login returns the visitor to the page they asked for.
+ */
 const ACCOUNT_NAV_SIGNED_IN: NavItem = { href: '/account', label: 'Account', icon: 'user' };
-const ACCOUNT_NAV_SIGNED_OUT: NavItem = { href: '/login', label: 'Account', icon: 'user' };
+const ACCOUNT_NAV_SIGNED_OUT: NavItem = {
+  href: '/login?next=%2Faccount',
+  label: 'Account',
+  icon: 'user',
+};
 
 /**
  * Primary provider's published contact details.

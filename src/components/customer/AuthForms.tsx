@@ -132,8 +132,6 @@ export function LoginForm({ nextPath }: { nextPath: string }) {
   return (
     <form
       onSubmit={onSubmit}
-      method="post"
-      action="/api/auth/login"
       noValidate
       className="space-y-4"
     >
@@ -211,8 +209,6 @@ export function RegisterForm({ nextPath }: { nextPath: string }) {
   return (
     <form
       onSubmit={onSubmit}
-      method="post"
-      action="/api/auth/register"
       noValidate
       className="space-y-4"
     >

@@ -9,47 +9,57 @@ import {
  * ROLE-AWARE POST-LOGIN DESTINATION TESTS
  *
  * The `next` parameter is attacker-controlled and the role is server-resolved.
- * These tests pin the contract fixed for the `/account` 404:
- * - ADMIN defaults to `/admin`; everyone else defaults to `/account`.
- * - A safe `next` is honoured when the role may use it.
- * - `/admin` is never handed to a non-ADMIN caller.
- * - Unsafe destinations fall back to the role's landing page.
+ * These tests pin the current contract:
+ * - With NO explicit `next`, BOTH roles default to the public homepage `/`
+ *   (never `/account` or `/admin` as an automatic destination).
+ * - A safe, explicitly requested `next` is honoured when the role may use it.
+ * - `/admin` destinations are only honoured for ADMIN callers; everyone else
+ *   falls back to the homepage `/` (never to an admin surface).
+ * - Unsafe destinations (external, protocol-relative, credential-bearing)
+ *   fall back to the homepage `/`.
  */
 describe('resolvePostLoginRedirect', () => {
-  it('defaults ADMIN to /admin and others to /account', () => {
-    expect(defaultLandingForRole('ADMIN')).toBe('/admin');
-    expect(defaultLandingForRole('CUSTOMER')).toBe('/account');
-    expect(defaultLandingForRole('PROVIDER')).toBe('/account');
-    expect(defaultLandingForRole('TECHNICIAN')).toBe('/account');
-    expect(defaultLandingForRole(null)).toBe('/account');
-    expect(defaultLandingForRole(undefined)).toBe('/account');
+  it('defaults every role to the public homepage /', () => {
+    expect(defaultLandingForRole('ADMIN')).toBe('/');
+    expect(defaultLandingForRole('CUSTOMER')).toBe('/');
+    expect(defaultLandingForRole('PROVIDER')).toBe('/');
+    expect(defaultLandingForRole('TECHNICIAN')).toBe('/');
+    expect(defaultLandingForRole(null)).toBe('/');
+    expect(defaultLandingForRole(undefined)).toBe('/');
   });
 
-  it('honours a safe next for the matching role', () => {
+  it('honours a safe, explicitly requested next for the matching role', () => {
+    // Admin may reach their account page and the admin console when asked.
+    expect(resolvePostLoginRedirect('/account', 'ADMIN')).toBe('/account');
     expect(resolvePostLoginRedirect('/bookings', 'CUSTOMER')).toBe('/bookings');
+    expect(resolvePostLoginRedirect('/account', 'CUSTOMER')).toBe('/account');
     expect(resolvePostLoginRedirect('/admin', 'ADMIN')).toBe('/admin');
     expect(resolvePostLoginRedirect('/admin/services', 'ADMIN')).toBe('/admin/services');
   });
 
-  it('never sends a non-ADMIN to an admin destination', () => {
-    expect(resolvePostLoginRedirect('/admin', 'CUSTOMER')).toBe('/account');
-    expect(resolvePostLoginRedirect('/admin/services', 'CUSTOMER')).toBe('/account');
-    expect(resolvePostLoginRedirect('/admin', null)).toBe('/account');
+  it('defaults both roles to / when no next is supplied', () => {
+    expect(resolvePostLoginRedirect(null, 'ADMIN')).toBe('/');
+    expect(resolvePostLoginRedirect(null, 'CUSTOMER')).toBe('/');
+    expect(resolvePostLoginRedirect(undefined, 'ADMIN')).toBe('/');
+    expect(resolvePostLoginRedirect('', 'CUSTOMER')).toBe('/');
   });
 
-  it('falls back to the role landing page for unsafe destinations', () => {
-    expect(resolvePostLoginRedirect('https://evil.com', 'CUSTOMER')).toBe('/account');
-    expect(resolvePostLoginRedirect('//evil.com', 'CUSTOMER')).toBe('/account');
-    expect(resolvePostLoginRedirect('https://evil.com', 'ADMIN')).toBe('/admin');
-    expect(resolvePostLoginRedirect('//evil.com/path', 'ADMIN')).toBe('/admin');
-    expect(resolvePostLoginRedirect(null, 'CUSTOMER')).toBe('/account');
-    expect(resolvePostLoginRedirect(null, 'ADMIN')).toBe('/admin');
-    expect(resolvePostLoginRedirect('', 'CUSTOMER')).toBe('/account');
+  it('never sends a non-ADMIN to an admin destination', () => {
+    expect(resolvePostLoginRedirect('/admin', 'CUSTOMER')).toBe('/');
+    expect(resolvePostLoginRedirect('/admin/services', 'CUSTOMER')).toBe('/');
+    expect(resolvePostLoginRedirect('/admin', null)).toBe('/');
+  });
+
+  it('falls back to / for unsafe destinations', () => {
+    expect(resolvePostLoginRedirect('https://evil.com', 'CUSTOMER')).toBe('/');
+    expect(resolvePostLoginRedirect('//evil.com', 'CUSTOMER')).toBe('/');
+    expect(resolvePostLoginRedirect('https://evil.com', 'ADMIN')).toBe('/');
+    expect(resolvePostLoginRedirect('//evil.com/path', 'ADMIN')).toBe('/');
   });
 
   it('rejects credential-bearing destinations for every role', () => {
-    expect(resolvePostLoginRedirect('/account?password=x', 'CUSTOMER')).toBe('/account');
-    expect(resolvePostLoginRedirect('/admin?token=x', 'ADMIN')).toBe('/admin');
+    expect(resolvePostLoginRedirect('/account?password=x', 'CUSTOMER')).toBe('/');
+    expect(resolvePostLoginRedirect('/admin?token=x', 'ADMIN')).toBe('/');
   });
 
   it('classifies admin paths', () => {

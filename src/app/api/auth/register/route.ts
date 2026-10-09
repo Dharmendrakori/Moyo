@@ -1,14 +1,6 @@
-import { cookies } from 'next/headers';
 import { audit } from '@/lib/audit';
 import { hashPassword } from '@/lib/crypto';
-import {
-  CSRF_COOKIE,
-  SESSION_COOKIE,
-  assertSameOrigin,
-  createSession,
-  csrfCookieOptions,
-  sessionCookieOptions,
-} from '@/lib/auth';
+import { assertSameOrigin } from '@/lib/auth';
 import { apiHandler, jsonError, jsonOk, parseJson, tooManyRequests } from '@/lib/api';
 import { prisma } from '@/lib/prisma';
 import { REGISTER_POLICY, rateLimitByIp } from '@/lib/rate-limit';
@@ -69,12 +61,6 @@ export const POST = apiHandler(async (request: Request) => {
     }
   }
 
-  // Auto sign-in after registration.
-  const { token, csrf } = await createSession(user.id);
-  const jar = await cookies();
-  jar.set(SESSION_COOKIE, token, sessionCookieOptions());
-  jar.set(CSRF_COOKIE, csrf, csrfCookieOptions());
-
   await audit({
     action: 'USER_CREATED',
     entityType: 'User',
@@ -84,13 +70,17 @@ export const POST = apiHandler(async (request: Request) => {
     metadata: { via: 'self_registration' },
   });
 
-  // `next` is validated to be a same-origin relative path (open-redirect guard),
-  // mirroring the login route. Self-registered accounts are always CUSTOMER,
-  // so the role here is hard-coded, never taken from the request.
+  // Registration deliberately does NOT create an authenticated session. The new
+  // account must sign in explicitly, so the browser is sent to `/login` with a
+  // `registered` flag for the success message. A safe, explicitly requested
+  // `next` is preserved through that hop and applied only after a real login,
+  // re-authorized against the server-resolved role. It is validated by
+  // `resolvePostLoginRedirect` below - never trusted - and only ever a local
+  // path, so no credentials or tokens are placed in the URL.
   const requested = new URL(request.url).searchParams.get('next');
+  const afterLogin = resolvePostLoginRedirect(requested, 'CUSTOMER');
+  const redirectTo =
+    afterLogin === '/' ? '/login?registered=1' : `/login?registered=1&next=${encodeURIComponent(afterLogin)}`;
 
-  return jsonOk(
-    { user, redirectTo: resolvePostLoginRedirect(requested, 'CUSTOMER'), csrfToken: csrf },
-    { status: 201 },
-  );
+  return jsonOk({ user, redirectTo }, { status: 201 });
 });
