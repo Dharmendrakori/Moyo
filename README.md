@@ -443,6 +443,7 @@ progress bar that would imply forward progress.
 | **`/book`** | Browse public, sign-in to submit | **Booking wizard, steps 1-6** |
 | **`/bookings`** | Required | Customer's own bookings (current, filters, paging) |
 | **`/bookings/[id]`** | Required + ownership | **Booking tracking for one booking** |
+| **`/account`** | Required (every role, incl. ADMIN) | **Personal account: profile, address editing, password change, recent activity** |
 | `/login`, `/register` | Public | Authentication |
 | `/admin` | `ADMIN` | Admin console |
 | `/privacy`, `/terms` | Public | **Not yet implemented** (linked in the footer) |
@@ -459,6 +460,10 @@ Mobile navigation: `Home · Menu · Booking · Bookings · Account`.
 | `POST` | `/api/auth/login` | Public | Start a session |
 | `POST` | `/api/auth/logout` | Session | Revoke the session |
 | `GET` | `/api/auth/csrf` | Public | Issue a CSRF token |
+| `GET` | `/api/account/profile` | Session | Read own minimal profile (no secrets) |
+| `PATCH` | `/api/account/profile` | Session + CSRF | Update own name/phone (strict schema) |
+| `PUT` | `/api/account/address` | Session + CSRF | Create/update own saved address |
+| `POST` | `/api/account/password` | Session + CSRF | Change password, revoke all sessions |
 | `POST` | `/api/bookings` | Session | **Create a booking** (server-resolved pricing) |
 | **`GET`** | **`/api/bookings`** | Session | **List the caller's own bookings** |
 | **`GET`** | **`/api/bookings/[id]`** | Session + ownership | **Read one booking** |
@@ -478,7 +483,7 @@ errors and Prisma messages are never serialised to the client.
 ```
 src/
 ├── app/
-│   ├── (customer)/          Customer routes: /, /categories, /services, /book, /bookings
+│   ├── (customer)/          Customer routes: /, /categories, /services, /book, /bookings, /account
 │   ├── admin/               Admin console: /admin
 │   └── api/                 Route handlers (auth, bookings, webhooks)
 ├── components/
@@ -1004,3 +1009,89 @@ pricing, booking-data or schema changes.
   unauthenticated `/admin` returns the expected 307 to `/login`. The
   authenticated 9-step hamburger click sequence still requires a tester
   browser session and was not performed here.
+
+---
+
+## Changelog - Fix post-login 404 at `/account`
+
+**Scope:** missing customer route + role-aware post-login destinations. No
+auth-security weakening.
+
+- **Root cause:** every login/register success path defaulted to `/account`
+  (`safeRedirectPath(..., '/account')` in both auth APIs, both auth pages, and
+  the header link), but no `src/app/**/account/page.tsx` existed, so the
+  fallback destination itself 404'd. The proxy already treats `/account` as
+  protected, which confirms it was the intended customer landing page.
+- **Routes added:** `src/app/(customer)/account/page.tsx` — server-authenticated
+  via `getCurrentUser()`; anonymous users go to `/login?next=/account`; ADMIN
+  users redirect to `/admin`. Profile, saved address, and the 3 most recent
+  OWN bookings (scoped by session id) render from real data only; an empty
+  history shows an honest empty state, never invented rows. Links go only to
+  real pages (`/categories`, `/book`, `/bookings`).
+- **Redirect rules fixed (`src/lib/redirect.ts`):** new `resolvePostLoginRedirect()`
+  honours a safe `next` only when the server-resolved role may use it. ADMIN
+  defaults to `/admin`; everyone else defaults to `/account`; `/admin`
+  destinations are never handed to non-ADMIN callers. Wired into
+  `POST /api/auth/login` (DB role), `POST /api/auth/register` (hard-coded
+  CUSTOMER — signup still cannot choose ADMIN), and the already-signed-in hop
+  on `/login` and `/register`.
+- **Security preserved:** credentials still travel only in the POST body; `next`
+  still rejects external, protocol-relative, backslash, authority-confusion, and
+  credential-bearing destinations; customers still get access-denied (never admin
+  content) on `/admin`; CSRF/Origin/session/rate-limit controls untouched.
+- **Tests:** new `tests/post-login-redirect.test.ts` (6 cases) pins the
+  role-aware contract.
+- **Verification:** TYPECHECK/LINT/TEST/BUILD PENDING — the sandbox terminal
+  could not execute them (no output observability); run `npm run typecheck`,
+  `npm run lint`, `npm test`, `npx next build` plus the admin/customer browser
+  flows before merging.
+- **Remaining limitations:** browser login flows not yet performed here; the two
+  pre-existing `auth-url-security` percent-encoding failures noted in earlier
+  changelog entries are untouched.
+
+---
+
+## Changelog - Personal Account page for every user (incl. ADMIN)
+
+**Scope:** `/account` access + profile/address/password management. No
+auth-security weakening; no Admin Console change.
+
+- **Why Account previously redirected to Admin:** `src/app/(customer)/account/page.tsx`
+  line 29 ran `if (user.role === 'ADMIN') redirect('/admin')`. That line confused
+  the post-login *landing* decision (ADMIN → `/admin`, which correctly stays in
+  `resolvePostLoginRedirect`) with the *navigation* destination: an admin who
+  explicitly opened Account was bounced to the console and could never reach
+  their own profile. The line is removed; the login default is untouched.
+- **Routes:** `/account` now serves every authenticated role (anonymous →
+  `/login?next=/account`). Header avatar and mobile bottom-nav Account item both
+  resolve to `/account` when signed in. ADMIN users get a separate,
+  clearly-labelled **Admin Console** link on the account page; the page itself is
+  never the admin dashboard, and `/admin` server-side role checks are unchanged.
+- **Editable vs read-only:** editable — full name, phone, saved address
+  (label/line1/line2/landmark/area/city/state/pincode). Read-only — email (no
+  verified email-change flow exists), role, member-since, last login. No schema
+  migration was needed (`CustomerAddress` already exists).
+- **APIs:** `GET`+`PATCH /api/account/profile`, `PUT /api/account/address`,
+  `POST /api/account/password`. Identity always from the verified session; no
+  user-id parameter exists. `.strict()` Zod schemas reject `role`/`email`/
+  `isActive`/`passwordHash` and every other privileged key. Guard chain mirrors
+  admin writes: `assertSameOrigin → session → per-account rate limit →
+  assertCsrf → strict parse → session-scoped query`.
+- **Password change:** current-password bcrypt verification, established policy
+  (12+ chars, mixed case, number, symbol), confirmation match, reuse rejection,
+  per-account rate limit (5/15 min). Success revokes ALL sessions via the
+  existing `destroyAllSessions()` (DB-backed sessions make this complete — no
+  JWT can outlive it) and clears cookies, so the user MUST sign in again; the UI
+  navigates to `/login` and says so. `PASSWORD_CHANGED` audit row carries no
+  secrets; no password/hash/body is logged or returned.
+- **Tests:** new `tests/account.test.ts` (19 cases: auth, self-only isolation,
+  mass-assignment refusal, email read-only, wrong-password/policy/mismatch/reuse
+  rejection, CSRF/Origin, no-leak, revocation, ADMIN parity). Earlier
+  redirect-security suites untouched.
+- **Verification:** TYPECHECK/LINT/TEST/BUILD PENDING — the sandbox terminal
+  still cannot execute commands (no output observability); run `npm run
+  typecheck`, `npm run lint`, `npm test`, `npx next build` plus ADMIN+CUSTOMER
+  browser flows before merging.
+- **Remaining limitations:** browser verification not performed here; no
+  password-recovery or email-change flows (documented read-only); rate limiter
+  stays per-process (see SECURITY.md §6).

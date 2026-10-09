@@ -1,4 +1,5 @@
 import { NextResponse, type NextRequest } from 'next/server';
+import { stripCredentialParams } from '@/lib/redirect';
 
 /**
  * EDGE PROXY (Next.js 16 renamed `middleware` -> `proxy`)
@@ -9,6 +10,11 @@ import { NextResponse, type NextRequest } from 'next/server';
  *     any server component renders. This is a UX optimisation only - every
  *     page and API route independently re-checks the session and role against
  *     the database.
+ *  3. Scrub credential-bearing query parameters from incoming GET URLs
+ *     (`/login?identifier=…&password=…` -> `/login`) so credentials can never
+ *     be rendered, cached, bookmarked, or leaked via Referer, no matter how a
+ *     URL was produced. This complements the login form, which always submits
+ *     credentials via POST to `/api/auth/login`.
  *
  * SECURITY NOTE: this runs in the Edge runtime and has NO database access. It
  * only checks whether a session cookie is *present*. It must never be treated
@@ -51,6 +57,16 @@ export function proxy(request: NextRequest) {
   // Web Crypto is available in the Edge runtime; Node's crypto module is not.
   const nonce = btoa(crypto.randomUUID()).replace(/=+$/, '');
 
+  // 3. Credential scrub: never let `?password=` / `?identifier=` survive on
+  //    any GET URL. The redirect target is re-checked by this same function
+  //    on the next hop, where it comes back clean, so no loop is possible.
+  if ((request.method === 'GET' || request.method === 'HEAD') && search) {
+    const cleanUrl = stripCredentialParams(request.url);
+    if (cleanUrl !== null) {
+      return withSecurityHeaders(NextResponse.redirect(cleanUrl, 307), nonce, pathname);
+    }
+  }
+
   const requestHeaders = new Headers(request.headers);
   requestHeaders.set('x-nonce', nonce);
 
@@ -62,20 +78,42 @@ export function proxy(request: NextRequest) {
     // Only a relative, validated path is preserved - never an absolute URL,
     // which would enable an open redirect.
     loginUrl.searchParams.set('next', `${pathname}${search}`);
-    return withSecurityHeaders(NextResponse.redirect(loginUrl), nonce);
+    return withSecurityHeaders(NextResponse.redirect(loginUrl), nonce, pathname);
   }
 
   return withSecurityHeaders(
     NextResponse.next({ request: { headers: requestHeaders } }),
     nonce,
+    pathname,
   );
 }
 
-function withSecurityHeaders(response: NextResponse, nonce: string): NextResponse {
+/**
+ * `Referrer-Policy: no-referrer` on authentication surfaces (`/login`,
+ * `/register`, `/api/auth/*`) so a credential-bearing URL could never leak
+ * through a Referer header even if one were ever produced. Everywhere else the
+ * existing `strict-origin-when-cross-origin` policy is kept unchanged.
+ */
+function referrerPolicyFor(pathname: string | undefined): string {
+  if (
+    pathname === '/login' ||
+    pathname === '/register' ||
+    (pathname ?? '').startsWith('/api/auth/')
+  ) {
+    return 'no-referrer';
+  }
+  return 'strict-origin-when-cross-origin';
+}
+
+function withSecurityHeaders(
+  response: NextResponse,
+  nonce: string,
+  pathname?: string,
+): NextResponse {
   response.headers.set('Content-Security-Policy', buildCsp(nonce));
   response.headers.set('X-Content-Type-Options', 'nosniff');
   response.headers.set('X-Frame-Options', 'DENY');
-  response.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin');
+  response.headers.set('Referrer-Policy', referrerPolicyFor(pathname));
   response.headers.set(
     'Permissions-Policy',
     'camera=(), microphone=(), geolocation=(self), payment=(self), usb=(), interest-cohort=()',

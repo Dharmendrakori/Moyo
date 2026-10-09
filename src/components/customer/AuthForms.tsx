@@ -28,7 +28,14 @@ function useAuthSubmit(endpoint: string) {
     setFieldErrors({});
 
     try {
-      const response = await fetch(endpoint, {
+      // Credentials travel ONLY in the POST body. The validated destination
+      // path rides along as `?next=` on the API URL - it is a local path, never
+      // a credential - and the server re-validates it with safeRedirectPath
+      // before echoing back `redirectTo`.
+      const url = nextPath
+        ? `${endpoint}?next=${encodeURIComponent(nextPath)}`
+        : endpoint;
+      const response = await fetch(url, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -123,7 +130,13 @@ export function LoginForm({ nextPath }: { nextPath: string }) {
   }
 
   return (
-    <form onSubmit={onSubmit} noValidate className="space-y-4">
+    <form
+      onSubmit={onSubmit}
+      method="post"
+      action="/api/auth/login"
+      noValidate
+      className="space-y-4"
+    >
       {formError && <FormAlert message={formError} />}
 
       <Field id="identifier" label="Email or mobile number" error={fieldErrors.identifier}>
@@ -196,7 +209,13 @@ export function RegisterForm({ nextPath }: { nextPath: string }) {
   }
 
   return (
-    <form onSubmit={onSubmit} noValidate className="space-y-4">
+    <form
+      onSubmit={onSubmit}
+      method="post"
+      action="/api/auth/register"
+      noValidate
+      className="space-y-4"
+    >
       {formError && <FormAlert message={formError} />}
 
       <Field id="name" label="Full name" error={fieldErrors.name}>

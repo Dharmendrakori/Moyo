@@ -13,6 +13,7 @@ import { apiHandler, jsonError, jsonOk, parseJson, tooManyRequests } from '@/lib
 import { prisma } from '@/lib/prisma';
 import { REGISTER_POLICY, rateLimitByIp } from '@/lib/rate-limit';
 import { registerSchema } from '@/lib/validation';
+import { resolvePostLoginRedirect } from '@/lib/redirect';
 
 /**
  * POST /api/auth/register
@@ -83,5 +84,13 @@ export const POST = apiHandler(async (request: Request) => {
     metadata: { via: 'self_registration' },
   });
 
-  return jsonOk({ user, redirectTo: '/account', csrfToken: csrf }, { status: 201 });
+  // `next` is validated to be a same-origin relative path (open-redirect guard),
+  // mirroring the login route. Self-registered accounts are always CUSTOMER,
+  // so the role here is hard-coded, never taken from the request.
+  const requested = new URL(request.url).searchParams.get('next');
+
+  return jsonOk(
+    { user, redirectTo: resolvePostLoginRedirect(requested, 'CUSTOMER'), csrfToken: csrf },
+    { status: 201 },
+  );
 });

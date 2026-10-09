@@ -13,7 +13,7 @@ import { prisma } from '@/lib/prisma';
 import { apiHandler, jsonError, jsonOk, parseJson, tooManyRequests } from '@/lib/api';
 import { LOGIN_POLICY, rateLimitByIp } from '@/lib/rate-limit';
 import { loginSchema } from '@/lib/validation';
-import { safeRedirectPath } from '@/lib/redirect';
+import { resolvePostLoginRedirect } from '@/lib/redirect';
 
 /**
  * POST /api/auth/login
@@ -128,12 +128,14 @@ export const POST = apiHandler(async (request: Request) => {
     actorRole: user.role as never,
   });
 
-  // `next` is validated to be a same-origin relative path (open-redirect guard).
+  // `next` is validated to be a same-origin relative path (open-redirect guard)
+  // AND checked against the server-resolved role: only an ADMIN may land on
+  // `/admin`. The role comes from the database session, never the request.
   const requested = new URL(request.url).searchParams.get('next');
 
   return jsonOk({
     user: { id: user.id, name: user.name, email: user.email, role: user.role },
-    redirectTo: safeRedirectPath(requested, '/account'),
+    redirectTo: resolvePostLoginRedirect(requested, user.role),
     csrfToken: csrf,
   });
 });

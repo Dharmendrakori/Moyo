@@ -1,7 +1,7 @@
 import { LoginForm } from '@/components/customer/AuthForms';
 import { redirect } from 'next/navigation';
 import { getCurrentUser } from '@/lib/auth';
-import { safeRedirectPath } from '@/lib/redirect';
+import { resolvePostLoginRedirect, safeRedirectPath } from '@/lib/redirect';
 
 export const metadata = {
   title: 'Sign in',
@@ -19,9 +19,13 @@ type SearchParams = Promise<Record<string, string | string[] | undefined>>;
 export default async function LoginPage({ searchParams }: { searchParams: SearchParams }) {
   const user = await getCurrentUser();
   const params = await searchParams;
+  // The form's `nextPath` must stay a safe local path for the API round-trip;
+  // the final hop is re-resolved against the session role just below.
   const nextPath = safeRedirectPath(firstValue(params.next), '/account');
 
-  if (user) redirect(nextPath);
+  // Already signed in: honour a safe `next`, but resolve it against the
+  // server role so an ADMIN lands on `/admin`, never on a stale customer path.
+  if (user) redirect(resolvePostLoginRedirect(firstValue(params.next), user.role));
 
   return (
     <div className="mx-auto flex min-h-[70vh] max-w-md flex-col justify-center px-4 py-12 sm:px-6">

@@ -81,6 +81,18 @@ export async function rateLimitByUser(rule: RateLimitRule, userId: string) {
   return rateLimit(rule, `u:${userId}`);
 }
 
+/**
+ * Clears every bucket.
+ *
+ * TEST-ONLY: the limiter store is a module-level singleton that
+ * `vi.resetModules()` cannot reach (it lives on `globalThis`), so it leaks
+ * between route tests and can produce spurious 429s. Tests import this to
+ * reset the window between cases; production code never calls it.
+ */
+export function resetRateLimit(): void {
+  store.clear();
+}
+
 // --- Predefined policies -----------------------------------------------------
 
 /** Login: tight, IP-keyed, to blunt online password guessing. */
@@ -88,6 +100,12 @@ export const LOGIN_POLICY: RateLimitRule = { name: 'login', limit: 8, windowMs: 
 
 /** Registration: limits mass account creation. */
 export const REGISTER_POLICY: RateLimitRule = { name: 'register', limit: 5, windowMs: 60 * 60_000 };
+
+/** Personal profile edits: generous for legitimate use, bounded against abuse. */
+export const PROFILE_POLICY: RateLimitRule = { name: 'profile', limit: 30, windowMs: 60 * 60_000 };
+
+/** Password change: tight and keyed per account to blunt guessing. */
+export const PASSWORD_CHANGE_POLICY: RateLimitRule = { name: 'password', limit: 5, windowMs: 15 * 60_000 };
 
 /** Booking creation: prevents accidental or malicious flooding. */
 export const BOOKING_POLICY: RateLimitRule = { name: 'booking', limit: 10, windowMs: 60 * 60_000 };

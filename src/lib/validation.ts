@@ -94,13 +94,70 @@ export const registerSchema = z
 
 export const changePasswordSchema = z
   .object({
-    currentPassword: z.string().min(1).max(200),
+    currentPassword: z.string().min(1, 'Enter your current password').max(200),
     newPassword: passwordSchema,
+    confirmPassword: z.string().min(1, 'Confirm your new password').max(200),
   })
+  .strict()
   .refine((d) => d.currentPassword !== d.newPassword, {
     message: 'New password must be different from the current password',
     path: ['newPassword'],
+  })
+  .refine((d) => d.newPassword === d.confirmPassword, {
+    message: 'Passwords do not match',
+    path: ['confirmPassword'],
   });
+
+/**
+ * PERSONAL PROFILE UPDATE
+ *
+ * `.strict()` is load-bearing: any unexpected key - including `role`,
+ * `email`, `isActive`, `passwordHash` - rejects the whole payload, so a
+ * client can never mass-assign a privileged field. Email is deliberately
+ * absent: there is no verified email-change flow, so it stays read-only.
+ */
+export const updateProfileSchema = z
+  .object({
+    name: nameSchema.optional(),
+    phone: phoneSchema.optional(),
+  })
+  .strict()
+  .refine((d) => d.name !== undefined || d.phone !== undefined, {
+    message: 'Nothing to update',
+    path: ['name'],
+  });
+
+/**
+ * SAVED ADDRESS UPDATE
+ *
+ * The CustomerAddress label identifies which address book this is (e.g.
+ * "Home"); the caller cannot choose another user's row - identity comes from
+ * the session. `.strict()` for the same mass-assignment reason as above.
+ */
+export const updateAddressSchema = z
+  .object({
+    label: safeString(40).optional(),
+    line1: safeString(160).optional(),
+    line2: safeString(160).optional().or(z.literal('')),
+    area: safeString(80).optional(),
+    city: safeString(80).optional(),
+    state: safeString(80).optional(),
+    pincode: pincodeSchema.optional(),
+    landmark: safeString(120).optional().or(z.literal('')),
+  })
+  .strict()
+  .refine(
+    (d) =>
+      d.label !== undefined ||
+      d.line1 !== undefined ||
+      d.line2 !== undefined ||
+      d.area !== undefined ||
+      d.city !== undefined ||
+      d.state !== undefined ||
+      d.pincode !== undefined ||
+      d.landmark !== undefined,
+    { message: 'Nothing to update', path: ['line1'] },
+  );
 
 // ---------------------------------------------------------------------------
 // Address
@@ -323,14 +380,6 @@ export const supportReplySchema = z.object({
   threadId: z.string().cuid(),
   body: safeString(3000),
 });
-
-export const updateProfileSchema = z
-  .object({
-    name: nameSchema,
-    phone: phoneSchema,
-    address: addressSchema.partial().optional(),
-  })
-  .strict();
 
 export const referralRedeemSchema = z.object({ code: z.string().trim().min(4).max(32) }).strict();
 

@@ -1,7 +1,7 @@
 import { RegisterForm } from '@/components/customer/AuthForms';
 import { redirect } from 'next/navigation';
 import { getCurrentUser } from '@/lib/auth';
-import { safeRedirectPath } from '@/lib/redirect';
+import { resolvePostLoginRedirect, safeRedirectPath } from '@/lib/redirect';
 
 export const metadata = {
   title: 'Create an account',
@@ -17,7 +17,8 @@ export default async function RegisterPage({ searchParams }: { searchParams: Sea
   const raw = params.next;
   const nextPath = safeRedirectPath(Array.isArray(raw) ? raw[0] : raw, '/account');
 
-  if (user) redirect(nextPath);
+  // Already signed in: resolve against the server role (ADMIN -> /admin).
+  if (user) redirect(resolvePostLoginRedirect(Array.isArray(raw) ? raw[0] : raw, user.role));
 
   return (
     <div className="mx-auto flex min-h-[70vh] max-w-md flex-col justify-center px-4 py-12 sm:px-6">

@@ -32,16 +32,20 @@ const PRIMARY_NAV: NavItem[] = [
  * Mobile bottom navigation, per the specification.
  *
  * "Booking" points at the wizard (`/book`), which is the central customer
- * action. `/call` and `/account` are not yet implemented pages, so those items
- * resolve to the nearest real surface rather than a dead route.
+ * action. The Account item resolves per session: signed-in users go to their
+ * personal `/account` page (every role, including ADMIN), anonymous visitors
+ * go to `/login`. BottomNav is a server component so it can read the session.
  */
 const BOTTOM_NAV: NavItem[] = [
   { href: '/', label: 'Home', icon: 'home' },
   { href: '/categories', label: 'Menu', icon: 'grid' },
   { href: '/book', label: 'Booking', icon: 'bolt' },
   { href: '/bookings', label: 'Bookings', icon: 'clipboard' },
-  { href: '/login', label: 'Account', icon: 'user' },
 ];
+
+/** Account destination: personal page when signed in, login otherwise. */
+const ACCOUNT_NAV_SIGNED_IN: NavItem = { href: '/account', label: 'Account', icon: 'user' };
+const ACCOUNT_NAV_SIGNED_OUT: NavItem = { href: '/login', label: 'Account', icon: 'user' };
 
 /**
  * Primary provider's published contact details.
@@ -127,14 +131,16 @@ export async function CustomerHeader() {
   );
 }
 
-export function BottomNav() {
+export async function BottomNav() {
+  const user = await getCurrentUser();
+  const items = [...BOTTOM_NAV, user ? ACCOUNT_NAV_SIGNED_IN : ACCOUNT_NAV_SIGNED_OUT];
   return (
     <nav
       className="fixed inset-x-0 bottom-0 z-40 border-t border-ink-200 bg-white pb-[env(safe-area-inset-bottom)] md:hidden"
       aria-label="Mobile navigation"
     >
       <ul className="grid grid-cols-5">
-        {BOTTOM_NAV.map((item) => {
+        {items.map((item) => {
           const isPrimary = item.label === 'Booking';
           return (
             <li key={item.label}>
