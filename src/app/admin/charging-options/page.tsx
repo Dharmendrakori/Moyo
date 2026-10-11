@@ -54,7 +54,7 @@ export default async function AdminChargingOptionsPage() {
 
   const offered = options.filter((o) => o.isActive).length;
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       <PageHeader
         title="Charging options"
         description="Which charging options MOYO offers on each service, and the customer budget range where that applies. Prices are managed separately under Pricing."
@@ -68,7 +68,7 @@ export default async function AdminChargingOptionsPage() {
         }
       />
 
-      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+      <div className="grid grid-cols-2 gap-2 sm:gap-3 lg:grid-cols-4">
         <SummaryTile label="Option rows" value={options.length} />
         <SummaryTile label="Currently offered" value={offered} />
         <SummaryTile label="Not offered" value={options.length - offered} />
@@ -99,7 +99,7 @@ export default async function AdminChargingOptionsPage() {
           const enabled = rows.filter((r) => r.isActive).length;
 
           return (
-            <section key={charging} className="space-y-3">
+            <section key={charging} className="space-y-2">
               <div className="flex flex-wrap items-baseline justify-between gap-2">
                 <div>
                   <h2 className="text-sm font-semibold text-ink-900">{label}</h2>
@@ -123,21 +123,25 @@ export default async function AdminChargingOptionsPage() {
                   />
                 </div>
               ) : (
-                <ul className="grid gap-2 md:grid-cols-2 xl:grid-cols-3">
+                <ul className="grid grid-cols-1 gap-2 sm:grid-cols-2 sm:gap-3 lg:grid-cols-3">
                   {rows.map((row) => (
                     <li
                       key={row.id}
-                      className="rounded-card border border-ink-200 bg-white p-3 shadow-card"
+                      className="flex flex-col rounded-card border border-ink-200 bg-white p-3 shadow-card transition-colors hover:border-ink-300"
                     >
                       <div className="flex items-start justify-between gap-2">
                         <div className="min-w-0">
                           <Link
                             href={`/admin/services/${row.serviceId}`}
+                            title={row.serviceName}
                             className="block truncate text-sm font-semibold text-ink-900 transition hover:text-brand-600"
                           >
                             {row.serviceName}
                           </Link>
-                          <p className="truncate text-xs text-ink-400">
+                          <p
+                            title={`${row.categoryName} · ${row.subCategoryName}`}
+                            className="truncate text-xs text-ink-400"
+                          >
                             {row.categoryName} · {row.subCategoryName}
                           </p>
                         </div>
@@ -145,11 +149,12 @@ export default async function AdminChargingOptionsPage() {
                           label={row.isActive ? 'On' : 'Off'}
                           tone={row.isActive ? 'success' : 'neutral'}
                           dot
+                          className="shrink-0"
                         />
                       </div>
 
                       {row.charging === 'CUSTOMER_BUDGET' && (
-                        <p className="mt-2 text-xs tabular-nums text-ink-600">
+                        <p className="mt-1.5 truncate text-xs tabular-nums text-ink-600">
                           {row.budgetMinPaise != null && row.budgetMaxPaise != null
                             ? `${formatINR(row.budgetMinPaise)} – ${formatINR(row.budgetMaxPaise)}`
                             : 'Budget range not set'}
@@ -157,12 +162,12 @@ export default async function AdminChargingOptionsPage() {
                       )}
 
                       {!row.serviceActive && (
-                        <p className="mt-2 text-[11px] font-medium text-warning">
+                        <p className="mt-1.5 text-[11px] font-medium text-warning">
                           Service is deactivated, so this option is not reachable by customers.
                         </p>
                       )}
 
-                      <div className="mt-3">
+                      <div className="mt-2 border-t border-ink-100 pt-2">
                         <ChargingOptionControl
                           optionId={row.id}
                           charging={row.charging}
@@ -186,9 +191,9 @@ export default async function AdminChargingOptionsPage() {
 
 function SummaryTile({ label, value }: { label: string; value: number }) {
   return (
-    <div className="rounded-card border border-ink-200 bg-white p-4 shadow-card">
-      <p className="text-sm font-medium text-ink-500">{label}</p>
-      <p className="mt-2 text-2xl font-bold tracking-tight tabular-nums text-ink-900">{value}</p>
+    <div className="rounded-card border border-ink-200 bg-white p-3 shadow-card">
+      <p className="truncate text-xs font-medium text-ink-500">{label}</p>
+      <p className="mt-1 text-xl font-bold tracking-tight tabular-nums text-ink-900">{value}</p>
     </div>
   );
 }
