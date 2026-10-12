@@ -464,6 +464,129 @@ export const adminCategoryStatusSchema = z.object({ isActive: z.boolean() }).str
 /** Service activation. Name, slug, type and catalogue placement are read-only. */
 export const adminServiceStatusSchema = z.object({ isActive: z.boolean() }).strict();
 
+// ---------------------------------------------------------------------------
+// Bulk catalogue administration
+// ---------------------------------------------------------------------------
+
+/**
+ * A bounded, de-duplicated list of record ids for a bulk operation.
+ *
+ * Ids are validated as cuid so a malformed value is rejected at the boundary
+ * rather than reaching a Prisma `where`. The list is capped so a single request
+ * cannot drive an unbounded mass mutation, and de-duplicated so the same record
+ * is never processed twice within one operation.
+ */
+const bulkIdList = (label: string) =>
+  z
+    .array(z.string().cuid(`Invalid ${label} id`))
+    .min(1, `Select at least one ${label}`)
+    .max(200, `Select at most 200 ${label}s at once`)
+    .transform((ids) => Array.from(new Set(ids)));
+
+/** Optional free-text field for a bulk edit; empty/absent means "leave unchanged". */
+const optionalText = (max: number) =>
+  z
+    .string()
+    .trim()
+    .max(max, `Must be ${max} characters or fewer`)
+    .transform((s) => s.replace(controlChars, ''))
+    .optional();
+
+/**
+ * Bulk operation over services: activate, deactivate, edit or delete.
+ *
+ * The payload is `.strict()` so no field outside this contract - `id`, `role`,
+ * `pricePaise`, a category id - can be smuggled in to redirect or enrich the
+ * mutation. `EDIT` must carry at least one editable field; every other action
+ * must NOT carry a patch, so an activate can never silently rewrite copy.
+ *
+ * WHICH FIELDS ARE EDITABLE, AND WHY THESE: `serviceType`, `description` and
+ * `includedWork` are non-identity, non-relational attributes. Editing them can
+ * never orphan a booking: `Booking.serviceType` is a snapshot taken at booking
+ * time, and no booking stores a service's description. Name, slug, catalogue
+ * placement and price are deliberately absent - name/slug are identity, price
+ * has its own separately-audited endpoint.
+ */
+export const adminServiceBulkSchema = z
+  .object({
+    ids: bulkIdList('service'),
+    action: z.enum(['ACTIVATE', 'DEACTIVATE', 'DELETE', 'EDIT']),
+    patch: z
+      .object({
+        serviceType: z.enum(SERVICE_TYPES).optional(),
+        description: optionalText(1000),
+        includedWork: optionalText(2000),
+      })
+      .strict()
+      .optional(),
+  })
+  .strict()
+  .superRefine((data, ctx) => {
+    const patch = data.patch;
+    const hasPatch =
+      !!patch && (patch.serviceType !== undefined || patch.description !== undefined || patch.includedWork !== undefined);
+    if (data.action === 'EDIT' && !hasPatch) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'Choose at least one field to update',
+        path: ['patch'],
+      });
+    }
+    if (data.action !== 'EDIT' && patch !== undefined) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'A patch is only allowed with the EDIT action',
+        path: ['patch'],
+      });
+    }
+  });
+
+/**
+ * Bulk operation over the 20 official categories.
+ *
+ * ONLY activation is offered. Name, code, position and description are the
+ * authoritative official catalogue identity and are absent from the schema, so
+ * `.strict()` rejects any attempt to rename, reorder or - critically - DELETE an
+ * official category in bulk. Deactivating hides a category from customers while
+ * preserving every record and all booking history.
+ */
+export const adminCategoryBulkSchema = z
+  .object({
+    ids: bulkIdList('category'),
+    action: z.enum(['ACTIVATE', 'DEACTIVATE']),
+  })
+  .strict();
+
+/** One new service in a bulk-create request. */
+export const adminServiceCreateItemSchema = z
+  .object({
+    subCategoryId: z.string().cuid('Invalid subcategory'),
+    name: nameSchema,
+    serviceType: z.enum(SERVICE_TYPES),
+    description: optionalText(1000),
+    includedWork: optionalText(2000),
+    isActive: z.boolean().optional(),
+  })
+  .strict();
+
+/**
+ * Bulk create: add one or more services under an existing subcategory.
+ *
+ * Each item carries the fields the schema actually requires (`subCategoryId`,
+ * `name`, `serviceType`); `slug` is derived server-side and the three charging
+ * options are created disabled with no price, exactly as the seed does - a price
+ * is a commercial decision published through its own audited endpoint, never
+ * fabricated here.
+ */
+export const adminServiceCreateSchema = z
+  .object({
+    services: z
+      .array(adminServiceCreateItemSchema)
+      .min(1, 'Add at least one service')
+      .max(50, 'Add at most 50 services at once'),
+  })
+  .strict();
+
 /**
  * Charging-option configuration.
  *
@@ -566,6 +689,31 @@ export const adminServiceQuerySchema = z
     category: z.string().trim().max(64).optional(),
     status: z.enum(['ALL', 'ACTIVE', 'INACTIVE']).default('ALL'),
     charging: z.enum(['ALL', ...CHARGING_OPTIONS]).default('ALL'),
+    page: z.coerce.number().int().min(1).max(10_000).default(1),
+    pageSize: z.coerce.number().int().min(1).max(100).default(20),
+  })
+  .strict();
+
+/** Query parameters for the unified charging-options table (one row per service). */
+export const adminChargingServiceQuerySchema = z
+  .object({
+    q: z
+      .string()
+      .trim()
+      .max(80)
+      .transform((s) => s.replace(controlChars, ''))
+      .optional(),
+    category: z.string().trim().max(64).optional(),
+    /**
+     * Which charging option must be enabled on the service:
+     * ALL = no constraint, otherwise the matching `ServiceOption` must be active.
+     */
+    charging: z.enum(['ALL', ...CHARGING_OPTIONS]).default('ALL'),
+    /**
+     * Enabled-state constraint, evaluated across the service's three options:
+     * ALL = no constraint, ENABLED = at least one option on, DISABLED = none on.
+     */
+    status: z.enum(['ALL', 'ENABLED', 'DISABLED']).default('ALL'),
     page: z.coerce.number().int().min(1).max(10_000).default(1),
     pageSize: z.coerce.number().int().min(1).max(100).default(20),
   })

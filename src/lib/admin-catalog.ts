@@ -2,12 +2,15 @@ import 'server-only';
 import { prisma } from './prisma';
 import { audit } from './audit';
 import { ApiError, notFound } from './api';
-import { CHARGING_OPTIONS, type ChargingOption } from './domain';
+import { CHARGING_OPTIONS, type ChargingOption, type ServiceType } from './domain';
 import {
   BUDGET_CEILING_PAISE,
   BUDGET_FLOOR_PAISE,
+  type adminCategoryBulkSchema,
   type adminChargingOptionSchema,
   type adminPriceSchema,
+  type adminServiceBulkSchema,
+  type adminServiceCreateSchema,
 } from './validation';
 import type { z } from 'zod';
 
@@ -324,6 +327,127 @@ export async function setServiceActive(
   return updated;
 }
 // ---------------------------------------------------------------------------
+// Bulk administration
+// ---------------------------------------------------------------------------
+
+/**
+ * Server-side slug derivation, mirroring `prisma/seed.ts`.
+ *
+ * The slug is NEVER accepted from the client: it is derived here from the
+ * validated name so a caller cannot place a service under an arbitrary URL.
+ */
+function slugifyService(input: string): string {
+  return input
+    .toLowerCase()
+    .replace(/&/g, 'and')
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-|-$/g, '');
+}
+
+export type BulkResult = {
+  /** How many ids the client submitted (after de-duplication). */
+  requested: number;
+  /** How many rows were actually changed / deleted. */
+  affected: number;
+  /** Submitted ids that do not exist in the database. */
+  notFound: string[];
+  /** For DELETE: records that were protected and therefore NOT deleted. */
+  protected?: Array<{ id: string; name: string; reason: string }>;
+  /** For CREATE: services that could not be created (e.g. duplicate name). */
+  skipped?: Array<{ name: string; reason: string }>;
+  /** For CREATE: the services that were created. */
+  created?: Array<{ id: string; name: string; slug: string }>;
+};
+
+/** Splits submitted ids into the ones that exist and the ones that do not. */
+async function partitionExisting(
+  ids: string[],
+  load: (existingIds: string[]) => Promise<Array<{ id: string }>>,
+): Promise<{ existingIds: string[]; notFound: string[] }> {
+  const rows = await load(ids);
+  const existingIds = rows.map((r) => r.id);
+  const found = new Set(existingIds);
+  return { existingIds, notFound: ids.filter((id) => !found.has(id)) };
+}
+
+/**
+ * Activates or deactivates several official categories at once.
+ *
+ * Only `isActive` is written. Name, code and position are absent from the
+ * schema and from this function, so the official catalogue identity cannot be
+ * touched by a bulk call. One summary audit event records the blast radius.
+ */
+export async function bulkSetCategoryActive(
+  input: z.infer<typeof adminCategoryBulkSchema>,
+  actor: AdminActor,
+): Promise<BulkResult> {
+  const isActive = input.action === 'ACTIVATE';
+
+  const { existingIds, notFound } = await partitionExisting(input.ids, (existingIds) =>
+    prisma.category.findMany({ where: { id: { in: existingIds } }, select: { id: true } }),
+  );
+
+  const { count } = await prisma.category.updateMany({
+    where: { id: { in: existingIds } },
+    data: { isActive },
+  });
+
+  await audit({
+    action: 'CATEGORY_BULK_STATUS_CHANGED',
+    entityType: 'Category',
+    actorId: actor.id,
+    actorRole: actor.role,
+    metadata: {
+      action: input.action,
+      requested: input.ids.length,
+      affected: count,
+      notFound: notFound.length,
+    },
+  });
+
+  return { requested: input.ids.length, affected: count, notFound };
+}
+
+/**
+ * Activates or deactivates several services at once.
+ *
+ * Identical guarantees to the single-service toggle, applied to a set: only
+ * `isActive` changes, the row is located by primary key, and the change is
+ * audited. Deactivating makes a service unbookable without deleting it or its
+ * history.
+ */
+export async function bulkSetServiceActive(
+  input: z.infer<typeof adminServiceBulkSchema>,
+  actor: AdminActor,
+): Promise<BulkResult> {
+  const isActive = input.action === 'ACTIVATE';
+
+  const { existingIds, notFound } = await partitionExisting(input.ids, (existingIds) =>
+    prisma.service.findMany({ where: { id: { in: existingIds } }, select: { id: true } }),
+  );
+
+  const { count } = await prisma.service.updateMany({
+    where: { id: { in: existingIds } },
+    data: { isActive },
+  });
+
+  await audit({
+    action: 'SERVICE_BULK_STATUS_CHANGED',
+    entityType: 'Service',
+    actorId: actor.id,
+    actorRole: actor.role,
+    metadata: {
+      action: input.action,
+      requested: input.ids.length,
+      affected: count,
+      notFound: notFound.length,
+    },
+  });
+
+  return { requested: input.ids.length, affected: count, notFound };
+}
+
+// ---------------------------------------------------------------------------
 // Charging options
 // ---------------------------------------------------------------------------
 
@@ -343,6 +467,117 @@ export type AdminChargingOptionRow = {
   categorySlug: string;
   subCategoryName: string;
 };
+
+/** One service with all three charging options attached. The unified table row. */
+export type AdminChargingServiceRow = {
+  serviceId: string;
+  serviceName: string;
+  serviceActive: boolean;
+  categoryName: string;
+  categorySlug: string;
+  subCategoryName: string;
+  options: {
+    charging: ChargingOption;
+    optionId: string;
+    isActive: boolean;
+    pricePaise: number | null;
+    budgetMinPaise: number | null;
+    budgetMaxPaise: number | null;
+    durationMinMinutes: number | null;
+  }[];
+};
+
+export type AdminChargingServiceQuery = {
+  q?: string;
+  category?: string;
+  charging: 'ALL' | ChargingOption;
+  status: 'ALL' | 'ENABLED' | 'DISABLED';
+  page: number;
+  pageSize: number;
+};
+
+/**
+ * Builds the Prisma `where` for the unified charging-options table.
+ *
+ * Filters mirror the admin service table: the search term applies to service
+ * name/slug only, `charging` requires that option to be enabled, and `status`
+ * constrains whether ANY of the three options is enabled. All three options
+ * stay attached to the row so each can be configured independently.
+ */
+function chargingServiceWhere(query: AdminChargingServiceQuery): Record<string, unknown> {
+  const where: Record<string, unknown> = {};
+  if (query.q) where.OR = [{ name: { contains: query.q } }, { slug: { contains: query.q } }];
+  if (query.category) where.subCategory = { category: { slug: query.category } };
+  const optionClauses: Array<Record<string, unknown>> = [];
+  if (query.charging !== 'ALL') optionClauses.push({ options: { some: { charging: query.charging, isActive: true } } });
+  if (query.status === 'ENABLED') optionClauses.push({ options: { some: { isActive: true } } });
+  if (query.status === 'DISABLED') optionClauses.push({ options: { none: { isActive: true } } });
+  if (optionClauses.length === 1) Object.assign(where, optionClauses[0]);
+  if (optionClauses.length > 1) where.AND = optionClauses;
+  return where;
+}
+
+/**
+ * Every service with its three charging options, paginated.
+ *
+ * Each service appears exactly ONCE. The three `ServiceOption` rows are grouped
+ * under it in canonical `CHARGING_OPTIONS` order so the single Configure dialog
+ * can update each one through the existing PATCH endpoint without touching the
+ * other two. No new schema, API, or persistence path is introduced.
+ */
+export async function listAdminChargingServices(query: AdminChargingServiceQuery) {
+  const where = chargingServiceWhere(query);
+
+  const [rows, total] = await Promise.all([
+    prisma.service.findMany({
+      where,
+      orderBy: [{ name: 'asc' }],
+      skip: (query.page - 1) * query.pageSize,
+      take: query.pageSize,
+      select: {
+        id: true,
+        name: true,
+        isActive: true,
+        subCategory: { select: { name: true, category: { select: { name: true, slug: true } } } },
+        options: {
+          select: {
+            id: true,
+            charging: true,
+            pricePaise: true,
+            budgetMinPaise: true,
+            budgetMaxPaise: true,
+            durationMinMinutes: true,
+            isActive: true,
+          },
+        },
+      },
+    }),
+    prisma.service.count({ where }),
+  ]);
+
+  const items: AdminChargingServiceRow[] = rows.map((row) => ({
+    serviceId: row.id,
+    serviceName: row.name,
+    serviceActive: row.isActive,
+    categoryName: row.subCategory.category.name,
+    categorySlug: row.subCategory.category.slug,
+    subCategoryName: row.subCategory.name,
+    options: CHARGING_OPTIONS.map((charging) => {
+      const option = row.options.find((o) => o.charging === charging);
+      return {
+        charging,
+        optionId: option?.id ?? '',
+        isActive: option?.isActive ?? false,
+        pricePaise: option?.pricePaise ?? null,
+        budgetMinPaise: option?.budgetMinPaise ?? null,
+        budgetMaxPaise: option?.budgetMaxPaise ?? null,
+        durationMinMinutes: option?.durationMinMinutes ?? null,
+      };
+    }),
+  }));
+
+  return { items, total, page: query.page, pageSize: query.pageSize };
+}
 
 /** Every `ServiceOption` row with its service and category context. */
 export async function listAdminChargingOptions(): Promise<AdminChargingOptionRow[]> {
@@ -486,6 +721,127 @@ export async function setChargingOption(
 
   return updated;
 }
+// ---------------------------------------------------------------------------
+// Bulk edit / delete / create
+// ---------------------------------------------------------------------------
+
+/**
+ * Edits the supported, non-identity fields of several services at once.
+ *
+ * SAFETY: only `serviceType`, `description` and `includedWork` are writable,
+ * and only the fields actually present in the patch. `Booking.serviceType` is a
+ * snapshot taken at booking time and no booking stores a description, so this
+ * can never rewrite an agreed quote or orphan a booking. Name, slug, placement
+ * and price are unreachable from here.
+ */
+export async function bulkEditServices(
+  input: z.infer<typeof adminServiceBulkSchema>,
+  actor: AdminActor,
+): Promise<BulkResult> {
+  const patch = input.patch ?? {};
+  const data: { serviceType?: ServiceType; description?: string | null; includedWork?: string | null } = {};
+  const fields: string[] = [];
+  if (patch.serviceType !== undefined) {
+    data.serviceType = patch.serviceType;
+    fields.push('serviceType');
+  }
+  // An explicitly empty string clears the optional copy; absence leaves it as-is.
+  if (patch.description !== undefined) {
+    data.description = patch.description.length > 0 ? patch.description : null;
+    fields.push('description');
+  }
+  if (patch.includedWork !== undefined) {
+    data.includedWork = patch.includedWork.length > 0 ? patch.includedWork : null;
+    fields.push('includedWork');
+  }
+
+  const { existingIds, notFound } = await partitionExisting(input.ids, (existingIds) =>
+    prisma.service.findMany({ where: { id: { in: existingIds } }, select: { id: true } }),
+  );
+
+  const { count } = await prisma.service.updateMany({
+    where: { id: { in: existingIds } },
+    data,
+  });
+
+  await audit({
+    action: 'SERVICE_BULK_EDITED',
+    entityType: 'Service',
+    actorId: actor.id,
+    actorRole: actor.role,
+    metadata: {
+      requested: input.ids.length,
+      affected: count,
+      notFound: notFound.length,
+      fields: fields.join(','),
+    },
+  });
+
+  return { requested: input.ids.length, affected: count, notFound };
+}
+
+/**
+ * Deletes several services at once, with hard booking-history protection.
+ *
+ * DATA INTEGRITY: a service referenced by ANY booking is NEVER deleted. The
+ * `Booking.service` relation is `onDelete: Restrict`, so such a delete would be
+ * rejected by the database anyway - this checks up front so the operator gets a
+ * clear, per-record explanation instead of an opaque constraint error. Only
+ * services with zero bookings are removed; their charging options, provider
+ * links and reviews cascade, which is correct because the service no longer
+ * exists. The result reports exactly which records were protected and why, so
+ * nothing is ever removed silently.
+ */
+export async function bulkDeleteServices(
+  input: z.infer<typeof adminServiceBulkSchema>,
+  actor: AdminActor,
+): Promise<BulkResult> {
+  const services = await prisma.service.findMany({
+    where: { id: { in: input.ids } },
+    select: { id: true, name: true, _count: { select: { bookings: true } } },
+  });
+
+  const foundIds = new Set(services.map((s) => s.id));
+  const notFound = input.ids.filter((id) => !foundIds.has(id));
+
+  const deletableIds = services.filter((s) => s._count.bookings === 0).map((s) => s.id);
+  const protectedRecords = services
+    .filter((s) => s._count.bookings > 0)
+    .map((s) => ({
+      id: s.id,
+      name: s.name,
+      reason: `Referenced by ${s._count.bookings} existing booking${s._count.bookings === 1 ? '' : 's'}`,
+    }));
+
+  let deleted = 0;
+  if (deletableIds.length > 0) {
+    const [result] = await prisma.$transaction([
+      prisma.service.deleteMany({ where: { id: { in: deletableIds } } }),
+    ]);
+    deleted = result.count;
+  }
+
+  await audit({
+    action: 'SERVICE_BULK_DELETED',
+    entityType: 'Service',
+    actorId: actor.id,
+    actorRole: actor.role,
+    metadata: {
+      requested: input.ids.length,
+      deleted,
+      protected: protectedRecords.length,
+      notFound: notFound.length,
+    },
+  });
+
+  return {
+    requested: input.ids.length,
+    affected: deleted,
+    notFound,
+    protected: protectedRecords,
+  };
+}
+
 // ---------------------------------------------------------------------------
 // Published pricing
 // ---------------------------------------------------------------------------
@@ -669,4 +1025,122 @@ export async function setPublishedPrice(
   });
 
   return updated;
+}
+
+/**
+ * Creates one or more services under an existing subcategory.
+ *
+ * The slug is derived server-side and checked for collisions up front, so a
+ * duplicate name is reported as a skipped item rather than surfacing as a raw
+ * unique-constraint error. Each service is created with its three charging
+ * options disabled and unpriced - exactly as the seed does - because publishing
+ * a price is a separate, separately-audited commercial decision. Creation is a
+ * single transaction, so a valid batch is all-or-nothing.
+ */
+export async function bulkCreateServices(
+  input: z.infer<typeof adminServiceCreateSchema>,
+  actor: AdminActor,
+): Promise<BulkResult> {
+  const subIds = Array.from(new Set(input.services.map((s) => s.subCategoryId)));
+  const subs = await prisma.subCategory.findMany({
+    where: { id: { in: subIds } },
+    select: { id: true },
+  });
+  const validSubIds = new Set(subs.map((s) => s.id));
+
+  const candidateSlugs = input.services.map((s) => slugifyService(s.name));
+  const existing = await prisma.service.findMany({
+    where: { slug: { in: candidateSlugs } },
+    select: { slug: true },
+  });
+  const takenSlugs = new Set(existing.map((s) => s.slug));
+
+  type CreateItem = (typeof input.services)[number] & { slug: string };
+  const toCreate: CreateItem[] = [];
+  const skipped: Array<{ name: string; reason: string }> = [];
+  const batchSlugs = new Set<string>();
+
+  for (const [index, item] of input.services.entries()) {
+    const slug = candidateSlugs[index] ?? '';
+    if (!slug) {
+      skipped.push({ name: item.name, reason: 'Name did not produce a valid slug' });
+      continue;
+    }
+    if (!validSubIds.has(item.subCategoryId)) {
+      skipped.push({ name: item.name, reason: 'The selected subcategory does not exist' });
+      continue;
+    }
+    if (takenSlugs.has(slug) || batchSlugs.has(slug)) {
+      skipped.push({ name: item.name, reason: 'A service with this name already exists' });
+      continue;
+    }
+    batchSlugs.add(slug);
+    toCreate.push({ ...item, slug });
+  }
+
+  let created: Array<{ id: string; name: string; slug: string }> = [];
+  if (toCreate.length > 0) {
+    created = await prisma.$transaction(
+      toCreate.map((item) =>
+        prisma.service.create({
+          data: {
+            subCategoryId: item.subCategoryId,
+            name: item.name,
+            slug: item.slug,
+            serviceType: item.serviceType,
+            description: item.description && item.description.length > 0 ? item.description : null,
+            includedWork: item.includedWork && item.includedWork.length > 0 ? item.includedWork : null,
+            isActive: item.isActive ?? true,
+            // Three charging options, disabled and unpriced, matching the seed.
+            options: {
+              create: CHARGING_OPTIONS.map((charging) => ({ charging, isActive: false })),
+            },
+          },
+          select: { id: true, name: true, slug: true },
+        }),
+      ),
+    );
+  }
+
+  await audit({
+    action: 'SERVICE_BULK_CREATED',
+    entityType: 'Service',
+    actorId: actor.id,
+    actorRole: actor.role,
+    metadata: {
+      requested: input.services.length,
+      created: created.length,
+      skipped: skipped.length,
+    },
+  });
+
+  return {
+    requested: input.services.length,
+    affected: created.length,
+    notFound: [],
+    skipped,
+    created,
+  };
+}
+
+/**
+ * The category tree (category -> subcategories) for the "add services" dialog.
+ *
+ * Read from the database with an explicit projection so the picker lists real,
+ * existing subcategories with their ids - a client never invents a placement.
+ */
+export async function listAdminCategoryTree() {
+  return prisma.category.findMany({
+    orderBy: { position: 'asc' },
+    select: {
+      id: true,
+      name: true,
+      slug: true,
+      isActive: true,
+      subCategories: {
+        orderBy: { name: 'asc' },
+        select: { id: true, name: true, slug: true, isActive: true },
+      },
+    },
+  });
 }

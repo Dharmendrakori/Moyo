@@ -1,10 +1,8 @@
 import { requireAdminPage } from '@/lib/admin-page-guard';
 import { listAdminCategories } from '@/lib/admin-catalog';
-import { DataTable, Notice, PageHeader } from '@/components/admin/DataTable';
-import { CategoryStatusControl } from '@/components/admin/StatusControls';
+import { Notice, PageHeader } from '@/components/admin/DataTable';
+import { CategoryBulkTable } from '@/components/admin/CategoryBulkTable';
 import { EmptyState, ErrorState } from '@/components/ui/States';
-import { StatusBadge } from '@/components/ui/StatusBadge';
-import { formatDate } from '@/lib/format';
 
 /**
  * CATEGORY ADMINISTRATION
@@ -68,88 +66,17 @@ export default async function AdminCategoriesPage() {
         all booking history intact.
       </Notice>
 
-      <DataTable
-        caption="Official service categories with service counts and availability"
-        rows={categories}
-        rowKey={(c) => c.id}
-        empty={
+      {categories.length === 0 ? (
+        <div className="rounded-card border border-ink-200 bg-white shadow-card">
           <EmptyState
             icon="grid"
             title="No categories in the catalogue"
             description="The database contains no service categories yet."
           />
-        }
-        columns={[
-          {
-            key: 'position',
-            header: '#',
-            numeric: true,
-            className: 'w-12',
-            cell: (c) => <span className="tabular-nums text-ink-400">{c.position}</span>,
-          },
-          {
-            key: 'name',
-            header: 'Category',
-            cell: (c) => (
-              <div className="min-w-0">
-                <p className="font-semibold text-ink-900">{c.name}</p>
-                <p className="truncate text-xs text-ink-400">
-                  <code className="font-mono">{c.slug}</code>
-                  <span className="mx-1.5">·</span>
-                  <code className="font-mono">{c.code}</code>
-                </p>
-              </div>
-            ),
-          },
-          {
-            key: 'services',
-            header: 'Services',
-            numeric: true,
-            className: 'w-28',
-            cell: (c) => (
-              <span>
-                <span className="font-semibold tabular-nums text-ink-800">
-                  {c.activeServiceCount}
-                </span>
-                <span className="tabular-nums text-ink-400"> / {c.serviceCount}</span>
-              </span>
-            ),
-          },
-          {
-            key: 'subs',
-            header: 'Subcategories',
-            numeric: true,
-            className: 'w-28',
-            secondary: true,
-            cell: (c) => <span className="tabular-nums">{c.subCategoryCount}</span>,
-          },
-          {
-            key: 'status',
-            header: 'Status',
-            className: 'w-28',
-            cell: (c) => (
-              <StatusBadge
-                label={c.isActive ? 'Active' : 'Inactive'}
-                tone={c.isActive ? 'success' : 'neutral'}
-                dot
-              />
-            ),
-          },
-          {
-            key: 'updated',
-            header: 'Updated',
-            secondary: true,
-            className: 'w-32',
-            cell: (c) => <span className="text-xs text-ink-500">{formatDate(c.updatedAt)}</span>,
-          },
-          {
-            key: 'actions',
-            header: 'Action',
-            className: 'w-32',
-            cell: (c) => <CategoryStatusControl categoryId={c.id} isActive={c.isActive} name={c.name} />,
-          },
-        ]}
-      />
+        </div>
+      ) : (
+        <CategoryBulkTable rows={categories} />
+      )}
     </div>
   );
 }

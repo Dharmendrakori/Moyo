@@ -1,13 +1,11 @@
-import Link from 'next/link';
 import { requireAdminPage } from '@/lib/admin-page-guard';
-import { listAdminServices, listCategoryOptions } from '@/lib/admin-catalog';
+import { listAdminServices, listCategoryOptions, listAdminCategoryTree } from '@/lib/admin-catalog';
 import { adminServiceQuerySchema } from '@/lib/validation';
-import { CHARGING_LABEL, CHARGING_OPTIONS, SERVICE_TYPE_LABEL, type ServiceType } from '@/lib/domain';
-import { DataTable, Notice, PageHeader } from '@/components/admin/DataTable';
+import { CHARGING_LABEL, CHARGING_OPTIONS } from '@/lib/domain';
+import { Notice, PageHeader } from '@/components/admin/DataTable';
 import { Pager, SearchField, SelectField, Toolbar } from '@/components/admin/Toolbar';
-import { ServiceStatusControl } from '@/components/admin/StatusControls';
-import { EmptyState, ErrorState } from '@/components/ui/States';
-import { StatusBadge } from '@/components/ui/StatusBadge';
+import { ServiceBulkTable } from '@/components/admin/ServiceBulkTable';
+import { ErrorState } from '@/components/ui/States';
 
 /**
  * SERVICE ADMINISTRATION
@@ -45,8 +43,13 @@ export default async function AdminServicesPage({
 
   let rows: Awaited<ReturnType<typeof listAdminServices>>;
   let categories: Array<{ slug: string; name: string }>;
+  let categoryTree: Awaited<ReturnType<typeof listAdminCategoryTree>>;
   try {
-    [rows, categories] = await Promise.all([listAdminServices(query), listCategoryOptions()]);
+    [rows, categories, categoryTree] = await Promise.all([
+      listAdminServices(query),
+      listCategoryOptions(),
+      listAdminCategoryTree(),
+    ]);
   } catch {
     return (
       <div className="space-y-6">
@@ -118,111 +121,10 @@ export default async function AdminServicesPage({
         </Notice>
       )}
 
-      <DataTable
-        caption="Service catalogue with category, status and pricing coverage"
+      <ServiceBulkTable
         rows={rows.items}
-        rowKey={(s) => s.id}
-        empty={
-          <EmptyState
-            icon="bolt"
-            title="No services match these filters"
-            description={
-              query.q || query.category || query.status !== 'ALL' || query.charging !== 'ALL'
-                ? 'Try clearing the search or filters.'
-                : 'The catalogue contains no services yet.'
-            }
-          />
-        }
-        columns={[
-          {
-            key: 'name',
-            header: 'Service',
-            cell: (s) => (
-              <div className="min-w-0">
-                <Link
-                  href={`/admin/services/${s.id}`}
-                  className="font-semibold text-ink-900 transition hover:text-brand-600"
-                >
-                  {s.name}
-                </Link>
-                <p className="truncate text-xs text-ink-400">
-                  <code className="font-mono">{s.slug}</code>
-                </p>
-              </div>
-            ),
-          },
-          {
-            key: 'category',
-            header: 'Category',
-            cell: (s) => (
-              <div className="min-w-0">
-                <p className="truncate text-ink-700">{s.categoryName}</p>
-                <p className="truncate text-xs text-ink-400">{s.subCategoryName}</p>
-              </div>
-            ),
-          },
-          {
-            key: 'type',
-            header: 'Type',
-            className: 'w-40',
-            cell: (s) => (
-              <StatusBadge
-                label={SERVICE_TYPE_LABEL[s.serviceType as ServiceType] ?? s.serviceType}
-                tone="neutral"
-              />
-            ),
-          },
-          {
-            key: 'charging',
-            header: 'Charging',
-            className: 'w-52',
-            cell: (s) =>
-              s.activeCharging.length === 0 ? (
-                <span className="text-xs font-medium text-ink-400">None enabled</span>
-              ) : (
-                <span className="flex flex-wrap gap-1">
-                  {s.activeCharging.map((c) => (
-                    <StatusBadge key={c} label={CHARGING_LABEL[c]} tone="brand" />
-                  ))}
-                </span>
-              ),
-          },
-          {
-            key: 'pricing',
-            header: 'Pricing',
-            numeric: true,
-            className: 'w-28',
-            cell: (s) => (
-              <span
-                className={
-                  s.publishedCount > 0
-                    ? 'text-xs font-semibold tabular-nums text-success'
-                    : 'text-xs font-medium tabular-nums text-ink-400'
-                }
-              >
-                {s.publishedCount} published
-              </span>
-            ),
-          },
-          {
-            key: 'status',
-            header: 'Status',
-            className: 'w-28',
-            cell: (s) => (
-              <StatusBadge
-                label={s.isActive ? 'Active' : 'Inactive'}
-                tone={s.isActive ? 'success' : 'neutral'}
-                dot
-              />
-            ),
-          },
-          {
-            key: 'actions',
-            header: 'Action',
-            className: 'w-32',
-            cell: (s) => <ServiceStatusControl serviceId={s.id} isActive={s.isActive} name={s.name} />,
-          },
-        ]}
+        tree={categoryTree}
+        hasFilters={Boolean(query.q || query.category || query.status !== 'ALL' || query.charging !== 'ALL')}
       />
 
       <Pager page={rows.page} pageSize={rows.pageSize} total={rows.total} buildHref={buildHref} />

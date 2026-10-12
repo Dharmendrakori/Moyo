@@ -1,7 +1,7 @@
-import { apiHandler, jsonOk } from '@/lib/api';
-import { adminReadGuard } from '@/lib/admin-api';
-import { listAdminServices } from '@/lib/admin-catalog';
-import { adminServiceQuerySchema } from '@/lib/validation';
+import { apiHandler, jsonOk, parseJson } from '@/lib/api';
+import { adminReadGuard, adminWriteGuard, asAdminActor } from '@/lib/admin-api';
+import { bulkCreateServices, listAdminServices } from '@/lib/admin-catalog';
+import { adminServiceCreateSchema, adminServiceQuerySchema } from '@/lib/validation';
 
 /**
  * GET /api/admin/services
@@ -25,4 +25,26 @@ export const GET = apiHandler(async (request: Request) => {
 
   const result = await listAdminServices(query);
   return jsonOk(result);
+});
+
+/**
+ * POST /api/admin/services
+ *
+ * Creates one or more services (bulk add).
+ *
+ * `adminWriteGuard` enforces the ADMIN session, CSRF, Origin and rate limiting
+ * before the body is parsed. The `.strict()` schema validates every item's
+ * subcategory, name and type and caps the batch. The slug is derived server
+ * side; a duplicate name is reported as a skipped item, and each created service
+ * gets its three charging options disabled and unpriced - a price is published
+ * separately, never fabricated here.
+ */
+export const POST = apiHandler(async (request: Request) => {
+  const guard = await adminWriteGuard(request);
+  if (!guard.ok) return guard.response;
+
+  const body = await parseJson(request, adminServiceCreateSchema);
+  const result = await bulkCreateServices(body, asAdminActor(guard.user));
+
+  return jsonOk({ result });
 });
