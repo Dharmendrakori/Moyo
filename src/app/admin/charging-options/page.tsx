@@ -1,45 +1,59 @@
 import Link from 'next/link';
 import { requireAdminPage } from '@/lib/admin-page-guard';
-import { listAdminChargingOptions } from '@/lib/admin-catalog';
-import { CHARGING_HINT, CHARGING_LABEL, CHARGING_OPTIONS } from '@/lib/domain';
+import { listAdminChargingServices, listCategoryOptions } from '@/lib/admin-catalog';
+import { adminChargingServiceQuerySchema } from '@/lib/validation';
+import { CHARGING_LABEL, CHARGING_OPTIONS } from '@/lib/domain';
 import { Notice, PageHeader } from '@/components/admin/DataTable';
-import { ChargingOptionControl } from '@/components/admin/ChargingOptionControl';
-import { EmptyState, ErrorState } from '@/components/ui/States';
-import { StatusBadge } from '@/components/ui/StatusBadge';
-import { formatINR } from '@/lib/format';
+import { Pager, SearchField, SelectField, Toolbar } from '@/components/admin/Toolbar';
+import { ChargingOptionsTable } from '@/components/admin/ChargingOptionsTable';
+import { ErrorState } from '@/components/ui/States';
 
 /**
- * CHARGING OPTION ADMINISTRATION
+ * CHARGING OPTION ADMINISTRATION (UNIFIED)
  *
- * The three official charging concepts, presented exactly as the domain model
- * defines them in `src/lib/domain.ts`:
+ * One row per service with all three official charging concepts side by side:
+ * Visit Charge, Fixed Charge and Customer Budget (see `src/lib/domain.ts`).
+ * The previous three duplicated grids are replaced by a single searchable,
+ * filterable, paginated table; each service's Configure dialog edits the three
+ * underlying `ServiceOption` rows independently through the existing PATCH
+ * endpoint, so no setting can overwrite another.
  *
- *   1. Visit Charge     - a published charge for the technician visit
- *   2. Fixed Charge     - a published fixed price for the service
- *   3. Customer Budget  - the customer states a min/max budget and the provider
- *                         confirms what can be delivered within it
- *
- * These concepts are NOT invented here and NOT restated as a new set. They are
- * the values already seeded onto every `ServiceOption` row, read back from the
- * database and grouped for display.
- *
- * NO PRICES ARE INVENTED. The seed deliberately creates all three options per
- * service as INACTIVE with `pricePaise = null`, so until a commercial decision
- * is published this screen honestly reads "Not published" and the customer site
- * shows its neutral "on request" state.
- *
- * This screen configures availability and budget bounds ONLY. Publishing a price
- * is a separate action on /admin/pricing with its own schema and its own audit
- * action, because enabling an option must never expose a price by accident.
+ * NO PRICES ARE INVENTED. Availability and budget bounds are configured here;
+ * publishing a price stays a separate action on /admin/pricing with its own
+ * schema and audit action, because enabling an option must never expose a
+ * price by accident.
  */
 export const dynamic = 'force-dynamic';
 
-export default async function AdminChargingOptionsPage() {
+const PAGE_SIZE = 20;
+
+export default async function AdminChargingOptionsPage({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
   await requireAdminPage('/admin/charging-options');
 
-  let options: Awaited<ReturnType<typeof listAdminChargingOptions>>;
+  const raw = Object.fromEntries(
+    Object.entries(await searchParams).map(([k, v]) => [k, Array.isArray(v) ? v[0] : v]),
+  );
+  const parsed = adminChargingServiceQuerySchema.safeParse(raw);
+  const query = parsed.success ? parsed.data : adminChargingServiceQuerySchema.parse({});
+
+  let rows: Awaited<ReturnType<typeof listAdminChargingServices>>;
+  let categories: Array<{ slug: string; name: string }>;
   try {
-    options = await listAdminChargingOptions();
+    [rows, categories] = await Promise.all([
+      listAdminChargingServices({
+        q: query.q,
+        category: query.category,
+        charging: query.charging,
+        status: query.status,
+        page: query.page,
+        pageSize: PAGE_SIZE,
+      }),
+      listCategoryOptions(),
+    ]);
   } catch {
     return (
       <div className="space-y-6">
@@ -52,12 +66,31 @@ export default async function AdminChargingOptionsPage() {
     );
   }
 
-  const offered = options.filter((o) => o.isActive).length;
+  const buildHref = (page: number) => {
+    const params = new URLSearchParams();
+    if (query.q) params.set('q', query.q);
+    if (query.category) params.set('category', query.category);
+    if (query.charging !== 'ALL') params.set('charging', query.charging);
+    if (query.status !== 'ALL') params.set('status', query.status);
+    params.set('page', String(page));
+    return `/admin/charging-options?${params.toString()}`;
+  };
+
+  const enabledOnPage = rows.items.filter((s) => s.options.some((o) => o.isActive)).length;
+  const visitOn = rows.items.filter(
+    (s) => s.options.find((o) => o.charging === 'VISIT_CHARGE')?.isActive,
+  ).length;
+  const budgetOn = rows.items.filter(
+    (s) => s.options.find((o) => o.charging === 'CUSTOMER_BUDGET')?.isActive,
+  ).length;
+  const hasFilters = Boolean(
+    query.q || query.category || query.charging !== 'ALL' || query.status !== 'ALL',
+  );
   return (
     <div className="space-y-4">
       <PageHeader
         title="Charging options"
-        description="Which charging options MOYO offers on each service, and the customer budget range where that applies. Prices are managed separately under Pricing."
+        description="Each service once, with Visit Charge, Fixed Charge and Customer Budget side by side. Availability and the Customer Budget range are configured here; prices are managed separately under Pricing."
         actions={
           <Link
             href="/admin/pricing"
@@ -69,122 +102,61 @@ export default async function AdminChargingOptionsPage() {
       />
 
       <div className="grid grid-cols-2 gap-2 sm:gap-3 lg:grid-cols-4">
-        <SummaryTile label="Option rows" value={options.length} />
-        <SummaryTile label="Currently offered" value={offered} />
-        <SummaryTile label="Not offered" value={options.length - offered} />
-        <SummaryTile
-          label="Services covered"
-          value={new Set(options.filter((o) => o.isActive).map((o) => o.serviceId)).size}
-        />
+        <SummaryTile label="Services" value={rows.total} />
+        <SummaryTile label="Enabled on this page" value={enabledOnPage} />
+        <SummaryTile label="Visit Charge on" value={visitOn} />
+        <SummaryTile label="Customer Budget on" value={budgetOn} />
       </div>
 
       <Notice tone="info">
-        These three concepts are the official charging model and are preserved as they are. This
-        screen controls availability and the Customer Budget range only. A published price is set
-        on the Pricing screen, so enabling an option never exposes a price by itself.
+        These three concepts are the official charging model and are preserved as they are. Configure
+        opens one dialog per service; each charging type saves to its own record, so changing one
+        never overwrites the other two.
       </Notice>
 
-      {options.length === 0 ? (
-        <div className="rounded-card border border-ink-200 bg-white">
-          <EmptyState
-            icon="receipt"
-            title="No charging options in the database"
-            description="Charging options are created when the catalogue is seeded."
-          />
-        </div>
-      ) : (
-        CHARGING_OPTIONS.map((charging) => {
-          const rows = options.filter((o) => o.charging === charging);
-          const label = CHARGING_LABEL[charging];
-          const enabled = rows.filter((r) => r.isActive).length;
+      <Toolbar
+        action="/admin/charging-options"
+        query={{ q: query.q, category: query.category, pageSize: String(PAGE_SIZE) }}
+      >
+        <SearchField
+          name="q"
+          label="Search"
+          defaultValue={query.q ?? ''}
+          placeholder="Service name…"
+        />
+        <SelectField
+          name="category"
+          label="Category"
+          defaultValue={query.category ?? ''}
+          options={[
+            { value: '', label: 'All categories' },
+            ...categories.map((c) => ({ value: c.slug, label: c.name })),
+          ]}
+        />
+        <SelectField
+          name="charging"
+          label="Charging type"
+          defaultValue={query.charging}
+          options={[
+            { value: 'ALL', label: 'Any type enabled' },
+            ...CHARGING_OPTIONS.map((c) => ({ value: c, label: `${CHARGING_LABEL[c]} on` })),
+          ]}
+        />
+        <SelectField
+          name="status"
+          label="Status"
+          defaultValue={query.status}
+          options={[
+            { value: 'ALL', label: 'Any status' },
+            { value: 'ENABLED', label: 'At least one enabled' },
+            { value: 'DISABLED', label: 'All disabled' },
+          ]}
+        />
+      </Toolbar>
 
-          return (
-            <section key={charging} className="space-y-2">
-              <div className="flex flex-wrap items-baseline justify-between gap-2">
-                <div>
-                  <h2 className="text-sm font-semibold text-ink-900">{label}</h2>
-                  <p className="mt-0.5 max-w-2xl text-xs leading-relaxed text-ink-500">
-                    {CHARGING_HINT[charging]}
-                  </p>
-                </div>
-                <StatusBadge
-                  label={`${enabled} of ${rows.length} offered`}
-                  tone={enabled > 0 ? 'success' : 'neutral'}
-                />
-              </div>
+      <ChargingOptionsTable rows={rows.items} hasFilters={hasFilters} />
 
-              {rows.length === 0 ? (
-                <div className="rounded-card border border-ink-200 bg-white">
-                  <EmptyState
-                    icon="receipt"
-                    title="Not configured"
-                    description={`No service currently defines ${label}.`}
-                    className="py-8"
-                  />
-                </div>
-              ) : (
-                <ul className="grid grid-cols-1 gap-2 sm:grid-cols-2 sm:gap-3 lg:grid-cols-3">
-                  {rows.map((row) => (
-                    <li
-                      key={row.id}
-                      className="flex flex-col rounded-card border border-ink-200 bg-white p-3 shadow-card transition-colors hover:border-ink-300"
-                    >
-                      <div className="flex items-start justify-between gap-2">
-                        <div className="min-w-0">
-                          <Link
-                            href={`/admin/services/${row.serviceId}`}
-                            title={row.serviceName}
-                            className="block truncate text-sm font-semibold text-ink-900 transition hover:text-brand-600"
-                          >
-                            {row.serviceName}
-                          </Link>
-                          <p
-                            title={`${row.categoryName} · ${row.subCategoryName}`}
-                            className="truncate text-xs text-ink-400"
-                          >
-                            {row.categoryName} · {row.subCategoryName}
-                          </p>
-                        </div>
-                        <StatusBadge
-                          label={row.isActive ? 'On' : 'Off'}
-                          tone={row.isActive ? 'success' : 'neutral'}
-                          dot
-                          className="shrink-0"
-                        />
-                      </div>
-
-                      {row.charging === 'CUSTOMER_BUDGET' && (
-                        <p className="mt-1.5 truncate text-xs tabular-nums text-ink-600">
-                          {row.budgetMinPaise != null && row.budgetMaxPaise != null
-                            ? `${formatINR(row.budgetMinPaise)} – ${formatINR(row.budgetMaxPaise)}`
-                            : 'Budget range not set'}
-                        </p>
-                      )}
-
-                      {!row.serviceActive && (
-                        <p className="mt-1.5 text-[11px] font-medium text-warning">
-                          Service is deactivated, so this option is not reachable by customers.
-                        </p>
-                      )}
-
-                      <div className="mt-2 border-t border-ink-100 pt-2">
-                        <ChargingOptionControl
-                          optionId={row.id}
-                          charging={row.charging}
-                          isActive={row.isActive}
-                          budgetMinPaise={row.budgetMinPaise}
-                          budgetMaxPaise={row.budgetMaxPaise}
-                          serviceName={row.serviceName}
-                        />
-                      </div>
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </section>
-          );
-        })
-      )}
+      <Pager page={rows.page} pageSize={rows.pageSize} total={rows.total} buildHref={buildHref} />
     </div>
   );
 }
