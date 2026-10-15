@@ -40,7 +40,8 @@ A service operations platform for booking, tracking and managing field services.
 | **Admin service management** | **Implemented** - search, filter, paging, detail, activation |
 | **Admin charging-option management** | **Implemented** |
 | **Admin published-pricing management** | **Implemented** |
-| Admin bookings / dispatch / technicians / customers | **Not yet implemented** - shown as disabled "Soon" |
+| **Admin bookings list** | **Implemented** - search by reference, status filter, server-side pagination; read-only |
+| Admin bookings / dispatch / technicians / customers | **Partially implemented** - bookings list is live; confirm/assign/state transitions shown as disabled "Soon" |
 | Admin invoices / payments / reviews / audit log / settings | **Not yet implemented** - shown as disabled "Soon" |
 | Payment provider integration | **Requires production configuration** |
 | Deployment hardening (Redis rate limiting, PostgreSQL, native enums) | **Requires production configuration** - see [SECURITY.md](./SECURITY.md) §6 |
@@ -138,8 +139,9 @@ as the customer site. It is not a visual mockup and it runs on no mock data.
 | `/admin/services/[id]` | Service detail, charging configuration, published pricing |
 | `/admin/charging-options` | Which options MOYO offers, and Customer Budget ranges |
 | `/admin/pricing` | Publish / withdraw published prices |
+| `/admin/bookings` | Every booking, newest first: reference search, status filter, pagination (read-only) |
 
-Modules that are **not yet built** (Bookings, Dispatch, Technicians, Customers,
+Modules that are **not yet built** (Dispatch actions, Technicians, Customers,
 Materials, Invoices, Payments, Reviews, Audit log, Settings) appear in the
 sidebar as **disabled entries marked "Soon"**. They are deliberately not links:
 a navigation item that leads to a 404 advertises a capability the console does
@@ -159,6 +161,7 @@ placeholder metrics.
 | `PATCH /api/admin/charging-options/[id]` | Availability, budget bounds, duration |
 | `GET /api/admin/pricing` | Pricing table (filter by state, category, option) |
 | `PATCH /api/admin/pricing/[id]` | Publish or withdraw a published price |
+| `GET /api/admin/bookings` | Booking list: `q` (reference substring), `status` (allowlisted canonical status or `ALL`), bounded `page` / `pageSize` |
 
 ### Admin authorization
 
@@ -196,6 +199,25 @@ stale claim.
 `CUSTOMER`, `PROVIDER`, `TECHNICIAN`, `ADMIN`. Only `ADMIN` may reach `/admin`
 or `/api/admin/**`. `PROVIDER` and `TECHNICIAN` are scoped owners elsewhere in
 the booking model, but are **not** administrators.
+
+### Admin bookings list
+
+`/admin/bookings` is the dispatch queue's read side: every booking in the
+database, newest first, with a reference search box, a status filter and
+server-side pagination. The page and `GET /api/admin/bookings` share one
+`.strict()` query schema (`adminBookingQuerySchema` in `src/lib/validation.ts`):
+only `q`, `status`, `page` and `pageSize` are accepted, an unknown parameter or
+a free-form status is rejected (422 on the API, safe defaults on the page), and
+`status` reaches the query only as an allowlisted canonical `BOOKING_STATUSES`
+value (`ALL` means no constraint).
+
+Authorization is the standard read chain (`adminReadGuard` on the API,
+`requireAdminPage` on the page): 401 with no session, 403 for any non-ADMIN
+role. The row projection (`listAllBookings` in `src/lib/customer-bookings.ts`)
+is explicit - customer name and service location only, never phone, email or
+street address. The screen is read-only: confirming a booking, assigning a
+technician and advancing booking state are not built yet, and no control on the
+page pretends otherwise.
 
 ### Mutations
 
@@ -576,7 +598,8 @@ executes end to end.
 | **`post-login-redirect.test.ts`** | **7** | **Homepage-first defaults, role-aware `next`, `/admin` guard, unsafe-destination fallback** |
 | **`registration-flow.test.ts`** | **6** | **Real `/api/auth/register`: no session minted, `registered` flag, `next` hop, no privilege escalation** |
 | **`navigation.test.ts`** | **7** | **Shared customer shell: Account nav is `/account` for every signed-in role, `/login?next=%2Faccount` anonymous, never `/admin`; shell wiring for the `(customer)` route group** |
-| **Total** | **187** | |
+| **`admin-bookings.test.ts`** | **12** | **Real `GET /api/admin/bookings`: 401/403, strict query rejects, allowlisted status filter, reference search, bounded pagination, nav live** |
+| **Total (suites listed here)** | **199** | **The table above predates several suites; the runner reports 268 tests across 20 files (see changelog)** |
 
 The admin suites assert the properties that must not regress: a CUSTOMER gets
 `403` on every admin endpoint and writes nothing, an unauthenticated caller gets
@@ -694,7 +717,8 @@ Renaming or reordering them is a data change.
    shows the honest placeholder until one is assigned.
 3. **Rate limiting is per-process.** See `SECURITY.md` §5.
 4. **Most admin modules are not built.** The console covers the dashboard,
-   catalogue, charging options and pricing. Bookings, dispatch, technicians,
+   catalogue, charging options, pricing, and the read-only bookings list.
+   Booking confirmation, technician assignment, state transitions, technicians,
    customers, materials, invoices, payments, reviews, the audit-log viewer and
    settings are shown as disabled "Soon" entries. They have no screens and no
    fake behaviour. The audit events *are* written to the database for every
@@ -717,11 +741,10 @@ Renaming or reordering them is a data change.
 
 ## Roadmap
 
-**Next milestone (dispatch)**
-- Technician dispatch console: confirm a booking, assign a technician, advance
-  the on-site states
-- Admin bookings list with status filters, and an audit-log viewer over the events
-  this milestone now writes
+**Next milestone (dispatch)** - Technician dispatch console: confirm a booking, assign a technician, advance
+  the on-site states. The `/admin/bookings` list (this milestone) is the read
+  side it will act on.
+- Audit-log viewer over the events the catalogue milestones write
 - Customer invoice view and payment initiation
 - Customer cancellation flow
 
