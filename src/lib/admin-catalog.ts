@@ -2,11 +2,12 @@ import 'server-only';
 import { prisma } from './prisma';
 import { audit } from './audit';
 import { ApiError, notFound } from './api';
-import { CHARGING_OPTIONS, type ChargingOption, type ServiceType } from './domain';
+import { CHARGING_LABEL, CHARGING_OPTIONS, type ChargingOption, type ServiceType } from './domain';
 import {
   BUDGET_CEILING_PAISE,
   BUDGET_FLOOR_PAISE,
   type adminCategoryBulkSchema,
+  type adminChargingBulkSchema,
   type adminChargingOptionSchema,
   type adminPriceSchema,
   type adminServiceBulkSchema,
@@ -721,6 +722,108 @@ export async function setChargingOption(
 
   return updated;
 }
+
+/**
+ * Enables or disables ONE charging type across several services.
+ *
+ * The request names a single charging type and the write model filters on it,
+ * so the independence the single-option endpoint guarantees holds by
+ * construction: a bulk Visit Charge operation cannot touch a Fixed Charge or
+ * Customer Budget row, and vice versa. Only `isActive` is written - budget
+ * bounds, duration and price are unreachable from here, so enabling can never
+ * expose a price.
+ *
+ * Customer Budget carries one extra server-side rule, the same one
+ * `setChargingOption` enforces: an option without a min/max range would
+ * advertise a mode `resolveBookingPricing` always rejects at checkout. Rather
+ * than failing the whole batch, such rows are SKIPPED and reported by name, so
+ * the operator sees exactly which services could not be changed and why.
+ * Unknown service ids are reported as `notFound`. One summary audit event
+ * records the blast radius.
+ */
+export async function bulkSetChargingOptionActive(
+  input: z.infer<typeof adminChargingBulkSchema>,
+  actor: AdminActor,
+): Promise<BulkResult> {
+  const isActive = input.action === 'ENABLE';
+
+  const services = await prisma.service.findMany({
+    where: { id: { in: input.ids } },
+    select: { id: true, name: true },
+  });
+  const foundIds = new Set(services.map((s) => s.id));
+  const notFound = input.ids.filter((id) => !foundIds.has(id));
+
+  // Only the rows of the ONE requested charging type are ever loaded, so the
+  // other two options of every selected service cannot be written even by a
+  // bug in the update below.
+  const optionRows = services.length
+    ? await prisma.serviceOption.findMany({
+        where: { serviceId: { in: services.map((s) => s.id) }, charging: input.charging },
+        select: {
+          id: true,
+          serviceId: true,
+          budgetMinPaise: true,
+          budgetMaxPaise: true,
+        },
+      })
+    : [];
+  const optionByService = new Map(optionRows.map((o) => [o.serviceId, o]));
+
+  const skipped: Array<{ name: string; reason: string }> = [];
+  const updatableIds: string[] = [];
+
+  for (const service of services) {
+    const option = optionByService.get(service.id);
+    if (!option) {
+      skipped.push({
+        name: service.name,
+        reason: `The service has no ${CHARGING_LABEL[input.charging]} record.`,
+      });
+      continue;
+    }
+
+    // The same guard as `setChargingOption`, applied per row so that one
+    // unbounded service never blocks the rest of the batch.
+    if (
+      input.charging === 'CUSTOMER_BUDGET' &&
+      isActive &&
+      (option.budgetMinPaise == null || option.budgetMaxPaise == null)
+    ) {
+      skipped.push({
+        name: service.name,
+        reason: 'No budget range is set. Set the minimum and maximum before enabling Customer Budget.',
+      });
+      continue;
+    }
+    updatableIds.push(option.id);
+  }
+
+  const { count } = updatableIds.length
+    ? await prisma.serviceOption.updateMany({
+        where: { id: { in: updatableIds } },
+        data: { isActive },
+      })
+    : { count: 0 };
+
+  await audit({
+    action: 'CHARGING_OPTION_BULK_CHANGED',
+    entityType: 'ServiceOption',
+    actorId: actor.id,
+    actorRole: actor.role,
+    metadata: {
+      charging: input.charging,
+      action: input.action,
+      requested: input.ids.length,
+      affected: count,
+      notFound: notFound.length,
+      skipped: skipped.length,
+    },
+  });
+
+  return { requested: input.ids.length, affected: count, notFound, skipped };
+}
+
 // ---------------------------------------------------------------------------
 // Bulk edit / delete / create
 // ---------------------------------------------------------------------------

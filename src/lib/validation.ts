@@ -641,6 +641,27 @@ export const adminChargingOptionSchema = z
   });
 
 /**
+ * Bulk operation over charging options: enable or disable ONE charging type
+ * across several services.
+ *
+ * The payload is `.strict()` so nothing outside this contract - a price, a
+ * budget bound, a duration - can be smuggled in. Only `isActive` of the single
+ * named charging type is ever written; the other two options of every selected
+ * service carry no data here and carry no column in the write, so a bulk Visit
+ * Charge operation cannot touch a Fixed Charge or Customer Budget row and vice
+ * versa. The server additionally re-validates each row against its real
+ * charging type (enabling Customer Budget requires a configured range) and
+ * reports any row it had to skip instead of failing the whole batch.
+ */
+export const adminChargingBulkSchema = z
+  .object({
+    ids: bulkIdList('service'),
+    charging: z.enum(CHARGING_OPTIONS),
+    action: z.enum(['ENABLE', 'DISABLE']),
+  })
+  .strict();
+
+/**
  * Price publication / withdrawal.
  *
  * The intent is explicit so there is no ambiguous "pricePaise: null means
