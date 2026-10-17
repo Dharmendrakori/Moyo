@@ -61,8 +61,7 @@ export const ADMIN_NAV: AdminNavGroup[] = [
         href: '/admin/bookings',
         label: 'Bookings',
         icon: 'clipboard',
-        status: 'planned',
-        hint: 'Dispatch queue and technician assignment',
+        status: 'live',
       },
       {
         href: '/admin/technicians',

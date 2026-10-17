@@ -106,19 +106,29 @@ export function stripCredentialParams(rawUrl: string): string | null {
   const url = new URL(rawUrl);
 
   if (AUTH_PAGE_PATHS.has(url.pathname)) {
-    // On auth pages only a validated `next` may survive. Emit its RAW value
-    // verbatim (never re-serialise via `URLSearchParams`), so the leading
-    // slash stays `/` instead of being re-encoded to `%2F`. `next` was already
-    // proven a safe local path by `safeRedirectPath`, so echoing it raw cannot
+    // On auth pages only a validated `next` may survive. Emit its value with a
+    // literal leading slash (never re-serialise via `URLSearchParams`), so `/`
+    // stays `/` instead of being encoded to `%2F`. `next` was already proven a
+    // safe local path by `safeRedirectPath`, so echoing it back cannot
     // reinterpret it as a credential carrier.
+    const params = [...url.searchParams];
     const next = url.searchParams.get('next');
-    const keepNext =
-      next !== null && safeRedirectPath(next, '') !== '' ? `next=${next}` : null;
-    // Compare against the raw original query to detect a real change.
-    const rawQuery = url.search.slice(1);
-    const rebuiltQuery = keepNext ?? '';
-    if (rebuiltQuery === rawQuery) return null;
-    return `${url.origin}${url.pathname}${rebuiltQuery ? `?${rebuiltQuery}` : ''}`;
+    const nextIsSafe = next !== null && safeRedirectPath(next, '') !== '';
+
+    // Decide cleanliness SEMANTICALLY from the parsed parameters - never from a
+    // raw query-string comparison. The running server re-encodes the incoming
+    // URL on every hop (`next=/bookings` arrives back as `next=%2Fbookings`), so
+    // comparing a rebuilt query that uses a literal `/` against the raw encoded
+    // query never converges and produces a 307 -> 307 -> ... redirect loop
+    // (ERR_TOO_MANY_REDIRECTS). A URL that carries nothing but a single safe
+    // `next` - in ANY encoding - is already clean.
+    const [firstParam] = params;
+    const alreadyClean =
+      firstParam === undefined ||
+      (params.length === 1 && firstParam[0] === 'next' && nextIsSafe);
+    if (alreadyClean) return null;
+
+    return `${url.origin}${url.pathname}${nextIsSafe ? `?next=${next}` : ''}`;
   }
 
   for (const key of [...new Set(url.searchParams.keys())]) {

@@ -62,7 +62,14 @@ export function proxy(request: NextRequest) {
   //    on the next hop, where it comes back clean, so no loop is possible.
   if ((request.method === 'GET' || request.method === 'HEAD') && search) {
     const cleanUrl = stripCredentialParams(request.url);
-    if (cleanUrl !== null) {
+    // Loop-proof the redirect site itself: never emit a 307 whose target
+    // resolves back to the URL we are already serving. This comparison is
+    // done on fully-normalised hrefs, so it holds regardless of what
+    // `stripCredentialParams` returns. It makes the "no loop is possible"
+    // guarantee structural rather than dependent on the helper's own
+    // idempotency check, so a future regression there can never bounce the
+    // browser 307 -> 307 -> ... -> ERR_TOO_MANY_REDIRECTS.
+    if (cleanUrl !== null && new URL(cleanUrl).href !== new URL(request.url).href) {
       return withSecurityHeaders(NextResponse.redirect(cleanUrl, 307), nonce, pathname);
     }
   }

@@ -55,7 +55,19 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <meta name="referrer" content="strict-origin-when-cross-origin" />
         <meta name="x-content-type-options" content="nosniff" />
       </head>
-      <body className="min-h-screen bg-ink-50 text-ink-800 antialiased">{children}</body>
+      {/*
+        `suppressHydrationWarning` mirrors the `<html>` element above: browser
+        extensions (password managers, translators, dark-mode injectors) commonly
+        add their own attributes/classes to `<html>` and `<body>` after the
+        server has rendered. That is a client-only, environment-specific DOM
+        mutation this application neither performs nor controls, so it must not
+        abort hydration of the whole tree. The attribute is deliberately scoped
+        to this element only (React applies it one level deep), so a genuine
+        mismatch inside a child component is still reported.
+      */}
+      <body className="min-h-screen bg-ink-50 text-ink-800 antialiased" suppressHydrationWarning>
+        {children}
+      </body>
     </html>
   );
 }

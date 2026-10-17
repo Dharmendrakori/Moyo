@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { BOOKING_STATUSES } from './domain';
 
 /**
  * CENTRAL VALIDATION SCHEMAS
@@ -753,6 +754,30 @@ export const adminPricingQuerySchema = z
     /** ALL | PUBLISHED | UNPUBLISHED | DISABLED */
     state: z.enum(['ALL', 'PUBLISHED', 'UNPUBLISHED', 'DISABLED']).default('ALL'),
     charging: z.enum(['ALL', ...CHARGING_OPTIONS]).default('ALL'),
+    page: z.coerce.number().int().min(1).max(10_000).default(1),
+    pageSize: z.coerce.number().int().min(1).max(100).default(20),
+  })
+  .strict();
+
+/**
+ * Query parameters for the admin bookings table.
+ *
+ * `.strict()` rejects an unrecognised parameter rather than forwarding it into
+ * a database filter. `status` is an allowlist - the canonical
+ * `BOOKING_STATUSES` from `src/lib/domain.ts` plus `ALL` - so a free-form
+ * string can never reach the query, and `page` / `pageSize` are bounded
+ * integers so one request cannot ask for an unbounded scan.
+ */
+export const adminBookingQuerySchema = z
+  .object({
+    q: z
+      .string()
+      .trim()
+      .max(80)
+      .transform((s) => s.replace(controlChars, ''))
+      .optional(),
+    /** ALL = no status constraint; otherwise exactly one canonical status. */
+    status: z.enum(['ALL', ...BOOKING_STATUSES]).default('ALL'),
     page: z.coerce.number().int().min(1).max(10_000).default(1),
     pageSize: z.coerce.number().int().min(1).max(100).default(20),
   })

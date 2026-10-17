@@ -98,4 +98,29 @@ describe('stripCredentialParams', () => {
     expect(once).toBe(`${ORIGIN}/login?next=/account`);
     expect(stripCredentialParams(once as string)).toBeNull();
   });
+
+  // Regression: the running Next.js server RE-ENCODES the incoming URL, so the
+  // browser is redirected to `/login?next=%2Fbookings` (percent-encoded slash),
+  // not `/login?next=/bookings`. A raw-vs-decoded query comparison treated that
+  // as "dirty" and 307'd back to the literal form, which the server re-encoded
+  // again -> ERR_TOO_MANY_REDIRECTS. Cleanliness must be decided from the PARSED
+  // parameters, so any encoding of a single safe `next` is already clean.
+  it('treats a percent-encoded next on /login as already clean (no loop)', () => {
+    expect(stripCredentialParams(`${ORIGIN}/login?next=%2Fbookings`)).toBeNull();
+    expect(stripCredentialParams(`${ORIGIN}/login?next=%2Faccount`)).toBeNull();
+  });
+
+  it('treats literal and percent-encoded forms of the same next identically', () => {
+    expect(stripCredentialParams(`${ORIGIN}/login?next=/bookings`)).toBe(
+      stripCredentialParams(`${ORIGIN}/login?next=%2Fbookings`),
+    );
+  });
+
+  it('still scrubs credentials even alongside an encoded next', () => {
+    expect(
+      stripCredentialParams(`${ORIGIN}/login?password=x&next=%2Fbookings`),
+    ).toBe(`${ORIGIN}/login?next=/bookings`);
+    // And the scrubbed result is then clean (chain terminates).
+    expect(stripCredentialParams(`${ORIGIN}/login?next=/bookings`)).toBeNull();
+  });
 });
