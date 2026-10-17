@@ -56,7 +56,7 @@ export function AccountManager({
 }
 
 function cardClass(extra = ''): string {
-  return `rounded-card border border-ink-200 bg-white p-5 ${extra}`.trim();
+  return `rounded-3xl border border-ink-200 bg-white p-6 shadow-card ${extra}`.trim();
 }
 
 async function apiJson(
@@ -133,22 +133,32 @@ function ProfileCard({ profile }: { profile: AccountProfile }) {
   return (
     <section aria-labelledby="profile-heading" className={cardClass()}>
       <div className="flex items-center justify-between gap-3">
-        <h2 id="profile-heading" className="text-sm font-semibold text-ink-900">
-          Profile
-        </h2>
+        <div className="flex items-center gap-3">
+          <span className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-gold-400 font-display text-xl font-semibold text-night-950">
+            {profile.name.charAt(0).toUpperCase()}
+          </span>
+          <div>
+            <h2 id="profile-heading" className="font-display text-base font-semibold tracking-tight text-ink-900">
+              Profile
+            </h2>
+            <p className="mt-0.5 text-[12px] text-ink-500">
+              {profile.roleLabel} &middot; Member since {formatDate(profile.createdAt)}
+            </p>
+          </div>
+        </div>
         {!editing && (
           <button
             type="button"
             onClick={startEdit}
-            className="inline-flex items-center gap-1 rounded-lg px-3 py-1.5 text-xs font-semibold text-brand-700 ring-1 ring-inset ring-brand-200 transition hover:bg-brand-50"
+            className="inline-flex items-center gap-1.5 rounded-xl bg-brand-600 px-4 py-2 text-xs font-semibold text-white shadow-card transition-all duration-300 hover:bg-brand-700 hover:shadow-elevated"
           >
-            <Icon name="edit" size={14} />
+            <Icon name="edit" size={15} />
             Edit
           </button>
         )}
       </div>
       {success && (
-        <p role="status" className="mt-3 rounded-lg bg-success/10 p-2.5 text-sm text-success">
+        <p role="status" className="mt-3 rounded-lg bg-success/10 p-2.5 text-[13px] text-success">
           {success}
         </p>
       )}
@@ -206,13 +216,19 @@ function ProfileCard({ profile }: { profile: AccountProfile }) {
       ) : (
         <dl className="mt-4 space-y-3 text-sm">
           <div>
-            <dt className="text-xs font-medium uppercase tracking-wide text-ink-400">Name</dt>
+            <dt className="text-xs font-medium uppercase tracking-wide text-ink-400">
+              Name
+            </dt>
             <dd className="mt-0.5 font-medium text-ink-800">{profile.name}</dd>
           </div>
           <div>
-            <dt className="text-xs font-medium uppercase tracking-wide text-ink-400">Email</dt>
+            <dt className="text-xs font-medium uppercase tracking-wide text-ink-400">
+              Email
+            </dt>
             <dd className="mt-0.5 font-medium text-ink-800">{profile.email}</dd>
-            <dd className="mt-0.5 text-xs text-ink-400">Read-only. Contact support to change it.</dd>
+            <dd className="mt-0.5 text-xs text-ink-400">
+              Read-only. Contact support to change it.
+            </dd>
           </div>
           <div>
             <dt className="text-xs font-medium uppercase tracking-wide text-ink-400">
@@ -221,7 +237,9 @@ function ProfileCard({ profile }: { profile: AccountProfile }) {
             <dd className="mt-0.5 font-medium text-ink-800">{profile.phone}</dd>
           </div>
           <div>
-            <dt className="text-xs font-medium uppercase tracking-wide text-ink-400">Role</dt>
+            <dt className="text-xs font-medium uppercase tracking-wide text-ink-400">
+              Role
+            </dt>
             <dd className="mt-0.5 font-medium text-ink-800">{profile.roleLabel}</dd>
           </div>
           <div>
@@ -300,9 +318,19 @@ function AddressCard({ address }: { address: AccountAddress }) {
   return (
     <section aria-labelledby="address-heading" className={cardClass()}>
       <div className="flex items-center justify-between gap-3">
-        <h2 id="address-heading" className="text-sm font-semibold text-ink-900">
-          Saved address
-        </h2>
+        <div className="flex items-center gap-3">
+          <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-ink-900 text-gold-400 font-display text-sm font-semibold">
+            <Icon name="location" size={16} />
+          </span>
+          <div>
+            <h2 id="address-heading" className="font-display text-base font-semibold tracking-tight text-ink-900">
+              Saved address
+            </h2>
+            <p className="mt-0.5 text-[12px] text-ink-500">
+              {address ? 'Saved delivery address' : 'Add an address for faster checkout'}
+            </p>
+          </div>
+        </div>
         {!editing && (
           <button
             type="button"
@@ -312,15 +340,15 @@ function AddressCard({ address }: { address: AccountAddress }) {
               setSuccess(null);
               setEditing(true);
             }}
-            className="inline-flex items-center gap-1 rounded-lg px-3 py-1.5 text-xs font-semibold text-brand-700 ring-1 ring-inset ring-brand-200 transition hover:bg-brand-50"
+            className="inline-flex items-center gap-1.5 rounded-xl bg-brand-600 px-4 py-2 text-xs font-semibold text-white shadow-card transition-all duration-300 hover:bg-brand-700 hover:shadow-elevated"
           >
-            <Icon name="edit" size={14} />
+            <Icon name="edit" size={15} />
             {address ? 'Edit' : 'Add'}
           </button>
         )}
       </div>
       {success && (
-        <p role="status" className="mt-3 rounded-lg bg-success/10 p-2.5 text-sm text-success">
+        <p role="status" className="mt-3 rounded-lg bg-success/10 p-2.5 text-[13px] text-success">
           {success}
         </p>
       )}
@@ -433,12 +461,19 @@ function PasswordCard() {
 
   return (
     <section aria-labelledby="password-heading" className={cardClass()}>
-      <h2 id="password-heading" className="text-sm font-semibold text-ink-900">
-        Change password
-      </h2>
-      <p className="mt-1 text-sm text-ink-500">
-        You will be signed out everywhere and must sign in again with the new password.
-      </p>
+      <div className="flex items-center gap-3">
+        <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-ink-900 text-gold-400 font-display text-sm font-semibold">
+          <Icon name="lock" size={16} />
+        </span>
+        <div>
+          <h2 id="password-heading" className="font-display text-base font-semibold tracking-tight text-ink-900">
+            Change password
+          </h2>
+          <p className="mt-0.5 text-[12px] text-ink-500">
+            You will be signed out everywhere and must sign in again with the new password.
+          </p>
+        </div>
+      </div>
       <form onSubmit={onSubmit} noValidate className="mt-4 space-y-4">
         {formError && <FormAlert message={formError} />}
         <Field id="pw-current" label="Current password" error={fieldErrors.currentPassword}>

@@ -82,21 +82,21 @@ export async function CustomerHeader() {
   const tel = telLink(provider?.contactPhone);
 
   return (
-    <header className="sticky top-0 z-40 border-b border-ink-200 bg-white/95 backdrop-blur supports-[backdrop-filter]:bg-white/80 shadow-card">
+    <header className="sticky top-0 z-40 border-b border-ink-200/80 bg-night-950 text-white shadow-card">
       <div className="mx-auto flex h-16 max-w-7xl items-center gap-4 px-4 sm:px-6 lg:px-8">
         <Link href="/" className="flex shrink-0 items-center gap-2" aria-label="MOYO home">
-          <span className="grid h-10 w-10 place-items-center rounded-xl bg-brand-600 text-white shadow-sm">
+          <span className="grid h-10 w-10 place-items-center rounded-xl bg-gradient-to-br from-brand-500 to-brand-700 text-white shadow-sm">
             <Icon name="bolt" size={22} />
           </span>
-          <span className="font-bold tracking-tight text-ink-900">MOYO</span>
+          <span className="font-display text-lg font-semibold tracking-tight text-white">MOYO</span>
         </Link>
 
-        <nav className="hidden items-center gap-6 lg:flex" aria-label="Primary">
+        <nav className="hidden items-center gap-1 lg:flex" aria-label="Primary">
           {PRIMARY_NAV.map((item) => (
             <Link
               key={item.href + item.label}
               href={item.href}
-              className="flex items-center gap-1.5 rounded-xl px-3.5 py-2 text-sm font-medium text-ink-600 transition-all hover:bg-ink-50 hover:text-ink-900 focus-visible:ring-2 focus-visible:ring-brand-600 focus-visible:ring-offset-2"
+              className="flex items-center gap-1.5 rounded-full px-3.5 py-2 text-sm font-medium text-white/75 transition-all hover:bg-white/10 hover:text-white focus-visible:ring-2 focus-visible:ring-gold-400 focus-visible:ring-offset-2 focus-visible:ring-offset-night-950"
             >
               <Icon name={item.icon} size={16} />
               {item.label}
@@ -124,7 +124,7 @@ export async function CustomerHeader() {
             <Icon
               name="search"
               size={15}
-              className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-ink-400"
+              className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-white/50"
             />
             <input
               id="header-search"
@@ -133,7 +133,7 @@ export async function CustomerHeader() {
               placeholder="Search services…"
               maxLength={80}
               autoComplete="off"
-              className="w-full rounded-xl border border-ink-200 bg-ink-50 py-2 pl-9 pr-3 text-sm text-ink-900 transition placeholder:text-ink-400 focus:border-brand-500 focus:bg-white focus:outline-none focus:ring-2 focus:ring-brand-600/20"
+              className="w-full rounded-full border border-white/15 bg-white/10 py-2 pl-9 pr-3 text-sm text-white transition placeholder:text-white/45 focus:border-gold-400/60 focus:bg-white/15 focus:outline-none"
             />
           </div>
         </form>
@@ -142,7 +142,7 @@ export async function CustomerHeader() {
           {tel && (
             <a
               href={tel}
-              className="hidden items-center gap-1.5 rounded-xl px-3 py-2 text-sm font-semibold text-ink-700 ring-1 ring-inset ring-ink-300 transition-all hover:bg-ink-50 sm:inline-flex focus-visible:ring-2 focus-visible:ring-brand-600"
+              className="hidden items-center gap-1.5 rounded-full px-3 py-2 text-sm font-semibold text-white/80 ring-1 ring-inset ring-white/20 transition-all hover:bg-white/10 hover:text-white sm:inline-flex focus-visible:ring-2 focus-visible:ring-gold-400"
             >
               <Icon name="phone" size={16} />
               Call provider
@@ -152,18 +152,18 @@ export async function CustomerHeader() {
           {user ? (
             <Link
               href="/account"
-              className="flex items-center gap-2 rounded-xl py-1.5 pl-1.5 pr-2.5 transition-all hover:bg-ink-50 focus-visible:ring-2 focus-visible:ring-brand-600 focus-visible:ring-offset-2"
+              className="flex items-center gap-2 rounded-full py-1.5 pl-1.5 pr-2.5 transition-all hover:bg-white/10 focus-visible:ring-2 focus-visible:ring-gold-400 focus-visible:ring-offset-2 focus-visible:ring-offset-night-950"
               aria-label="Your account"
             >
-              <span className="grid h-8 w-8 place-items-center rounded-full bg-brand-100 text-xs font-bold text-brand-700">
+              <span className="grid h-8 w-8 place-items-center rounded-full bg-gold-400 text-xs font-bold text-night-950">
                 {initials(user.name)}
               </span>
-              <span className="hidden text-sm font-medium text-ink-700 sm:block">{user.name}</span>
+              <span className="hidden text-sm font-medium text-white sm:block">{user.name}</span>
             </Link>
           ) : (
             <Link
               href="/login"
-              className="rounded-xl bg-brand-600 px-4 py-2 text-sm font-semibold text-white transition-all hover:bg-brand-700 focus-visible:ring-2 focus-visible:ring-brand-600 focus-visible:ring-offset-2"
+              className="rounded-full bg-white px-4 py-2 text-sm font-bold text-ink-900 transition-all hover:bg-gold-400 hover:text-night-950 focus-visible:ring-2 focus-visible:ring-gold-400 focus-visible:ring-offset-2 focus-visible:ring-offset-night-950"
             >
               Sign in
             </Link>
@@ -214,20 +214,35 @@ export async function BottomNav() {
 /** Footer. Presents MOYO as the service identity customers book with. */
 export function CustomerFooter() {
   return (
-    <footer className="border-t border-ink-200 bg-surface-50">
-      <div className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
-        <div className="flex flex-col gap-10 sm:flex-row sm:items-start sm:justify-between">
+    <footer className="relative overflow-hidden bg-night-950 text-white">
+      <div className="absolute inset-0 texture-dots opacity-50" aria-hidden />
+      <div className="relative mx-auto max-w-7xl px-4 py-14 sm:px-6 lg:px-8">
+        <div className="flex flex-col gap-10 lg:flex-row lg:items-start lg:justify-between">
           <div className="max-w-sm">
             <div className="flex items-center gap-2">
-              <span className="grid h-9 w-9 place-items-center rounded-xl bg-brand-600 text-white shadow-sm">
+              <span className="grid h-9 w-9 place-items-center rounded-xl bg-gradient-to-br from-brand-500 to-brand-700 text-white shadow-sm">
                 <Icon name="bolt" size={20} />
               </span>
-              <span className="font-bold tracking-tight text-ink-900">MOYO</span>
+              <span className="font-display text-lg font-semibold tracking-tight text-white">MOYO</span>
             </div>
-            <p className="mt-3 text-sm text-ink-500 leading-relaxed">
+            <p className="mt-3 text-sm leading-relaxed text-white/65">
               MOYO is a service operations platform delivering field services across 20 official
               categories.
             </p>
+            <div className="mt-5 flex flex-wrap gap-2">
+              <Link
+                href="/book"
+                className="inline-flex items-center gap-1.5 rounded-full bg-white px-4 py-2 text-xs font-bold text-ink-900 transition hover:bg-gold-400 hover:text-night-950"
+              >
+                <Icon name="bolt" size={14} /> Book a service
+              </Link>
+              <Link
+                href="/categories"
+                className="inline-flex items-center gap-1.5 rounded-full px-4 py-2 text-xs font-bold text-white ring-1 ring-inset ring-white/25 transition hover:bg-white/10"
+              >
+                All categories
+              </Link>
+            </div>
           </div>
 
           <div className="grid grid-cols-2 gap-10 sm:grid-cols-3 lg:grid-cols-4">
@@ -257,7 +272,7 @@ export function CustomerFooter() {
           </div>
         </div>
 
-        <p className="mt-8 border-t border-ink-200 pt-6 text-xs text-ink-400">
+        <p className="mt-10 border-t border-white/10 pt-6 text-xs text-white/45">
           © {new Date().getFullYear()} MOYO. All rights reserved.
         </p>
       </div>
@@ -274,13 +289,13 @@ function FooterColumn({
 }) {
   return (
     <div>
-      <h3 className="text-xs font-semibold uppercase tracking-wider text-ink-400 mb-3">{title}</h3>
+      <h3 className="text-xs font-semibold uppercase tracking-wider text-white/40 mb-3">{title}</h3>
       <ul className="space-y-2">
         {links.map((l) => (
           <li key={l.href}>
             <Link
               href={l.href}
-              className="text-sm text-ink-600 transition-all duration-200 hover:text-brand-600 hover:pl-1"
+              className="text-sm text-white/70 transition-all duration-200 hover:text-gold-400 hover:pl-1"
             >
               {l.label}
             </Link>

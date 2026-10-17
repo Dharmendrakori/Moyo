@@ -102,46 +102,51 @@ export function ServiceCard({ service }: { service: ServiceCardData }) {
     <Link
       href={`/services/${service.slug}`}
       className={cn(
-        'group flex flex-col rounded-xl border border-ink-200 bg-white p-5 transition-all duration-300',
-        'hover:border-brand-300 hover:shadow-elevated hover:-translate-y-1'
+        'group flex flex-col rounded-3xl border border-ink-200 bg-white p-5 transition-all duration-300',
+        'hover:border-brand-300 hover:shadow-elevated hover:-translate-y-1',
       )}
     >
       <div className="flex items-center justify-between gap-2">
-        <span className="inline-flex items-center gap-1 rounded-xl bg-brand-50 px-2.5 py-0.5 text-[11px] font-semibold text-brand-700">
-          <Icon name="bolt" size={12} className="shrink-0" />
+        <span className="inline-flex items-center gap-1 rounded-full bg-ink-900 px-2.5 py-1 text-[11px] font-bold text-white">
+          <Icon name="bolt" size={12} className="shrink-0 text-gold-400" />
           {SERVICE_TYPE_LABEL[service.serviceType as ServiceType] ?? service.serviceType}
         </span>
         <span className="truncate text-[11px] font-medium text-ink-400">{service.categoryName}</span>
       </div>
 
-      <h3 className="mt-3 text-sm font-semibold leading-snug text-ink-900 group-hover:text-brand-700">
+      <h3 className="mt-3 font-display text-[17px] font-semibold leading-snug text-ink-900 group-hover:text-brand-700">
         {service.name}
       </h3>
 
       {service.description && (
-        <p className="mt-2 line-clamp-2 flex-1 text-sm leading-relaxed text-ink-500">
+        <p className="mt-2 line-clamp-2 flex-1 text-[13px] leading-relaxed text-ink-500">
           {service.description}
         </p>
       )}
 
-      <div className="mt-5 border-t border-ink-100 pt-4">
-        <p className="text-[10px] font-medium uppercase tracking-wider text-ink-400">
-          {service.priceFromPaise != null ? 'From' : 'Pricing'}
-        </p>
-        <p
-          className={cn(
-            'mt-1 text-sm font-bold tabular-nums',
-            service.priceFromPaise != null ? 'text-ink-900' : 'text-ink-400',
-          )}
-        >
-          {/*
-            Honest fallback: when a provider has not published a price we say so
-            instead of showing an invented number.
-          */}
-          {service.priceFromPaise != null
-            ? formatINR(service.priceFromPaise)
-            : 'Shown after booking'}
-        </p>
+      <div className="mt-5 flex items-end justify-between border-t border-ink-100 pt-4">
+        <div>
+          <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-ink-400">
+            {service.priceFromPaise != null ? 'From' : 'Pricing'}
+          </p>
+          <p
+            className={cn(
+              'mt-1 text-[15px] font-bold tabular-nums',
+              service.priceFromPaise != null ? 'text-ink-900' : 'text-ink-400',
+            )}
+          >
+            {/*
+              Honest fallback: when a provider has not published a price we say so
+              instead of showing an invented number.
+            */}
+            {service.priceFromPaise != null
+              ? formatINR(service.priceFromPaise)
+              : 'Shown after booking'}
+          </p>
+        </div>
+        <span className="inline-flex items-center gap-1 text-xs font-bold text-brand-600 transition-all duration-300 group-hover:gap-2 group-hover:text-brand-700">
+          View <Icon name="chevron-right" size={14} />
+        </span>
       </div>
     </Link>
   );

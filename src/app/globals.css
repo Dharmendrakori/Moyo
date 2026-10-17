@@ -17,6 +17,8 @@
    ========================================================================== */
 
 @theme {
+  --font-sans: 'Inter', var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+  --font-display: 'Fraunces', var(--font-fraunces), ui-serif, Georgia, serif;
   /* Brand - technical blue accent -------------------------------------- */
   --color-brand-50: #eff6ff;
   --color-brand-100: #dbeafe;
@@ -62,8 +64,17 @@
   --color-neutral-bg: #f1f5f9;
 
   /* Typography ----------------------------------------------------------- */
-  --font-sans: 'Inter', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
-  --font-display: ui-sans-serif, system-ui, -apple-system, 'Segoe UI', 'Roboto', sans-serif;
+  /* (font-sans / font-display are declared once at the top of @theme) */
+
+  /* Editorial surfaces ---------------------------------------------------- */
+  --color-cream-50: #faf7f1;
+  --color-cream-100: #f4eee1;
+  --color-cream-200: #e9ddc6;
+  --color-night-800: #131c38;
+  --color-night-900: #0b1126;
+  --color-night-950: #060a1a;
+  --color-gold-400: #d9a441;
+  --color-gold-500: #b97f1f;
 
   /* Radii - consistent card radius -------------------------------------- */
   --radius-card: 0.75rem;
@@ -203,6 +214,208 @@
 }
 
 /* ==========================================================================
+   MOYO PHASE 2 — EDITORIAL / IMMERSIVE LAYER
+   --------------------------------------------------------------------------
+   Premium marketplace treatment on top of the Phase-1 token set. All
+   business logic, routes and data contracts are untouched; this is pure
+   presentation: oversized serif display type, alternating light / dark
+   editorial bands, image-led mosaic tiles, parallax hero depth, and the
+   signature scroll-driven journey spine.
+   ========================================================================== */
+
+@utility texture-dots {
+  background-image: radial-gradient(rgb(255 255 255 / 0.14) 1px, transparent 1px);
+  background-size: 18px 18px;
+}
+
+@utility texture-dots-dark {
+  background-image: radial-gradient(rgb(15 23 42 / 0.10) 1px, transparent 1px);
+  background-size: 18px 18px;
+}
+
+@utility texture-lines {
+  background-image: repeating-linear-gradient(
+    -45deg,
+    rgb(255 255 255 / 0.05) 0 2px,
+    transparent 2px 14px
+  );
+}
+
+@utility gold-rule {
+  background-image: linear-gradient(90deg, var(--color-gold-400), transparent);
+}
+
+/* Oversized editorial eyebrow with rule */
+@utility eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.6rem;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+}
+
+/* Mosaic tile artwork: layered gradient + pattern + giant ghost glyph */
+.mosaic-art {
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
+}
+
+.mosaic-art::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image: radial-gradient(rgb(255 255 255 / 0.16) 1px, transparent 1px);
+  background-size: 16px 16px;
+  opacity: 0.5;
+  pointer-events: none;
+}
+
+.mosaic-art > svg.ghost {
+  position: absolute;
+  right: -14px;
+  bottom: -18px;
+  width: 150px;
+  height: 150px;
+  opacity: 0.16;
+  transform: rotate(-8deg);
+  transition: transform 500ms cubic-bezier(0.22, 1, 0.36, 1);
+  pointer-events: none;
+}
+
+/* ==========================================================================
+   CATEGORY PHOTO TILES (src/components/customer/Showcase.tsx)
+   --------------------------------------------------------------------------
+   Positioning for the photo container lives entirely in Tailwind utilities on
+   the element (`absolute inset-0 isolate`) — deliberately with NO `.mosaic-art`
+   class. `.mosaic-art` above declares `position: relative`, and this file's
+   custom rules are unlayered, so they beat Tailwind's layered `absolute`
+   utility in v4. Carrying `.mosaic-art` on a photo tile would pull the span
+   back into normal flow, collapsing it to height 0 under a `fill` <Image>.
+   Keeping the photo span free of `.mosaic-art` means it always fills the
+   positioned Link tile (definite, nonzero height) regardless of stylesheet
+   load order or cache state. Only hover polish is handled here.
+   ========================================================================== */
+.mosaic-photo img {
+  transition: transform 600ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.group:hover .mosaic-photo img {
+  transform: scale(1.05);
+}
+
+.group:hover .mosaic-art > svg.ghost {
+  transform: rotate(0deg) scale(1.08);
+}
+
+.mosaic-art img,
+.mosaic-art .art-zoom {
+  transition: transform 600ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.group:hover .mosaic-art img,
+.group:hover .mosaic-art .art-zoom {
+  transform: scale(1.05);
+}
+
+/* Per-category art-directed gradient families (rotated by position). */
+.art-a { background-image: linear-gradient(135deg, #0b1126 0%, #1e3a8a 55%, #2563eb 100%); }
+.art-b { background-image: linear-gradient(135deg, #101b3c 0%, #0e7490 60%, #22d3ee 130%); }
+.art-c { background-image: linear-gradient(135deg, #1c1005 0%, #92400e 55%, #d9a441 120%); }
+.art-d { background-image: linear-gradient(135deg, #041e1a 0%, #047857 55%, #34d399 130%); }
+.art-e { background-image: linear-gradient(135deg, #1e1b4b 0%, #6d28d9 60%, #c084fc 130%); }
+.art-f { background-image: linear-gradient(135deg, #220a0a 0%, #b91c1c 55%, #f59e0b 130%); }
+
+/* Hero float + slow drift for layered panels */
+@keyframes moyo-float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-10px); }
+}
+
+@keyframes moyo-drift {
+  from { transform: translateX(0); }
+  to { transform: translateX(-50%); }
+}
+
+.hero-float {
+  animation: moyo-float 7s ease-in-out infinite;
+}
+
+.hero-float-delayed {
+  animation: moyo-float 8.5s ease-in-out 1.2s infinite;
+}
+
+.marquee-track {
+  animation: moyo-drift 28s linear infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hero-float,
+  .hero-float-delayed,
+  .marquee-track {
+    animation: none !important;
+  }
+}
+
+/* Featured service editorial card image sweep */
+.sweep {
+  position: relative;
+  overflow: hidden;
+}
+
+.sweep::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  background: linear-gradient(105deg, transparent 40%, rgb(255 255 255 / 0.35) 50%, transparent 60%);
+  transform: translateX(-120%);
+  transition: transform 700ms ease;
+  pointer-events: none;
+}
+
+.group:hover .sweep::before {
+  transform: translateX(120%);
+}
+
+/* Journey signature treatment */
+.journey-panel {
+  border: 1px solid var(--color-ink-200);
+  background: #fff;
+  border-radius: 1.25rem;
+  box-shadow: var(--shadow-card);
+  transition:
+    border-color 300ms ease,
+    box-shadow 300ms ease,
+    transform 300ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.journey-step.is-active .journey-panel {
+  border-color: var(--color-brand-300);
+  box-shadow: var(--shadow-elevated);
+  transform: translateY(-2px);
+}
+
+.journey-visual {
+  border-radius: 1rem;
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
+}
+
+.journey-visual::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image: radial-gradient(rgb(255 255 255 / 0.18) 1px, transparent 1px);
+  background-size: 14px 14px;
+  opacity: 0.45;
+  pointer-events: none;
+}
+
+/* ==========================================================================
    SCROLL JOURNEY LINE (src/components/customer/JourneyLine.tsx)
    ========================================================================== */
 
@@ -210,11 +423,13 @@
    client component writes the offset on scroll; without JavaScript the line
    simply stays undrawn while the track and all milestone text remain. */
 .journey-path {
+  stroke: url(#journeyGradient);
   stroke: var(--color-brand-600);
-  stroke-width: 3;
+  stroke-width: 3.5;
   stroke-linecap: round;
   stroke-dasharray: 1;
   stroke-dashoffset: 1;
+  filter: drop-shadow(0 2px 6px rgb(37 99 235 / 0.35));
 }
 
 .journey-track {

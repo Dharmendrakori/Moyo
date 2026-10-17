@@ -35,40 +35,46 @@ export default async function BookingsPage({ searchParams }: { searchParams: Sea
   const { items, total } = await listCustomerBookings(user.id, { status, page });
 
   return (
-    <div className="mx-auto max-w-5xl px-4 py-8 sm:px-6 lg:px-8">
-      <header className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight text-ink-900">My bookings</h1>
-          <p className="mt-1 text-sm text-ink-500">
-            {total === 0
-              ? 'You have not placed any bookings yet.'
-              : `${total} ${total === 1 ? 'booking' : 'bookings'} in total.`}
-          </p>
-        </div>
-        <Link
-          href="/categories"
-          className="inline-flex items-center gap-2 self-start rounded-xl bg-brand-600 px-4 py-2 text-sm font-semibold text-white shadow-card transition-all duration-300 hover:bg-brand-700 hover:shadow-elevated"
-        >
-          <Icon name="bolt" size={16} />
-          Book a service
-        </Link>
-      </header>
+    <div className="bg-cream-50 min-h-screen">
+      <div className="mx-auto max-w-5xl px-4 py-8 sm:px-6 lg:px-8">
+        <header className="relative overflow-hidden rounded-3xl bg-night-950 p-7 text-white shadow-overlay sm:p-10">
+          <div className="absolute inset-0 texture-dots opacity-60" aria-hidden />
+          <div className="relative flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
+            <div>
+              <h1 className="font-display text-xl font-semibold tracking-tight text-white sm:text-2xl">
+                My bookings
+              </h1>
+              <p className="mt-1 text-sm text-night-300">
+                {total === 0
+                  ? 'You have not placed any bookings yet.'
+                  : `${total} ${total === 1 ? 'booking' : 'bookings'} in total.`}
+              </p>
+            </div>
+            <Link
+              href="/categories"
+              className="inline-flex items-center gap-2 self-start rounded-xl bg-brand-600 px-4 py-2 text-xs font-semibold text-white shadow-card transition-all duration-300 hover:bg-brand-700 hover:shadow-elevated sm:text-sm"
+            >
+              <Icon name="bolt" size={16} />
+              Book a service
+            </Link>
+          </div>
+        </header>
 
-      <div className="mt-6 flex gap-2 overflow-x-auto pb-2" role="group" aria-label="Filter by status">
-        <FilterChip href="/bookings" label="All" active={!status} />
-        <FilterChip href="/bookings?status=REQUESTED" label="Requested" active={status === 'REQUESTED'} />
-        <FilterChip
-          href="/bookings?status=SERVICE_IN_PROGRESS"
-          label="In progress"
-          active={status === 'SERVICE_IN_PROGRESS'}
-        />
-        <FilterChip href="/bookings?status=PAID" label="Paid" active={status === 'PAID'} />
-        <FilterChip href="/bookings?status=CLOSED" label="Closed" active={status === 'CLOSED'} />
-      </div>
+        <div className="mt-6 flex gap-2 overflow-x-auto pb-2" role="group" aria-label="Filter by status">
+          <FilterChip href="/bookings" label="All" active={!status} />
+          <FilterChip href="/bookings?status=REQUESTED" label="Requested" active={status === 'REQUESTED'} />
+          <FilterChip
+            href="/bookings?status=SERVICE_IN_PROGRESS"
+            label="In progress"
+            active={status === 'SERVICE_IN_PROGRESS'}
+          />
+          <FilterChip href="/bookings?status=PAID" label="Paid" active={status === 'PAID'} />
+          <FilterChip href="/bookings?status=CLOSED" label="Closed" active={status === 'CLOSED'} />
+        </div>
 
       <div className="mt-4">
         {items.length === 0 ? (
-          <div className="rounded-card border border-ink-200 bg-white">
+          <div className="rounded-3xl border border-ink-200 bg-white p-6 shadow-card">
             <EmptyState
               icon="clipboard"
               title={status ? 'No bookings with this status' : 'No bookings yet'}
@@ -80,7 +86,7 @@ export default async function BookingsPage({ searchParams }: { searchParams: Sea
               action={
                 <Link
                   href={status ? '/bookings' : '/categories'}
-                  className="rounded-xl bg-brand-600 px-4 py-2 text-sm font-semibold text-white shadow-card transition-all duration-300 hover:bg-brand-700 hover:shadow-elevated"
+                  className="rounded-xl bg-brand-600 px-4 py-2 text-xs font-semibold text-white shadow-card transition-all duration-300 hover:bg-brand-700 hover:shadow-elevated sm:text-sm"
                 >
                   {status ? 'Clear filter' : 'Browse categories'}
                 </Link>
@@ -102,7 +108,7 @@ export default async function BookingsPage({ searchParams }: { searchParams: Sea
           {page > 1 ? (
             <Link
               href={`/bookings?page=${page - 1}${status ? `&status=${status}` : ''}`}
-              className="rounded-lg px-3 py-1.5 text-xs font-semibold text-ink-700 ring-1 ring-inset ring-ink-300 hover:bg-ink-50"
+              className="rounded-xl px-3 py-1.5 text-xs font-semibold text-ink-700 ring-1 ring-inset ring-ink-300 hover:bg-ink-50 transition-colors"
             >
               Previous
             </Link>
@@ -113,7 +119,7 @@ export default async function BookingsPage({ searchParams }: { searchParams: Sea
           {page * 10 < total ? (
             <Link
               href={`/bookings?page=${page + 1}${status ? `&status=${status}` : ''}`}
-              className="rounded-lg px-3 py-1.5 text-xs font-semibold text-ink-700 ring-1 ring-inset ring-ink-300 hover:bg-ink-50"
+              className="rounded-xl px-3 py-1.5 text-xs font-semibold text-ink-700 ring-1 ring-inset ring-ink-300 hover:bg-ink-50 transition-colors"
             >
               Next
             </Link>
@@ -123,6 +129,7 @@ export default async function BookingsPage({ searchParams }: { searchParams: Sea
         </nav>
       )}
     </div>
+    </div>
   );
 }
 
@@ -131,7 +138,7 @@ function BookingRow({ booking }: { booking: BookingListItem }) {
     <li>
       <Link
         href={`/bookings/${booking.id}`}
-        className="group block rounded-xl border border-ink-200 bg-white p-4 shadow-card transition-all duration-300 hover:border-brand-300 hover:shadow-elevated hover:-translate-y-0.5"
+        className="group block rounded-3xl border border-ink-200 bg-white p-6 shadow-card transition-all duration-300 hover:border-brand-300 hover:shadow-elevated hover:-translate-y-0.5"
       >
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div className="min-w-0">
@@ -193,10 +200,10 @@ function FilterChip({ href, label, active }: { href: string; label: string; acti
     <Link
       href={href}
       aria-current={active ? 'true' : undefined}
-      className={`shrink-0 rounded-lg px-3 py-1.5 text-xs font-semibold transition ${
+      className={`shrink-0 rounded-xl px-3 py-1.5 text-xs font-semibold transition-all duration-300 ${
         active
-          ? 'bg-ink-900 text-white'
-          : 'bg-white text-ink-600 ring-1 ring-inset ring-ink-200 hover:bg-ink-50'
+          ? 'bg-brand-600 text-white shadow-card hover:bg-brand-700 hover:shadow-elevated'
+          : 'bg-white text-ink-600 ring-1 ring-inset ring-ink-200 hover:bg-ink-50 hover:text-ink-900'
       }`}
     >
       {label}

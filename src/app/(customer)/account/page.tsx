@@ -67,40 +67,48 @@ export default async function AccountPage() {
   const isAdmin = user.role === 'ADMIN';
 
   return (
-    <div className="mx-auto max-w-5xl px-4 py-8 sm:px-6 lg:px-8">
-      <header className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight text-ink-900">My account</h1>
-          <p className="mt-1 text-sm text-ink-500">
-            {roleLabel} &middot; Member since {formatDate(profile.createdAt)}
-          </p>
-        </div>
-        <div className="flex flex-wrap gap-2">
-          {isAdmin && (
-            <Link
-              href="/admin"
-              className="inline-flex items-center gap-1.5 rounded-xl bg-ink-900 px-4 py-2 text-sm font-semibold text-white shadow-card transition-all duration-300 hover:bg-ink-800 hover:shadow-elevated"
-            >
-              <Icon name="grid" size={16} />
-              Admin Console
-            </Link>
-          )}
-          <Link
-            href="/categories"
-            className="inline-flex items-center gap-1.5 rounded-xl bg-brand-600 px-4 py-2 text-sm font-semibold text-white shadow-card transition-all duration-300 hover:bg-brand-700 hover:shadow-elevated"
-          >
-            <Icon name="bolt" size={16} />
-            Back to services
-          </Link>
-          <Link
-            href="/bookings"
-            className="inline-flex items-center gap-1.5 rounded-lg px-4 py-2 text-sm font-semibold text-ink-700 ring-1 ring-inset ring-ink-300 transition hover:bg-ink-50"
-          >
-            <Icon name="clipboard" size={16} />
-            My bookings
-          </Link>
-        </div>
-      </header>
+    <div className="bg-cream-50">
+      <div className="mx-auto max-w-5xl px-4 py-10 sm:px-6 sm:py-14 lg:px-8">
+        <header className="relative overflow-hidden rounded-3xl bg-night-950 p-7 text-white shadow-overlay sm:p-10">
+          <div className="absolute inset-0 texture-dots opacity-60" aria-hidden />
+          <div className="relative flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex items-center gap-4">
+              <span className="grid h-14 w-14 shrink-0 place-items-center rounded-2xl bg-gold-400 font-display text-xl font-semibold text-night-950">
+                {profile.name.charAt(0).toUpperCase()}
+              </span>
+              <div>
+                <p className="eyebrow text-gold-400">
+                  <span className="h-px w-6 bg-gold-400" aria-hidden />
+                  {roleLabel}
+                </p>
+                <h1 className="mt-1.5 font-display text-2xl font-semibold tracking-tight sm:text-3xl">
+                  {profile.name}
+                </h1>
+                <p className="mt-1 text-xs text-white/60">
+                  Member since {formatDate(profile.createdAt)}
+                </p>
+              </div>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              {isAdmin && (
+                <Link
+                  href="/admin"
+                  className="inline-flex items-center gap-1.5 rounded-full bg-white/10 px-4 py-2 text-xs font-bold text-white ring-1 ring-inset ring-white/25 transition hover:bg-white/20"
+                >
+                  <Icon name="grid" size={15} />
+                  Admin Console
+                </Link>
+              )}
+              <Link
+                href="/bookings"
+                className="inline-flex items-center gap-1.5 rounded-full bg-white px-4 py-2 text-xs font-bold text-ink-900 transition hover:bg-gold-400 hover:text-night-950"
+              >
+                <Icon name="clipboard" size={15} />
+                My bookings
+              </Link>
+            </div>
+          </div>
+        </header>
 
       <AccountManager
         profile={{
@@ -130,10 +138,10 @@ export default async function AccountPage() {
 
       <section
         aria-labelledby="recent-bookings-heading"
-        className="mt-4 rounded-card border border-ink-200 bg-white p-5 shadow-card"
+        className="mt-5 rounded-3xl border border-ink-200 bg-white p-6 shadow-card sm:p-7"
       >
         <div className="flex items-center justify-between gap-3">
-          <h2 id="recent-bookings-heading" className="text-sm font-semibold text-ink-900">
+          <h2 id="recent-bookings-heading" className="font-display text-lg font-semibold text-ink-900">
             Recent activity
           </h2>
           {bookingTotal > 0 && (
@@ -189,7 +197,7 @@ export default async function AccountPage() {
           )}
         </section>
 
-      <nav aria-label="Account shortcuts" className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-4">
+      <nav aria-label="Account shortcuts" className="mt-5 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <ShortcutCard
           href="/bookings"
           icon="clipboard"
@@ -215,6 +223,7 @@ export default async function AccountPage() {
         <SignOutCard />
       </nav>
     </div>
+    </div>
   );
 }
 
@@ -232,26 +241,30 @@ function ShortcutCard({
   return (
     <Link
       href={href}
-      className="group rounded-xl border border-ink-200 bg-white p-5 shadow-card transition-all duration-300 hover:border-brand-300 hover:shadow-elevated hover:-translate-y-0.5"
+      className="group rounded-3xl border border-ink-200 bg-white p-5 shadow-card transition-all duration-300 hover:border-brand-300 hover:shadow-elevated hover:-translate-y-1"
     >
-      <span className="grid h-10 w-10 place-items-center rounded-lg bg-brand-50 text-brand-700">
+      <span className="grid h-11 w-11 place-items-center rounded-2xl bg-ink-900 text-gold-400 transition-colors duration-300 group-hover:bg-brand-600 group-hover:text-white">
         <Icon name={icon} size={20} />
       </span>
-      <h2 className="mt-3 text-sm font-semibold text-ink-900 group-hover:text-brand-700">{title}</h2>
-      <p className="mt-1 text-sm text-ink-500">{description}</p>
+      <h2 className="mt-3 font-display text-[17px] font-semibold text-ink-900 group-hover:text-brand-700">{title}</h2>
+      <p className="mt-1 text-[13px] leading-relaxed text-ink-500">{description}</p>
     </Link>
   );
 }
 
 function SignOutCard() {
   return (
-    <div className="rounded-card border border-ink-200 bg-white p-5 shadow-card">
-      <span className="grid h-10 w-10 place-items-center rounded-lg bg-ink-100 text-ink-500">
+    <div className="group rounded-3xl border border-ink-200 bg-white p-5 shadow-card transition-all duration-300 hover:border-brand-300 hover:shadow-elevated hover:-translate-y-1">
+      <span className="grid h-11 w-11 place-items-center rounded-2xl bg-ink-900 text-gold-400 transition-colors duration-300 group-hover:bg-brand-600 group-hover:text-white">
         <Icon name="logout" size={20} />
       </span>
-      <h2 className="mt-3 text-sm font-semibold text-ink-900">Sign out</h2>
-      <p className="mt-1 text-sm text-ink-500">End this session on this device.</p>
-      <div className="mt-3">
+      <h2 className="mt-3 font-display text-[17px] font-semibold text-ink-900 group-hover:text-brand-700">
+        Sign out
+      </h2>
+      <p className="mt-1 text-[13px] leading-relaxed text-ink-500">
+        End this session on this device.
+      </p>
+      <div className="mt-4">
         <AccountSignOutButton />
       </div>
     </div>

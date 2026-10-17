@@ -1327,3 +1327,58 @@ business logic, APIs, routes or existing components' behaviour.
   line with all milestones active and installs no listeners. Without
   JavaScript the line stays undrawn while every milestone's text remains
   fully readable; the spine SVG is `aria-hidden` decoration.
+
+---
+
+## Changelog - Phase 2 premium immersive redesign
+
+**Scope:** presentation only. No change to business logic, Prisma schema,
+seed data, authentication, RBAC, APIs, pricing logic, booking logic, routes,
+validation or security behaviour. Imagery is the mapped category card
+photographs layered over CSS/SVG artwork fallbacks, and all copy states only
+facts present in the database — no new dependencies
+(no Framer Motion, no Three.js, no GSAP), no fabricated testimonials,
+ratings or guarantees.
+
+- **Visual identity (`src/app/globals.css`, `src/app/layout.tsx`)** —
+  Fraunces editorial serif (`font-display`) beside Inter; new `cream`
+  (light editorial band), `night` (immersive dark band) and `gold` (accent)
+  tokens; mosaic gradient families (`.art-a`–`.art-f`), dot/line textures,
+  float + marquee keyframes, image-sweep hover, and journey-panel styling.
+  All motion honours `prefers-reduced-motion`.
+- **Hero (`src/app/(customer)/page.tsx`)** — split full-bleed composition:
+  oversized serif headline, live service search (`GET /search`), Book/Track
+  CTAs, floating layered collage with server-pricing trust badge, and the
+  honest three-note strip. Primary CTA stays visible on mobile.
+- **Category discovery (`src/components/customer/Showcase.tsx`)** — the
+  uniform card grid is replaced by lead/tall/standard mosaic tiles with a
+  mapped photograph over the CSS/SVG ghost-glyph artwork fallback, exact
+  live counts and real links, plus a live category marquee and a "+N more"
+  tile so no category is dropped. All 20 official categories resolve to a
+  card photograph through the centralized `src/lib/category-images.ts` map
+  (keyed by canonical slug); an unmapped category keeps the SVG artwork. The
+  photo wrapper is positioned only with Tailwind utilities
+  (`mosaic-photo absolute inset-0 isolate`) — never a custom-CSS positioning
+  override — so the Next.js `fill` image always has a definite, non-zero
+  height, and the bottom gradient, category number, name, live count and
+  Explore link stay layered above the photograph as real text.
+- **Services (`src/components/customer/Cards.tsx`)** — stronger hierarchy:
+  serif titles, pill type badges, honest From/pricing rows, View affordance.
+  Dense grids keep the compact card; the homepage pairs it with a dark band
+  and a recommended split panel.
+- **Journey (`src/components/customer/JourneyLine.tsx`)** — the existing
+  scroll-driven spine is now the signature: centre gradient spine
+  (blue → gold) with glow, alternating panels with giant ghost numerals on
+  desktop, left-rail dots on mobile. Same rAF-throttled measurement,
+  reverse-on-scroll, ResizeObserver and reduced-motion/no-JS fallbacks.
+- **Shell (`src/components/customer/Shell.tsx`)** — editorial dark sticky
+  header with pill search/account, immersive dark footer with booking CTAs.
+  All hrefs unchanged; booking/account/admin flows untouched.
+- **Pages** — homepage resequenced (hero → marquee → mosaic → dark popular
+  → sticky charging → signature journey → recommended → trust → closing
+  CTA → footer); `/categories` gets a dark editorial header + mosaic; the
+  sub-category nav adopts the cream band. Service detail, search, booking
+  wizard, account and admin are functionally untouched.
+- **Validation** — run `npm run lint`, `npm run typecheck`, `npm run build`
+  and `npm test` before pushing; see § Rollback for the protected
+  `backup/pre-moyo-refactor` branch and the `feature/moyo-platform` workflow.

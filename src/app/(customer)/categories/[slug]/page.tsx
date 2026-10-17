@@ -81,7 +81,7 @@ export default async function CategoryPage({ params }: Params) {
         {category.subCategories.length > 1 && (
           <nav
             aria-label="Sub-categories"
-            className="flex gap-1.5 overflow-x-auto border-t border-ink-100 bg-ink-50/60 px-4 py-3 sm:px-6"
+            className="flex gap-1.5 overflow-x-auto border-t border-ink-100 bg-cream-50 px-4 py-3 sm:px-6"
           >
             {category.subCategories.map((sub) => (
               <a

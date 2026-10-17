@@ -45,6 +45,41 @@ function clamp01(n: number): number {
   return Math.min(1, Math.max(0, n));
 }
 
+/**
+ * DETERMINISTIC JOURNEY PROGRESS (pure, unit-testable)
+ *
+ * The line must reach the LAST dot exactly when the last milestone is fully
+ * traversed — never stall at ~0.97 on tall sections. Instead of normalising
+ * over the whole `<ol>` height plus viewport padding (which leaves a long
+ * tail of "dead" scroll after the final dot where progress asymptotically
+ * approaches but rarely hits 1), progress is anchored to measured dot
+ * positions:
+ *
+ * - `firstDotTop` / `lastDotTop`: distances (px) from the list top to the
+ *   centers of the first and last dots, re-measured on layout/resize.
+ * - the viewport "reading line" sits at `viewportHeight * anchorRatio`
+ *   (0.55 ≈ just below middle, where the eye rests while scrolling).
+ * - progress = (readingLine − firstDotAbsoluteTop) / (lastDot − firstDot):
+ *   0 when the reading line meets the first dot, 1 when it meets the last.
+ *
+ * All inputs are plain numbers, so tests can pin the contract without
+ * touching the DOM or animation timing.
+ */
+export function journeyProgressFor(
+  listTopViewportPx: number,
+  firstDotOffsetPx: number,
+  lastDotOffsetPx: number,
+  viewportHeightPx: number,
+  anchorRatio = 0.55,
+): number {
+  const vh = Math.max(1, viewportHeightPx);
+  const readingLine = vh * anchorRatio;
+  const span = lastDotOffsetPx - firstDotOffsetPx;
+  if (!(span > 0)) return 1;
+  const firstAbsolute = listTopViewportPx + firstDotOffsetPx;
+  return clamp01((readingLine - firstAbsolute) / span);
+}
+
 export function JourneyLine({
   steps,
   className,
@@ -72,6 +107,11 @@ export function JourneyLine({
       window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
     const dots = dotRefs.current.filter((d): d is HTMLSpanElement => Boolean(d));
+    // Dot centers (px) measured from the list top. Progress anchors to the
+    // FIRST→LAST dot span so Step 4 always completes — never to the whole
+    // section height, which left a dead-scroll tail where the line stalled.
+    let firstTop = 0;
+    let lastTop = 0;
 
     /** Re-measure dot centers and rebuild the curve in viewBox units. */
     const layout = () => {
@@ -80,13 +120,19 @@ export function JourneyLine({
       if (listRect.height === 0 || svgRect.width === 0) return;
       const scaleX = VIEW_W / svgRect.width;
       const scaleY = 1000 / listRect.height;
+      const tops: number[] = [];
       const points = dots.map((dot) => {
         const r = dot.getBoundingClientRect();
+        tops.push(r.top + r.height / 2 - listRect.top);
         return {
           x: (r.left + r.width / 2 - svgRect.left) * scaleX,
           y: (r.top + r.height / 2 - listRect.top) * scaleY,
         };
       });
+      if (tops.length > 0) {
+        firstTop = tops[0] as number;
+        lastTop = tops[tops.length - 1] as number;
+      }
       if (points.length >= 2) {
         const d = buildPath(points);
         track.setAttribute('d', d);
@@ -99,12 +145,10 @@ export function JourneyLine({
       raf = 0;
       const rect = list.getBoundingClientRect();
       const vh = window.innerHeight || 1;
-      // The line starts drawing when the section top crosses 85% of the
-      // viewport and completes as its bottom crosses 45% - progress is
-      // driven purely by the section's own position, never hijacking scroll.
-      const start = vh * 0.85;
-      const end = vh * 0.45;
-      const progress = clamp01((start - rect.top) / Math.max(1, rect.height + start - end));
+      // Anchored to the measured FIRST→LAST dot span (see journeyProgressFor):
+      // progress hits exactly 1 when the reading line reaches the last dot,
+      // so Step 4 always completes regardless of section padding or viewport.
+      const progress = journeyProgressFor(rect.top, firstTop, lastTop, vh);
       line.style.strokeDashoffset = String(1 - progress);
       const last = Math.max(1, dots.length - 1);
       dots.forEach((dot, i) => {
@@ -114,6 +158,12 @@ export function JourneyLine({
 
     const onScroll = () => {
       if (!raf) raf = window.requestAnimationFrame(update);
+    };
+
+    const onResize = () => {
+      // Geometry changed: rebuild the curve FIRST, then repaint on next frame.
+      layout();
+      onScroll();
     };
 
     if (reduced) {
@@ -129,15 +179,28 @@ export function JourneyLine({
     layout();
     update();
     window.addEventListener('scroll', onScroll, { passive: true });
-    window.addEventListener('resize', onScroll, { passive: true });
+    window.addEventListener('resize', onResize, { passive: true });
     const ro = new ResizeObserver(() => {
       layout();
       onScroll();
     });
     ro.observe(list);
+    // Late layout (webfonts, images): re-measure once the page settles so the
+    // curve and the dot-span anchors match the final positions.
+    const settled = window.setTimeout(() => {
+      layout();
+      onScroll();
+    }, 600);
+    if (document.fonts?.ready) {
+      void document.fonts.ready.then(() => {
+        layout();
+        onScroll();
+      });
+    }
     return () => {
       window.removeEventListener('scroll', onScroll);
-      window.removeEventListener('resize', onScroll);
+      window.removeEventListener('resize', onResize);
+      window.clearTimeout(settled);
       ro.disconnect();
       if (raf) window.cancelAnimationFrame(raf);
     };
@@ -158,11 +221,18 @@ export function JourneyLine({
       {/* Decorative spine - hidden from assistive tech. */}
       <svg
         ref={svgRef}
-        className="pointer-events-none absolute inset-y-0 left-0 w-16 sm:w-24"
+        className="pointer-events-none absolute inset-y-0 left-2 w-14 sm:left-1/2 sm:w-32 sm:-translate-x-1/2"
         viewBox={`0 0 ${VIEW_W} 1000`}
         preserveAspectRatio="none"
         aria-hidden
       >
+        <defs>
+          <linearGradient id="journeyGradient" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor="#60a5fa" />
+            <stop offset="55%" stopColor="#2563eb" />
+            <stop offset="100%" stopColor="#d9a441" />
+          </linearGradient>
+        </defs>
         <path
           ref={trackRef}
           className="journey-track"
@@ -184,30 +254,42 @@ export function JourneyLine({
       {steps.map((step, i) => (
         <li
           key={step.title}
-          className="journey-step relative grid grid-cols-[4rem_1fr] gap-3 py-6 sm:grid-cols-[6rem_1fr] sm:gap-5"
+          className="journey-step relative py-8 pl-16 sm:grid sm:grid-cols-2 sm:items-center sm:gap-12 sm:py-14 sm:pl-0"
         >
-          <div className="relative">
-            <span
-              ref={(el) => {
-                if (el) dotRefs.current[i] = el;
-              }}
-              className={`journey-dot absolute top-1/2 grid h-10 w-10 -translate-x-1/2 -translate-y-1/2 place-items-center rounded-full ${
-                i % 2 === 0 ? 'left-[32%]' : 'left-[68%]'
-              }`}
-            >
-              <Icon name={step.icon} size={18} />
+          {/* Single measured dot: left rail on mobile, spine centre on desktop. */}
+          <span
+            ref={(el) => {
+              if (el) dotRefs.current[i] = el;
+            }}
+            className="journey-dot absolute left-3 top-9 grid h-11 w-11 place-items-center rounded-full sm:left-1/2 sm:top-1/2 sm:h-14 sm:w-14 sm:-translate-x-1/2 sm:-translate-y-1/2 sm:rounded-2xl"
+          >
+            <Icon name={step.icon} size={20} className="sm:hidden" />
+            <span className="hidden sm:contents">
+              <Icon name={step.icon} size={22} />
             </span>
-          </div>
-          <div className="pt-1.5 sm:pt-3">
-            <h3 className="journey-title text-sm font-semibold text-ink-500 sm:text-base">
-              <span className="mr-2 text-xs font-bold tabular-nums text-ink-300">
-                {String(i + 1).padStart(2, '0')}
-              </span>
-              {step.title}
-            </h3>
-            <p className="journey-body mt-1.5 max-w-xl text-sm leading-relaxed text-ink-400">
-              {step.description}
+          </span>
+          <div
+            className={`hidden sm:block ${i % 2 === 0 ? 'sm:order-1' : 'sm:order-2'}`}
+            aria-hidden
+          >
+            <p className="font-display text-7xl font-semibold text-ink-200/70 tabular-nums">
+              {String(i + 1).padStart(2, '0')}
             </p>
+          </div>
+          <div className={`relative ${i % 2 === 0 ? 'sm:order-2' : 'sm:order-1'}`}>
+            <div className="journey-panel p-6 sm:p-7">
+              <p className="eyebrow text-brand-600">
+                <span className="tabular-nums">{String(i + 1).padStart(2, '0')}</span>
+                <span className="h-px w-8 gold-rule" aria-hidden />
+                Step {i + 1} of {steps.length}
+              </p>
+              <h3 className="journey-title mt-3 font-display text-xl font-semibold text-ink-500 sm:text-2xl">
+                {step.title}
+              </h3>
+              <p className="journey-body mt-2 max-w-xl text-sm leading-relaxed text-ink-400 sm:text-[15px]">
+                {step.description}
+              </p>
+            </div>
           </div>
         </li>
       ))}
