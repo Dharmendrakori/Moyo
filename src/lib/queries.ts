@@ -337,3 +337,98 @@ export async function searchCatalog(term: string) {
     })),
   };
 }
+
+// --- Customer catalog search (paged) ----------------------------------------
+
+/** Page size for the customer search results grid. */
+export const SEARCH_PAGE_SIZE = 12;
+
+/**
+ * Prisma `where` for customer catalog search over active services.
+ *
+ * Exported so unit tests can assert the filter shape without a database.
+ * `q` must already be trimmed and length-bounded by the caller; Prisma
+ * parameterises the value, so the term can never become SQL. Service name,
+ * description and both relation names are searched, so a query like "AC" or
+ * "electrical" surfaces the right services and categories.
+ *
+ * An empty term deliberately matches NOTHING (an `in: []` sentinel) rather
+ * than everything - a blank search box must not dump the whole catalogue.
+ */
+export function catalogSearchWhere(q: string): Record<string, unknown> {
+  const term = q.trim();
+  if (!term) return { id: { in: [] } };
+  return {
+    isActive: true,
+    OR: [
+      { name: { contains: term } },
+      { description: { contains: term } },
+      { subCategory: { name: { contains: term } } },
+      { subCategory: { category: { name: { contains: term } } } },
+    ],
+  };
+}
+
+/**
+ * One page of catalog search results, cheapest-first published price, newest
+ * listing rules identical to the category page: only ACTIVE services, ordered
+ * by name, `priceFromPaise` is the lowest published active option or null.
+ */
+export async function searchServices(term: string, page = 1) {
+  const q = term.trim();
+  const currentPage = Number.isFinite(page) && page > 1 ? Math.floor(page) : 1;
+
+  // A blank term never reaches the database.
+  if (!q) {
+    return { total: 0, page: currentPage, hasMore: false, services: [] };
+  }
+
+  const where = catalogSearchWhere(q);
+  const [rows, total] = await Promise.all([
+    prisma.service.findMany({
+      where,
+      orderBy: { name: 'asc' },
+      skip: (currentPage - 1) * SEARCH_PAGE_SIZE,
+      // One extra row is a cheap "is there a next page" sentinel.
+      take: SEARCH_PAGE_SIZE + 1,
+      select: {
+        id: true,
+        name: true,
+        slug: true,
+        serviceType: true,
+        description: true,
+        options: {
+          where: { isActive: true },
+          select: { charging: true, pricePaise: true },
+        },
+        subCategory: { select: { category: { select: { name: true, slug: true } } } },
+      },
+    }),
+    prisma.service.count({ where }),
+  ]);
+
+  const hasMore = rows.length > SEARCH_PAGE_SIZE;
+  const pageRows = rows.slice(0, SEARCH_PAGE_SIZE);
+
+  return {
+    total,
+    page: currentPage,
+    hasMore,
+    services: pageRows.map((s) => {
+      // Same "lowest published price" rule as getCategoryBySlug.
+      const priced = s.options
+        .map((o) => o.pricePaise)
+        .filter((p): p is number => p != null && p > 0);
+      return {
+        id: s.id,
+        name: s.name,
+        slug: s.slug,
+        serviceType: s.serviceType,
+        description: s.description,
+        categoryName: s.subCategory.category.name,
+        categorySlug: s.subCategory.category.slug,
+        priceFromPaise: priced.length > 0 ? Math.min(...priced) : null,
+      };
+    }),
+  };
+}

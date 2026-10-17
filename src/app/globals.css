@@ -202,6 +202,72 @@
   }
 }
 
+/* ==========================================================================
+   SCROLL JOURNEY LINE (src/components/customer/JourneyLine.tsx)
+   ========================================================================== */
+
+/* The drawn segment starts undrawn (dashoffset 1 with pathLength=1). The
+   client component writes the offset on scroll; without JavaScript the line
+   simply stays undrawn while the track and all milestone text remain. */
+.journey-path {
+  stroke: var(--color-brand-600);
+  stroke-width: 3;
+  stroke-linecap: round;
+  stroke-dasharray: 1;
+  stroke-dashoffset: 1;
+}
+
+.journey-track {
+  stroke: var(--color-ink-200);
+  stroke-width: 2.5;
+  stroke-linecap: round;
+}
+
+.journey-dot {
+  background: #fff;
+  border: 2px solid var(--color-ink-300);
+  color: var(--color-ink-400);
+  box-shadow: 0 0 0 4px var(--color-ink-50);
+  transition:
+    background-color 300ms cubic-bezier(0.22, 1, 0.36, 1),
+    border-color 300ms cubic-bezier(0.22, 1, 0.36, 1),
+    color 300ms cubic-bezier(0.22, 1, 0.36, 1),
+    box-shadow 300ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.journey-title,
+.journey-body {
+  transition: color 300ms ease;
+}
+
+/* Milestone reached: the line has drawn past this dot. */
+.journey-step.is-active .journey-dot {
+  background: var(--color-brand-600);
+  border-color: var(--color-brand-600);
+  color: #fff;
+  box-shadow: 0 0 0 6px var(--color-brand-100);
+}
+
+.journey-step.is-active .journey-title {
+  color: var(--color-ink-900);
+}
+
+.journey-step.is-active .journey-body {
+  color: var(--color-ink-600);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .journey-path {
+    stroke-dashoffset: 0 !important;
+  }
+
+  .journey-dot,
+  .journey-title,
+  .journey-body {
+    transition: none;
+  }
+}
+
 @keyframes skeleton-shimmer {
   from { background-position: 1000px 0; }
   to { background-position: 0 0; }

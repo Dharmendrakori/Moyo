@@ -1263,3 +1263,64 @@ booking logic, tests, or URL structure. Validated with `npm run lint` (0 errors)
 
 No functional or accessibility regressions: focus-visible rings, ARIA
 attributes, test IDs, and semantic structure are unchanged.
+
+
+---
+
+## Changelog - Customer catalog search
+
+**Scope:** additive presentation + query work. New `/search` customer route,
+new `searchServices` / `catalogSearchWhere` queries, and a header search form.
+No change to business logic, APIs, schema, authentication or existing routes.
+
+- **New page `/search`** - server-rendered GET form over the real catalogue
+  (no parallel client-side index). `?q=` (sanitised, length-capped) and
+  `?page=` express the whole view, so results are shareable and
+  back-button friendly. Category chips, result counts, honest
+  lowest-published-price cards, empty/browse states, and real pagination.
+  `noindex` because it is a utility page.
+- **Header search** - a compact plain-`<form action="/search">` box in the
+  customer header. Works without hydration and deliberately does not add an
+  anchor, so the navigation contract asserted by `tests/navigation.test.ts`
+  is untouched.
+- **Queries** - `searchServices(term, page)`: ACTIVE services only, matches on
+  service name, description, sub-category name and category name; 12 per page
+  with a one-row `hasMore` sentinel; same price rule as the category page
+  (lowest positive published option, otherwise honest null). A blank term
+  never reaches the database.
+- **Tests** - new `tests/customer-search.test.ts` pins the where-builder
+  shape (including "term only ever lands inside parameterised `contains`
+  filters"), blank-term short-circuit, pagination maths, page clamping and
+  price mapping.
+
+---
+
+## Changelog - Scroll-driven SVG journey line
+
+**Scope:** one new reusable client component (`src/components/customer/JourneyLine.tsx`),
+its styles in `globals.css`, and one new homepage section. Pure React + SVG -
+**no new dependencies** (no Framer Motion, no Three.js, no GSAP). No change to
+business logic, APIs, routes or existing components' behaviour.
+
+- **Component** - `<JourneyLine steps={...} />` renders a milestone list
+  threaded by an SVG spine that draws itself in sync with scroll. The path
+  uses `pathLength="1"` so normalised `stroke-dashoffset` (1 = undrawn,
+  0 = drawn) maps section scroll progress directly to drawing progress; it
+  reverses naturally when scrolling up.
+- **Geometry** - the curve is measured from the real milestone dot positions
+  after layout and on resize (`ResizeObserver`), so it connects the actual
+  content points at every viewport with round stroke caps, no clipping and
+  no layout shift. `vector-effect: non-scaling-stroke` keeps stroke weight
+  constant under the responsive viewBox stretch.
+- **Performance** - progress is computed from the section's own bounding box
+  (works on load, refresh, deep links and rapid scrolling), rAF-throttled,
+  and written straight to the DOM through refs: zero React state updates per
+  scroll event. All observers, listeners and animation frames are released
+  on unmount.
+- **Integration** - homepage section "How a MOYO booking works": four
+  milestones describing the real booking funnel (category, service,
+  charging option, tracking). Milestones light up as the line reaches them.
+- **Accessibility** - `prefers-reduced-motion` renders the complete static
+  line with all milestones active and installs no listeners. Without
+  JavaScript the line stays undrawn while every milestone's text remains
+  fully readable; the spine SVG is `aria-hidden` decoration.

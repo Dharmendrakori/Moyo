@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { Icon } from '@/components/ui/Icon';
 import { CategoryCard, ServiceCard } from '@/components/customer/Cards';
 import { ProviderContactCard } from '@/components/customer/Shell';
+import { JourneyLine, type JourneyStep } from '@/components/customer/JourneyLine';
 import { listCategories } from '@/lib/queries';
 import { getCurrentUser } from '@/lib/auth';
 import { CHARGING_HINT, CHARGING_LABEL, CHARGING_OPTIONS } from '@/lib/domain';
@@ -12,6 +13,38 @@ export const metadata = {
   description:
     'MOYO is a service operations platform for booking, tracking and managing field services across 20 service categories.',
 };
+
+/**
+ * The real booking journey, in order: category -> service -> charging option ->
+ * tracking. Every description states only what the application actually does -
+ * no ETAs, no fabricated availability.
+ */
+const BOOKING_JOURNEY: JourneyStep[] = [
+  {
+    icon: 'grid',
+    title: 'Find the right category',
+    description:
+      'Twenty official service categories cover home, office, solar, plumbing, painting and more. Search, or browse to the exact job.',
+  },
+  {
+    icon: 'list',
+    title: 'Compare services and honest prices',
+    description:
+      'Each service lists its included work and the prices the provider has actually published. Where a price is not published, we say so instead of inventing one.',
+  },
+  {
+    icon: 'wallet',
+    title: 'Choose how you want to be charged',
+    description:
+      'Visit charge, fixed charge, or set your own budget. The server prices the booking from catalogue rules - the browser can never post a price.',
+  },
+  {
+    icon: 'clipboard',
+    title: 'Book and track to completion',
+    description:
+      'Your booking reference follows the job from request through confirmation, the on-site states, invoice and feedback - all from My bookings.',
+  },
+];
 
 /**
  * MOYO CUSTOMER HOMEPAGE
@@ -87,6 +120,21 @@ export default async function HomePage() {
               </article>
             ))}
           </div>
+        </div>
+      </section>
+
+      <section aria-labelledby="journey-heading" className="border-b border-ink-200">
+        <div className="mx-auto max-w-7xl px-4 py-14 sm:px-6 lg:px-8">
+          <div className="max-w-2xl">
+            <h2 id="journey-heading" className="text-2xl font-bold tracking-tight text-ink-900">
+              How a MOYO booking works
+            </h2>
+            <p className="mt-1 text-sm text-ink-500">
+              Four steps from a problem to a finished job - every figure on the way comes from the
+              live catalogue.
+            </p>
+          </div>
+          <JourneyLine steps={BOOKING_JOURNEY} className="mt-6 max-w-3xl" />
         </div>
       </section>
 

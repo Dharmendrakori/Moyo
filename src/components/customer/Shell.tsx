@@ -104,7 +104,41 @@ export async function CustomerHeader() {
           ))}
         </nav>
 
-        <div className="ml-auto flex items-center gap-3">
+        {/*
+          Catalogue search: a plain GET form to /search, so it works without
+          hydration and every result URL is shareable. Deliberately a <form>
+          rather than a <Link> - the anchor-based navigation contract asserted
+          in tests/navigation.test.ts collects href props only, and forms
+          carry action, not href.
+        */}
+        <form
+          action="/search"
+          method="get"
+          role="search"
+          className="ml-auto w-full min-w-0 max-w-md flex-1"
+        >
+          <label htmlFor="header-search" className="sr-only">
+            Search services
+          </label>
+          <div className="relative">
+            <Icon
+              name="search"
+              size={15}
+              className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-ink-400"
+            />
+            <input
+              id="header-search"
+              type="search"
+              name="q"
+              placeholder="Search services…"
+              maxLength={80}
+              autoComplete="off"
+              className="w-full rounded-xl border border-ink-200 bg-ink-50 py-2 pl-9 pr-3 text-sm text-ink-900 transition placeholder:text-ink-400 focus:border-brand-500 focus:bg-white focus:outline-none focus:ring-2 focus:ring-brand-600/20"
+            />
+          </div>
+        </form>
+
+        <div className="flex shrink-0 items-center gap-3">
           {tel && (
             <a
               href={tel}
