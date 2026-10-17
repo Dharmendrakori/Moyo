@@ -178,7 +178,7 @@ export function ServiceBulkTable({
           type="button"
           onClick={() => setCreating(true)}
           disabled={busy}
-          className="inline-flex items-center gap-1.5 rounded-lg bg-brand-600 px-3 py-2 text-sm font-semibold text-white transition hover:bg-brand-700 disabled:opacity-50"
+          className="inline-flex items-center gap-1.5 rounded-xl bg-brand-600 px-3 py-2 text-sm font-semibold text-white shadow-card transition-all duration-300 hover:bg-brand-700 hover:shadow-elevated disabled:opacity-50"
         >
           <Icon name="plus" size={15} />
           Add services
@@ -218,6 +218,7 @@ export function ServiceBulkTable({
       />
 
       <BulkEditServiceDialog
+        key={editing ? 'open' : 'closed'}
         open={editing}
         count={selection.count}
         busy={busy}
@@ -227,6 +228,7 @@ export function ServiceBulkTable({
       />
 
       <CreateServicesDialog
+        key={creating ? 'open' : 'closed'}
         open={creating}
         busy={busy}
         error={error}

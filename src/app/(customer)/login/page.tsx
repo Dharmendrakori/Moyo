@@ -24,16 +24,23 @@ export default async function LoginPage({ searchParams }: { searchParams: Search
   // the final hop is re-resolved against the session role just below. The
   // default with no explicit `next` is the public homepage `/`, never
   // `/account` or `/admin`.
-  const nextPath = safeRedirectPath(firstValue(params.next), '/');
+  const rawNext = firstValue(params.next);
+  const nextPath = safeRedirectPath(rawNext, '/');
 
   // Already signed in: honour a safe `next`, but resolve it against the
   // server role so a non-ADMIN can never be sent to `/admin`. With no `next`
   // this lands on the homepage `/`.
-  if (user) redirect(resolvePostLoginRedirect(firstValue(params.next), user.role));
+  if (user) redirect(resolvePostLoginRedirect(rawNext, user.role));
 
   // Registration success is signalled with a non-sensitive `registered` flag
   // (no credentials in the URL). Shown once, then cleared from the address bar.
   const showRegistered = firstValue(params.registered) === '1';
+  // A visitor sent here from a protected page (the edge proxy redirects an
+  // anonymous /bookings visit to /login?next=%2Fbookings) is told, in plain
+  // language, why they are being asked to sign in - shown above the working
+  // Sign in form and the Create an account link below. The presence of a
+  // `next` value is exactly the signal that a protected page was requested.
+  const showSignInRequired = Boolean(rawNext);
 
   return (
     <div className="mx-auto flex min-h-[70vh] max-w-md flex-col justify-center px-4 py-12 sm:px-6">
@@ -42,6 +49,15 @@ export default async function LoginPage({ searchParams }: { searchParams: Search
         <p className="mt-1 text-sm text-ink-500">
           Access your bookings, invoices and material orders.
         </p>
+        {showSignInRequired && (
+          <div
+            role="status"
+            className="mt-4 flex items-start gap-2 rounded-lg bg-brand-50 p-3 text-sm text-brand-700"
+          >
+            <Icon name="lock" size={16} className="mt-0.5 shrink-0" />
+            <span>Please sign in to view, track, and manage your bookings.</span>
+          </div>
+        )}
         {showRegistered && (
           <div
             role="status"
@@ -56,7 +72,10 @@ export default async function LoginPage({ searchParams }: { searchParams: Search
         </div>
         <p className="mt-6 border-t border-ink-100 pt-4 text-center text-sm text-ink-500">
           New to MOYO?{' '}
-          <a href="/register" className="font-semibold text-brand-600 hover:underline">
+          <a
+            href={nextPath === '/' ? '/register' : `/register?next=${encodeURIComponent(nextPath)}`}
+            className="font-semibold text-brand-600 hover:underline"
+          >
             Create an account
           </a>
         </p>

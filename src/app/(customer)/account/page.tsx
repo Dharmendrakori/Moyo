@@ -79,7 +79,7 @@ export default async function AccountPage() {
           {isAdmin && (
             <Link
               href="/admin"
-              className="inline-flex items-center gap-1.5 rounded-lg bg-ink-900 px-4 py-2 text-sm font-semibold text-white transition hover:bg-ink-800"
+              className="inline-flex items-center gap-1.5 rounded-xl bg-ink-900 px-4 py-2 text-sm font-semibold text-white shadow-card transition-all duration-300 hover:bg-ink-800 hover:shadow-elevated"
             >
               <Icon name="grid" size={16} />
               Admin Console
@@ -87,7 +87,7 @@ export default async function AccountPage() {
           )}
           <Link
             href="/categories"
-            className="inline-flex items-center gap-1.5 rounded-lg bg-brand-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-brand-700"
+            className="inline-flex items-center gap-1.5 rounded-xl bg-brand-600 px-4 py-2 text-sm font-semibold text-white shadow-card transition-all duration-300 hover:bg-brand-700 hover:shadow-elevated"
           >
             <Icon name="bolt" size={16} />
             Back to services
@@ -130,7 +130,7 @@ export default async function AccountPage() {
 
       <section
         aria-labelledby="recent-bookings-heading"
-        className="mt-4 rounded-card border border-ink-200 bg-white p-5"
+        className="mt-4 rounded-card border border-ink-200 bg-white p-5 shadow-card"
       >
         <div className="flex items-center justify-between gap-3">
           <h2 id="recent-bookings-heading" className="text-sm font-semibold text-ink-900">
@@ -154,7 +154,7 @@ export default async function AccountPage() {
               action={
                 <Link
                   href="/categories"
-                  className="rounded-lg bg-brand-600 px-4 py-2 text-sm font-semibold text-white"
+                  className="rounded-xl bg-brand-600 px-4 py-2 text-sm font-semibold text-white shadow-card transition-all duration-300 hover:bg-brand-700 hover:shadow-elevated"
                 >
                   Browse services
                 </Link>
@@ -232,7 +232,7 @@ function ShortcutCard({
   return (
     <Link
       href={href}
-      className="group rounded-card border border-ink-200 bg-white p-5 transition hover:border-brand-300 hover:shadow-raised"
+      className="group rounded-xl border border-ink-200 bg-white p-5 shadow-card transition-all duration-300 hover:border-brand-300 hover:shadow-elevated hover:-translate-y-0.5"
     >
       <span className="grid h-10 w-10 place-items-center rounded-lg bg-brand-50 text-brand-700">
         <Icon name={icon} size={20} />
@@ -245,7 +245,7 @@ function ShortcutCard({
 
 function SignOutCard() {
   return (
-    <div className="rounded-card border border-ink-200 bg-white p-5">
+    <div className="rounded-card border border-ink-200 bg-white p-5 shadow-card">
       <span className="grid h-10 w-10 place-items-center rounded-lg bg-ink-100 text-ink-500">
         <Icon name="logout" size={20} />
       </span>

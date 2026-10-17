@@ -306,7 +306,7 @@ function BookingSidebar({
 
           <Link
             href={`/book?service=${encodeURIComponent(service.slug)}`}
-            className="mt-5 flex w-full items-center justify-center gap-2 rounded-lg bg-brand-600 px-4 py-3 text-sm font-semibold text-white transition hover:bg-brand-700"
+            className="mt-5 flex w-full items-center justify-center gap-2 rounded-xl bg-brand-600 px-4 py-3 text-sm font-semibold text-white shadow-card transition-all duration-300 hover:bg-brand-700 hover:shadow-elevated"
           >
             <Icon name="bolt" size={16} />
             Book this service

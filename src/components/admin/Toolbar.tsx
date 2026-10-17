@@ -28,7 +28,7 @@ export function Toolbar({
       <div className="flex items-center gap-2 lg:ml-auto">
         <button
           type="submit"
-          className="rounded-lg bg-brand-600 px-3 py-2 text-sm font-semibold text-white transition hover:bg-brand-700"
+          className="rounded-xl bg-brand-600 px-3 py-2 text-sm font-semibold text-white shadow-card transition-all duration-300 hover:bg-brand-700 hover:shadow-elevated"
         >
           Apply
         </button>

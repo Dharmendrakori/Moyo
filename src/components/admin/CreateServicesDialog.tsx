@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { Icon } from '@/components/ui/Icon';
 import { InlineError } from '@/components/admin/StatusControls';
 import { SERVICE_TYPES, SERVICE_TYPE_LABEL } from '@/lib/domain';
@@ -44,22 +44,15 @@ export function CreateServicesDialog({
   onClose: () => void;
   onCreate: (services: Array<{ subCategoryId: string; name: string; serviceType: string; isActive: boolean }>) => void;
 }) {
-  const [categoryId, setCategoryId] = useState('');
+
+
+  const [categoryId, setCategoryId] = useState(() => tree[0]?.id ?? '');
   const [subCategoryId, setSubCategoryId] = useState('');
   const [isActive, setIsActive] = useState(true);
   const [rows, setRows] = useState<DraftRow[]>([{ id: 1, name: '', serviceType: 'REPAIR' }]);
   const [nextId, setNextId] = useState(2);
 
-  // Reset the form each time the dialog is opened.
-  useEffect(() => {
-    if (open) {
-      setCategoryId(tree[0]?.id ?? '');
-      setSubCategoryId('');
-      setIsActive(true);
-      setRows([{ id: 1, name: '', serviceType: 'REPAIR' }]);
-      setNextId(2);
-    }
-  }, [open, tree]);
+
 
   const subCategories = useMemo(
     () => tree.find((c) => c.id === categoryId)?.subCategories ?? [],
@@ -231,7 +224,7 @@ export function CreateServicesDialog({
             type="button"
             onClick={submit}
             disabled={!canSubmit}
-            className="inline-flex items-center gap-1.5 rounded-lg bg-brand-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-brand-700 disabled:opacity-50"
+            className="inline-flex items-center gap-1.5 rounded-xl bg-brand-600 px-4 py-2 text-sm font-semibold text-white shadow-card transition-all duration-300 hover:bg-brand-700 hover:shadow-elevated disabled:opacity-50"
           >
             <Icon name="plus" size={14} />
             {busy ? 'Creating…' : `Create ${validRows.length || ''} service${validRows.length === 1 ? '' : 's'}`}

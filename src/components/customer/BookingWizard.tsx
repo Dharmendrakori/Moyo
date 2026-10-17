@@ -83,7 +83,7 @@ type Details = {
 };
 
 const inputClass =
-  'w-full rounded-lg border border-ink-300 bg-white px-3 py-2.5 text-sm text-ink-900 placeholder:text-ink-400 focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/30 disabled:opacity-60 aria-[invalid=true]:border-danger';
+  'w-full rounded-xl border border-ink-300 bg-white px-3 py-2.5 text-sm text-ink-900 placeholder:text-ink-400 transition-colors duration-200 focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/30 disabled:opacity-60 aria-[invalid=true]:border-danger';
 
 type FieldErrors = Record<string, string>;
 
@@ -333,7 +333,7 @@ export function BookingWizard({
         <div className="mt-6 flex flex-wrap justify-center gap-2">
           <Link
             href={`/bookings/${created.id}`}
-            className="rounded-lg bg-brand-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-brand-700"
+            className="rounded-xl bg-brand-600 px-4 py-2 text-sm font-semibold text-white shadow-card transition-all duration-300 hover:bg-brand-700 hover:shadow-elevated"
           >
             Track this booking
           </Link>
@@ -457,7 +457,7 @@ export function BookingWizard({
               setFormError(null);
               setStage('details');
             }}
-            className="inline-flex items-center gap-2 rounded-lg bg-brand-600 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-brand-700 disabled:opacity-50"
+            className="inline-flex items-center gap-2 rounded-xl bg-brand-600 px-5 py-2.5 text-sm font-semibold text-white shadow-card transition-all duration-300 hover:bg-brand-700 hover:shadow-elevated disabled:opacity-50"
           >
             Continue
             <Icon name="chevron-right" size={16} />
@@ -507,7 +507,7 @@ export function BookingWizard({
             </p>
             <Link
               href={`/login?next=${encodeURIComponent(nextHref)}`}
-              className="mt-3 inline-block rounded-lg bg-brand-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-brand-700"
+              className="mt-3 inline-block rounded-xl bg-brand-600 px-4 py-2 text-sm font-semibold text-white shadow-card transition-all duration-300 hover:bg-brand-700 hover:shadow-elevated"
             >
               Sign in
             </Link>
@@ -525,7 +525,7 @@ export function BookingWizard({
                 <label
                   key={mode}
                   htmlFor={id}
-                  className="cursor-pointer rounded-lg border border-ink-200 p-3 text-center text-xs font-semibold text-ink-700 transition hover:border-brand-300 has-[:checked]:border-brand-500 has-[:checked]:bg-brand-50 has-[:checked]:text-brand-700"
+                  className="cursor-pointer rounded-xl border border-ink-200 p-3 text-center text-xs font-semibold text-ink-700 transition-all duration-200 hover:border-brand-300 has-[:checked]:border-brand-500 has-[:checked]:bg-brand-50 has-[:checked]:text-brand-700 has-[:checked]:shadow-card"
                 >
                   <input
                     id={id}
@@ -737,7 +737,7 @@ export function BookingWizard({
           </button>
           <button
             type="submit"
-            className="inline-flex items-center gap-2 rounded-lg bg-brand-600 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-brand-700"
+            className="inline-flex items-center gap-2 rounded-xl bg-brand-600 px-5 py-2.5 text-sm font-semibold text-white shadow-card transition-all duration-300 hover:bg-brand-700 hover:shadow-elevated"
           >
             Review booking
             <Icon name="chevron-right" size={16} />
@@ -871,7 +871,7 @@ export function BookingWizard({
         <button
           type="submit"
           disabled={!confirmed || submitting}
-          className="inline-flex items-center gap-2 rounded-lg bg-brand-600 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-brand-700 disabled:opacity-50"
+          className="inline-flex items-center gap-2 rounded-xl bg-brand-600 px-5 py-2.5 text-sm font-semibold text-white shadow-card transition-all duration-300 hover:bg-brand-700 hover:shadow-elevated disabled:opacity-50"
         >
           {submitting ? 'Submitting…' : 'Confirm and place booking'}
           {!submitting && <Icon name="check" size={16} />}

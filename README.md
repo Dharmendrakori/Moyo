@@ -1207,3 +1207,59 @@ open-redirect/CSRF/Origin/RBAC protections unchanged.
   verification of the ADMIN/CUSTOMER/anonymous login, registration, and
   Account navigation flows was not performed here (no browser available in
   this environment) and should be run before merging.
+
+---
+
+## Changelog - Premium UI redesign
+
+**Scope:** presentation only (class names, CSS tokens, layout polish) across
+`src/app/globals.css`, `src/components/customer/*`, `src/components/ui/*`,
+`src/components/admin/*` and the customer/admin pages. **No change** to business
+logic, Prisma schema, seed data, authentication, RBAC, APIs, pricing logic,
+booking logic, tests, or URL structure. Validated with `npm run lint` (0 errors),
+`npm run typecheck` (clean), `npx vitest run` (268/268 passing, 20/20 files) and
+`npm run build`.
+
+### Design tokens (`src/app/globals.css`)
+
+- **Radii:** `--radius-card` raised to `0.75rem` for app-wide consistency;
+  `--radius-pill: 9999px` for badges and chips.
+- **Shadows:** a four-step scale - `--shadow-card` (resting),
+  `--shadow-raised` (hover), `--shadow-elevated` (floating/hover-lift),
+  `--shadow-overlay` (dialogs).
+- **Motion:** `--animate-reveal` / `reveal-up` keyframes with new `reveal` and
+  `reveal-slow` utilities - pure CSS, no JavaScript. Where scroll-driven
+  animations are supported (`animation-timeline: view()`), the reveal plays as
+  sections enter the viewport; elsewhere it falls back to a one-shot entrance
+  animation. `prefers-reduced-motion` disables it entirely and forces the
+  visible state.
+- **Surfaces:** elevated neutral palette (`--color-surface-*`) for subtle
+  section banding; scrollbars styled to match.
+
+### Consistent interaction language
+
+- **CTA buttons:** `rounded-xl` + `shadow-card` + `transition-all duration-300`
+  with `hover:shadow-elevated` (customer header, homepage, booking wizard,
+  account, auth forms, admin dialogs/toolbar).
+- **Cards/tiles:** `rounded-xl`/`rounded-card` + `border border-ink-200` +
+  `shadow-card`; clickable tiles add `hover:-translate-y-0.5`,
+  `hover:border-brand-300`, `hover:shadow-elevated`.
+- **Inputs** (`inputClass` in `BookingWizard`/`AuthForms`): rounded-xl with
+  smooth focus transitions.
+
+### Redesigned surfaces
+
+- **Homepage** - hero with layered radial-gradient depth, reveal-on-scroll
+  sections, upgraded charging-option and category grids, trust/contact section,
+  booking banner CTA.
+- **Customer shell** - blurred translucent sticky header, pill-shaped mobile
+  bottom nav with raised primary action, refreshed footer and provider contact
+  card.
+- **Cards** - `CategoryCard` and `ServiceCard` with hover lift.
+- **Customer pages** - account tiles, booking wizard steps, booking list and
+  detail panels (`shadow-card`), category/service pages, login/register cards.
+- **Admin** - `StatCard` tiles with hover lift on linked tiles, primary action
+  buttons across toolbar/dialogs/tables, access-denied page actions.
+
+No functional or accessibility regressions: focus-visible rings, ARIA
+attributes, test IDs, and semantic structure are unchanged.

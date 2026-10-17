@@ -35,7 +35,7 @@ export default async function HomePage() {
 
       {activeBooking && <CurrentBookingBanner booking={activeBooking} />}
 
-      <section className="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
+      <section className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8 reveal">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
           <div>
             <p className="text-xs font-semibold uppercase tracking-wider text-brand-600">
@@ -57,7 +57,7 @@ export default async function HomePage() {
           </Link>
         </div>
 
-        <div className="mt-6 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="mt-8 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {categories.slice(0, 9).map((category) => (
             <CategoryCard key={category.id} category={category} />
           ))}
@@ -65,17 +65,20 @@ export default async function HomePage() {
       </section>
 
       <section className="border-y border-ink-200 bg-white">
-        <div className="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
+        <div className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8 reveal">
           <h2 className="text-2xl font-bold tracking-tight text-ink-900">How charging works</h2>
           <p className="mt-1 max-w-2xl text-sm text-ink-500">
             Every booking uses one of three charging options. You choose before confirming.
           </p>
 
-          <div className="mt-6 grid grid-cols-1 gap-4 md:grid-cols-3">
+          <div className="mt-8 grid grid-cols-1 gap-4 md:grid-cols-3">
             {CHARGING_OPTIONS.map((option, index) => (
-              <article key={option} className="rounded-card border border-ink-200 p-5">
+              <article
+                key={option}
+                className="group rounded-xl border border-ink-200 bg-white p-6 shadow-card transition-all duration-300 hover:shadow-elevated hover:-translate-y-0.5"
+              >
                 <div className="flex items-center gap-3">
-                  <span className="grid h-8 w-8 place-items-center rounded-lg bg-brand-50 text-xs font-bold text-brand-700">
+                  <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-brand-50 text-xs font-bold text-brand-700 transition-colors duration-300 group-hover:bg-brand-600 group-hover:text-white">
                     {index + 1}
                   </span>
                   <h3 className="text-sm font-semibold text-ink-900">{CHARGING_LABEL[option]}</h3>
@@ -88,12 +91,12 @@ export default async function HomePage() {
       </section>
 
       {featured.length > 0 && (
-        <section className="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
+        <section className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8 reveal">
           <h2 className="text-2xl font-bold tracking-tight text-ink-900">Popular services</h2>
           <p className="mt-1 text-sm text-ink-500">
             A sample of the services available across all categories.
           </p>
-          <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="mt-8 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
             {featured.map((service) => (
               <ServiceCard key={service.id} service={service} />
             ))}
@@ -102,33 +105,39 @@ export default async function HomePage() {
       )}
 
       <section className="border-t border-ink-200 bg-white">
-        <div className="mx-auto grid max-w-7xl gap-8 px-4 py-12 sm:px-6 lg:grid-cols-3 lg:px-8">
+        <div className="mx-auto grid max-w-7xl gap-6 px-4 py-14 sm:px-6 lg:grid-cols-3 lg:px-8 reveal">
           <ProviderContactCard />
 
-          <div className="rounded-card border border-ink-200 p-5">
-            <h2 className="text-sm font-semibold text-ink-900">Order materials</h2>
+          <div className="group rounded-xl border border-ink-200 bg-white p-6 shadow-card transition-all duration-300 hover:shadow-elevated hover:-translate-y-0.5">
+            <div className="grid h-9 w-9 place-items-center rounded-lg bg-ink-900 text-white">
+              <Icon name="package" size={16} />
+            </div>
+            <h2 className="mt-3 text-sm font-semibold text-ink-900">Order materials</h2>
             <p className="mt-2 text-sm leading-relaxed text-ink-600">
               Category 20 covers new material ordering. Browse available materials and place an
               order with delivery details. Installation can be requested alongside.
             </p>
             <Link
               href="/orders"
-              className="mt-4 inline-flex items-center gap-1.5 rounded-lg bg-ink-900 px-4 py-2 text-sm font-semibold text-white transition hover:bg-ink-800"
+              className="mt-4 inline-flex items-center gap-1.5 rounded-xl bg-ink-900 px-4 py-2 text-sm font-semibold text-white shadow-card transition-all duration-300 hover:bg-ink-800 hover:shadow-elevated"
             >
               <Icon name="package" size={16} />
               Order materials
             </Link>
           </div>
 
-          <div className="rounded-card border border-ink-200 p-5">
-            <h2 className="text-sm font-semibold text-ink-900">Need help?</h2>
+          <div className="group rounded-xl border border-ink-200 bg-white p-6 shadow-card transition-all duration-300 hover:shadow-elevated hover:-translate-y-0.5">
+            <div className="grid h-9 w-9 place-items-center rounded-lg bg-ink-900 text-white">
+              <Icon name="message" size={16} />
+            </div>
+            <h2 className="mt-3 text-sm font-semibold text-ink-900">Need help?</h2>
             <p className="mt-2 text-sm leading-relaxed text-ink-600">
               Open a support request from your account, or call the provider directly using the
               contact details published on this page.
             </p>
             <Link
               href="/support"
-              className="mt-4 inline-flex items-center gap-1.5 rounded-lg bg-ink-900 px-4 py-2 text-sm font-semibold text-white transition hover:bg-ink-800"
+              className="mt-4 inline-flex items-center gap-1.5 rounded-xl bg-ink-900 px-4 py-2 text-sm font-semibold text-white shadow-card transition-all duration-300 hover:bg-ink-800 hover:shadow-elevated"
             >
               <Icon name="message" size={16} />
               Contact support
@@ -146,9 +155,9 @@ export default async function HomePage() {
 
 function HeroSection({ categoryCount }: { categoryCount: number }) {
   return (
-    <section className="border-b border-ink-800 bg-ink-900 text-white">
-      <div className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8 lg:py-16">
-        <div className="max-w-3xl">
+    <section className="relative overflow-hidden border-b border-ink-800 bg-ink-900 text-white">
+      <div className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8 lg:py-20">
+        <div className="max-w-3xl reveal">
           <p className="inline-flex items-center gap-2 rounded-full bg-white/10 px-3 py-1 text-xs font-semibold uppercase tracking-wider text-brand-100">
             <Icon name="bolt" size={12} />
             {categoryCount} service categories
@@ -166,14 +175,14 @@ function HeroSection({ categoryCount }: { categoryCount: number }) {
           <div className="mt-7 flex flex-wrap gap-3">
             <Link
               href="/categories"
-              className="inline-flex items-center gap-2 rounded-lg bg-brand-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-brand-700"
+              className="inline-flex items-center gap-2 rounded-xl bg-brand-600 px-5 py-3 text-sm font-semibold text-white shadow-card transition-all duration-300 hover:bg-brand-700 hover:shadow-elevated"
             >
               <Icon name="bolt" size={16} />
               Book a service
             </Link>
             <Link
               href="/bookings"
-              className="inline-flex items-center gap-2 rounded-lg bg-white/10 px-5 py-3 text-sm font-semibold text-white ring-1 ring-inset ring-white/20 transition hover:bg-white/20"
+              className="inline-flex items-center gap-2 rounded-xl bg-white/10 px-5 py-3 text-sm font-semibold text-white ring-1 ring-inset ring-white/20 shadow-card transition-all duration-300 hover:bg-white/20 hover:shadow-elevated"
             >
               <Icon name="clipboard" size={16} />
               Track a booking
@@ -183,7 +192,7 @@ function HeroSection({ categoryCount }: { categoryCount: number }) {
           {/*
             Honest operating notes. No invented guarantees, no fake ETAs.
           */}
-          <ul className="mt-8 grid gap-3 text-sm text-ink-300 sm:grid-cols-3">
+          <ul className="reveal-slow mt-8 grid gap-4 text-sm text-ink-300 sm:grid-cols-3">
             <li className="flex items-start gap-2">
               <Icon name="check-circle" size={16} className="mt-0.5 shrink-0 text-success" />
               Pricing shown per charging option, published by the provider
@@ -199,6 +208,9 @@ function HeroSection({ categoryCount }: { categoryCount: number }) {
           </ul>
         </div>
       </div>
+
+      {/* Subtle depth layer behind hero */}
+      <div className="absolute inset-0 -z-10 bg-[radial-gradient(60%_50%_at_80%_-10%,var(--color-brand-900)_0%,var(--color-ink-900)_60%)] opacity-60" />
     </section>
   );
 }
@@ -226,7 +238,7 @@ function CurrentBookingBanner({
         </div>
         <Link
           href={`/bookings/${booking.id}`}
-          className="inline-flex shrink-0 items-center gap-1.5 rounded-lg bg-brand-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-brand-700"
+          className="inline-flex shrink-0 items-center gap-1.5 rounded-xl bg-brand-600 px-4 py-2 text-sm font-semibold text-white shadow-card transition-all duration-300 hover:bg-brand-700 hover:shadow-elevated"
         >
           View status
           <Icon name="chevron-right" size={16} />

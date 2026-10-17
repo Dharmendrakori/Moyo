@@ -3,16 +3,17 @@
 /* ==========================================================================
    MOYO DESIGN SYSTEM
    --------------------------------------------------------------------------
-   A restrained, enterprise service-platform token set.
+   A premium, restrained service-operations token set.
 
    - `brand` is the technical blue accent for primary actions and focus rings.
    - `ink` is a neutral slate ramp for text and surfaces.
+   - `surface` provides deeper elevated tones for cards and sections.
    - `status` colours are FUNCTIONAL ONLY. Colour always carries meaning:
      green = resolved/success, amber = attention, red = problem, blue = info.
 
    Deliberately excluded: neon/electric cyans, heavy multi-stop gradients,
-   and oversized radii. This should read as a serious Indian service
-   operations platform, not a consumer marketplace.
+   oversized radii, and gratuitous glassmorphism. This reads as a serious,
+   trustworthy Indian service-operations platform, not a consumer marketplace.
    ========================================================================== */
 
 @theme {
@@ -41,6 +42,13 @@
   --color-ink-800: #1e293b;
   --color-ink-900: #0f172a;
 
+  /* Surface - elevated neutral tones for cards, sections, and overlays -- */
+  --color-surface-50: #ffffff;
+  --color-surface-100: #fafafa;
+  --color-surface-200: #f2f2f2;
+  --color-surface-900: #0f172a;
+  --color-surface-950: #0a0e16;
+
   /* Status - functional only -------------------------------------------- */
   --color-success: #047857;
   --color-success-bg: #ecfdf5;
@@ -55,19 +63,24 @@
 
   /* Typography ----------------------------------------------------------- */
   --font-sans: 'Inter', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
-  --font-display: 'Inter', ui-sans-serif, system-ui, sans-serif;
+  --font-display: ui-sans-serif, system-ui, -apple-system, 'Segoe UI', 'Roboto', sans-serif;
 
-  /* Radii - one card radius, consistent everywhere ----------------------- */
-  --radius-card: 0.625rem;
+  /* Radii - consistent card radius -------------------------------------- */
+  --radius-card: 0.75rem;
+  --radius-pill: 9999px;
 
   /* Shadows - subtle, layered, never heavy ------------------------------- */
   --shadow-card: 0 1px 2px 0 rgb(15 23 42 / 0.04), 0 1px 3px 0 rgb(15 23 42 / 0.06);
   --shadow-raised: 0 4px 12px -2px rgb(15 23 42 / 0.10), 0 2px 4px -2px rgb(15 23 42 / 0.06);
+  --shadow-elevated: 0 8px 24px -4px rgb(15 23 42 / 0.08), 0 2px 6px -2px rgb(15 23 42 / 0.04);
   --shadow-overlay: 0 20px 40px -12px rgb(15 23 42 / 0.25);
 
   /* Motion - short and purposeful ---------------------------------------- */
   --animate-fade-in: fade-in 150ms ease-out;
   --animate-slide-up: slide-up 180ms ease-out;
+  --animate-reveal: reveal-up 400ms cubic-bezier(0.22, 1, 0.36, 1);
+  --transition-smooth: all 220ms cubic-bezier(0.22, 1, 0.36, 1);
+  --transition-fast: all 120ms ease-out;
 }
 
 @keyframes fade-in {
@@ -77,6 +90,11 @@
 
 @keyframes slide-up {
   from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes reveal-up {
+  from { opacity: 0; transform: translateY(16px); }
   to { opacity: 1; transform: translateY(0); }
 }
 
@@ -143,6 +161,45 @@
   );
   background-size: 1000px 100%;
   animation: skeleton-shimmer 1.6s infinite linear;
+}
+
+@utility reveal {
+  /* `both` is load-bearing: the base opacity is 0, so the fill mode must hold
+     the final keyframe (opacity 1) after the animation completes. */
+  animation: var(--animate-reveal) both;
+  opacity: 0;
+}
+
+@utility reveal-slow {
+  animation: var(--animate-reveal) both;
+  animation-duration: 600ms;
+  opacity: 0;
+}
+
+/*
+ * Scroll-triggered reveal where scroll-driven animations are supported
+ * (Chromium, Safari 26+, Firefox 128+). Browsers without support ignore this
+ * block and keep the one-shot load animation above — no JS either way.
+ * `cover 15%` settles the animation early in the scroll so even very tall
+ * sections always reach their visible end state; anything already in view at
+ * page load (progress past the range end) renders immediately.
+ */
+@supports (animation-timeline: view()) {
+  .reveal,
+  .reveal-slow {
+    animation-timeline: view();
+    animation-range: entry 0% cover 15%;
+  }
+}
+
+/* Reduced motion: no reveal at all. The utilities default to opacity 0, so
+   the visible end state must be forced here. */
+@media (prefers-reduced-motion: reduce) {
+  .reveal,
+  .reveal-slow {
+    animation: none !important;
+    opacity: 1 !important;
+  }
 }
 
 @keyframes skeleton-shimmer {

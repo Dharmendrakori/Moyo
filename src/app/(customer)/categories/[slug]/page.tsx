@@ -57,7 +57,7 @@ export default async function CategoryPage({ params }: Params) {
         </ol>
       </nav>
 
-      <header className="rounded-card border border-ink-200 bg-white p-6">
+      <header className="rounded-card border border-ink-200 bg-white p-6 shadow-card">
         <p className="text-xs font-semibold uppercase tracking-wider text-brand-600">
           Category {category.position}
         </p>

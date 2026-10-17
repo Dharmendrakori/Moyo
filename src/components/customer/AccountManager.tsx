@@ -189,7 +189,7 @@ function ProfileCard({ profile }: { profile: AccountProfile }) {
             <button
               type="submit"
               disabled={pending}
-              className="rounded-lg bg-brand-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-brand-700 disabled:opacity-60"
+              className="rounded-xl bg-brand-600 px-4 py-2 text-sm font-semibold text-white shadow-card transition-all duration-300 hover:bg-brand-700 hover:shadow-elevated disabled:opacity-60"
             >
               {pending ? 'Saving…' : 'Save'}
             </button>
@@ -197,7 +197,7 @@ function ProfileCard({ profile }: { profile: AccountProfile }) {
               type="button"
               disabled={pending}
               onClick={() => setEditing(false)}
-              className="rounded-lg px-4 py-2 text-sm font-semibold text-ink-700 ring-1 ring-inset ring-ink-300 transition hover:bg-ink-50 disabled:opacity-50"
+              className="rounded-xl px-4 py-2 text-sm font-semibold text-ink-700 ring-1 ring-inset ring-ink-300 transition hover:bg-ink-50 disabled:opacity-50"
             >
               Cancel
             </button>
@@ -363,7 +363,7 @@ function AddressCard({ address }: { address: AccountAddress }) {
             <button
               type="submit"
               disabled={pending}
-              className="rounded-lg bg-brand-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-brand-700 disabled:opacity-60"
+              className="rounded-xl bg-brand-600 px-4 py-2 text-sm font-semibold text-white shadow-card transition-all duration-300 hover:bg-brand-700 hover:shadow-elevated disabled:opacity-60"
             >
               {pending ? 'Saving…' : 'Save'}
             </button>
@@ -371,7 +371,7 @@ function AddressCard({ address }: { address: AccountAddress }) {
               type="button"
               disabled={pending}
               onClick={() => setEditing(false)}
-              className="rounded-lg px-4 py-2 text-sm font-semibold text-ink-700 ring-1 ring-inset ring-ink-300 transition hover:bg-ink-50 disabled:opacity-50"
+              className="rounded-xl px-4 py-2 text-sm font-semibold text-ink-700 ring-1 ring-inset ring-ink-300 transition hover:bg-ink-50 disabled:opacity-50"
             >
               Cancel
             </button>
@@ -482,7 +482,7 @@ function PasswordCard() {
         <button
           type="submit"
           disabled={pending}
-          className="rounded-lg bg-brand-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-brand-700 disabled:opacity-60"
+          className="rounded-xl bg-brand-600 px-4 py-2 text-sm font-semibold text-white shadow-card transition-all duration-300 hover:bg-brand-700 hover:shadow-elevated disabled:opacity-60"
         >
           {pending ? 'Changing…' : 'Change password'}
         </button>

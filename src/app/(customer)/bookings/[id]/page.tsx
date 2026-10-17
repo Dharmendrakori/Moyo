@@ -113,7 +113,7 @@ export default async function BookingDetailPage({
         </div>
 
         <div className="space-y-4 lg:col-span-2">
-          <section className="rounded-card border border-ink-200 bg-white p-5">
+          <section className="rounded-card border border-ink-200 bg-white p-5 shadow-card">
             <h2 className="text-sm font-semibold text-ink-900">Booking summary</h2>
             <dl className="mt-3 divide-y divide-ink-100">
               <DetailRow label="Charging">
@@ -131,7 +131,7 @@ export default async function BookingDetailPage({
             </dl>
           </section>
 
-          <section className="rounded-card border border-ink-200 bg-white p-5">
+          <section className="rounded-card border border-ink-200 bg-white p-5 shadow-card">
             <h2 className="text-sm font-semibold text-ink-900">Service location</h2>
             <p className="mt-2 flex items-start gap-2 text-sm text-ink-700">
               <Icon name="location" size={16} className="mt-0.5 shrink-0 text-ink-400" />
@@ -144,7 +144,7 @@ export default async function BookingDetailPage({
           </section>
 
           {/* Estimate and invoice are visually and verbally distinct. */}
-          <section className="rounded-card border border-ink-200 bg-white p-5">
+          <section className="rounded-card border border-ink-200 bg-white p-5 shadow-card">
             <h2 className="text-xs font-semibold uppercase tracking-wider text-ink-500">
               {price.headline}
             </h2>
@@ -158,7 +158,7 @@ export default async function BookingDetailPage({
             <p className="mt-2 text-xs leading-relaxed text-ink-600">{price.note}</p>
           </section>
 
-          <section className="rounded-card border border-ink-200 bg-white p-5">
+          <section className="rounded-card border border-ink-200 bg-white p-5 shadow-card">
             <h2 className="text-sm font-semibold text-ink-900">Provider</h2>
             <p className="mt-1 text-sm font-medium text-ink-800">
               {booking.provider?.displayName ?? 'Not yet assigned'}

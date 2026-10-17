@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { Icon } from '@/components/ui/Icon';
 import { InlineError } from '@/components/admin/StatusControls';
 import { SERVICE_TYPES, SERVICE_TYPE_LABEL } from '@/lib/domain';
@@ -45,22 +45,15 @@ export function BulkEditServiceDialog({
   const [changeWork, setChangeWork] = useState(false);
   const [includedWork, setIncludedWork] = useState('');
 
-  // Reset the form each time the dialog is opened for a fresh selection.
-  useEffect(() => {
-    if (open) {
-      setChangeType(false);
-      setServiceType('REPAIR');
-      setChangeDesc(false);
-      setDescription('');
-      setChangeWork(false);
-      setIncludedWork('');
-    }
-  }, [open]);
+  // `open` is managed by the parent, which always remounts the dialog via
+  // `key={editing ? 'open' : 'closed'}`. State therefore re-initializes to the
+  // defaults above on every open. Relying on a `useEffect` that calls `set*`
+  // synchronously would trip `react-hooks/set-state-in-effect`, so the reset is
+  // achieved by mounting a fresh instance.
 
   if (!open) return null;
 
   const anyChange = changeType || changeDesc || changeWork;
-
   function submit() {
     const patch: ServiceEditPatch = {};
     if (changeType) patch.serviceType = serviceType;
@@ -138,7 +131,7 @@ export function BulkEditServiceDialog({
             type="button"
             onClick={submit}
             disabled={busy || !anyChange}
-            className="inline-flex items-center gap-1.5 rounded-lg bg-brand-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-brand-700 disabled:opacity-50"
+            className="inline-flex items-center gap-1.5 rounded-xl bg-brand-600 px-4 py-2 text-sm font-semibold text-white shadow-card transition-all duration-300 hover:bg-brand-700 hover:shadow-elevated disabled:opacity-50"
           >
             <Icon name="edit" size={14} />
             {busy ? 'Saving…' : 'Apply to selected'}

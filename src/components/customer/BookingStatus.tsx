@@ -169,7 +169,7 @@ export function TechnicianCard({ technician }: { technician: TechnicianSummary }
             {tel && (
               <a
                 href={tel}
-                className="inline-flex items-center gap-1.5 rounded-lg bg-brand-600 px-3 py-2 text-xs font-semibold text-white transition hover:bg-brand-700"
+                className="inline-flex items-center gap-1.5 rounded-xl bg-brand-600 px-3 py-2 text-xs font-semibold text-white shadow-card transition-all duration-300 hover:bg-brand-700 hover:shadow-elevated"
               >
                 <Icon name="phone" size={14} />
                 Call

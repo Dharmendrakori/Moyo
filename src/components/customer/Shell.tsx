@@ -82,21 +82,21 @@ export async function CustomerHeader() {
   const tel = telLink(provider?.contactPhone);
 
   return (
-    <header className="sticky top-0 z-40 border-b border-ink-200 bg-white/95 backdrop-blur supports-[backdrop-filter]:bg-white/80">
+    <header className="sticky top-0 z-40 border-b border-ink-200 bg-white/95 backdrop-blur supports-[backdrop-filter]:bg-white/80 shadow-card">
       <div className="mx-auto flex h-16 max-w-7xl items-center gap-4 px-4 sm:px-6 lg:px-8">
         <Link href="/" className="flex shrink-0 items-center gap-2" aria-label="MOYO home">
-          <span className="grid h-9 w-9 place-items-center rounded-lg bg-brand-600 text-white">
-            <Icon name="bolt" size={20} />
+          <span className="grid h-10 w-10 place-items-center rounded-xl bg-brand-600 text-white shadow-sm">
+            <Icon name="bolt" size={22} />
           </span>
-          <span className="text-lg font-bold tracking-tight text-ink-900">MOYO</span>
+          <span className="font-bold tracking-tight text-ink-900">MOYO</span>
         </Link>
 
-        <nav className="hidden items-center gap-1 lg:flex" aria-label="Primary">
+        <nav className="hidden items-center gap-6 lg:flex" aria-label="Primary">
           {PRIMARY_NAV.map((item) => (
             <Link
               key={item.href + item.label}
               href={item.href}
-              className="flex items-center gap-1.5 rounded-lg px-3 py-2 text-sm font-medium text-ink-600 transition hover:bg-ink-100 hover:text-ink-900"
+              className="flex items-center gap-1.5 rounded-xl px-3.5 py-2 text-sm font-medium text-ink-600 transition-all hover:bg-ink-50 hover:text-ink-900 focus-visible:ring-2 focus-visible:ring-brand-600 focus-visible:ring-offset-2"
             >
               <Icon name={item.icon} size={16} />
               {item.label}
@@ -104,11 +104,11 @@ export async function CustomerHeader() {
           ))}
         </nav>
 
-        <div className="ml-auto flex items-center gap-2">
+        <div className="ml-auto flex items-center gap-3">
           {tel && (
             <a
               href={tel}
-              className="hidden items-center gap-1.5 rounded-lg px-3 py-2 text-sm font-semibold text-ink-700 ring-1 ring-inset ring-ink-300 transition hover:bg-ink-50 sm:inline-flex"
+              className="hidden items-center gap-1.5 rounded-xl px-3 py-2 text-sm font-semibold text-ink-700 ring-1 ring-inset ring-ink-300 transition-all hover:bg-ink-50 sm:inline-flex focus-visible:ring-2 focus-visible:ring-brand-600"
             >
               <Icon name="phone" size={16} />
               Call provider
@@ -118,7 +118,7 @@ export async function CustomerHeader() {
           {user ? (
             <Link
               href="/account"
-              className="flex items-center gap-2 rounded-lg py-1 pl-1 pr-2 transition hover:bg-ink-100"
+              className="flex items-center gap-2 rounded-xl py-1.5 pl-1.5 pr-2.5 transition-all hover:bg-ink-50 focus-visible:ring-2 focus-visible:ring-brand-600 focus-visible:ring-offset-2"
               aria-label="Your account"
             >
               <span className="grid h-8 w-8 place-items-center rounded-full bg-brand-100 text-xs font-bold text-brand-700">
@@ -129,7 +129,7 @@ export async function CustomerHeader() {
           ) : (
             <Link
               href="/login"
-              className="rounded-lg bg-brand-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-brand-700"
+              className="rounded-xl bg-brand-600 px-4 py-2 text-sm font-semibold text-white transition-all hover:bg-brand-700 focus-visible:ring-2 focus-visible:ring-brand-600 focus-visible:ring-offset-2"
             >
               Sign in
             </Link>
@@ -145,7 +145,7 @@ export async function BottomNav() {
   const items = [...BOTTOM_NAV, user ? ACCOUNT_NAV_SIGNED_IN : ACCOUNT_NAV_SIGNED_OUT];
   return (
     <nav
-      className="fixed inset-x-0 bottom-0 z-40 border-t border-ink-200 bg-white pb-[env(safe-area-inset-bottom)] md:hidden"
+      className="fixed inset-x-0 bottom-0 z-40 border-t border-ink-200 bg-white/95 backdrop-blur supports-[backdrop-filter]:bg-white/80 shadow-elevated pb-[env(safe-area-inset-bottom)] md:hidden"
       aria-label="Mobile navigation"
     >
       <ul className="grid grid-cols-5">
@@ -155,14 +155,17 @@ export async function BottomNav() {
             <li key={item.label}>
               <Link
                 href={item.href}
-                className="flex flex-col items-center justify-center gap-1 py-2.5 text-[10px] font-medium text-ink-500 transition hover:text-ink-700"
+                className={cn(
+                  'flex flex-col items-center justify-center gap-1.5 py-3 text-[10px] font-medium transition-all duration-200',
+                  isPrimary ? 'text-brand-600' : 'text-ink-500 hover:text-brand-600'
+                )}
               >
                 {isPrimary ? (
-                  <span className="-mt-6 grid h-12 w-12 place-items-center rounded-full bg-brand-600 text-white shadow-raised ring-4 ring-white">
+                  <span className="-mt-6 grid h-12 w-12 place-items-center rounded-full bg-brand-600 text-white shadow-raised ring-4 ring-white scale-105">
                     <Icon name="bolt" size={22} />
                   </span>
                 ) : (
-                  <Icon name={item.icon} size={20} />
+                  <Icon name={item.icon} size={20} className="hover:text-brand-600 transition-colors duration-200" />
                 )}
                 <span className={cn(isPrimary && '-mt-0.5')}>{item.label}</span>
               </Link>
@@ -177,23 +180,23 @@ export async function BottomNav() {
 /** Footer. Presents MOYO as the service identity customers book with. */
 export function CustomerFooter() {
   return (
-    <footer className="border-t border-ink-200 bg-white">
-      <div className="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
-        <div className="flex flex-col gap-8 sm:flex-row sm:items-start sm:justify-between">
+    <footer className="border-t border-ink-200 bg-surface-50">
+      <div className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
+        <div className="flex flex-col gap-10 sm:flex-row sm:items-start sm:justify-between">
           <div className="max-w-sm">
             <div className="flex items-center gap-2">
-              <span className="grid h-8 w-8 place-items-center rounded-lg bg-brand-600 text-white">
-                <Icon name="bolt" size={18} />
+              <span className="grid h-9 w-9 place-items-center rounded-xl bg-brand-600 text-white shadow-sm">
+                <Icon name="bolt" size={20} />
               </span>
-              <span className="text-base font-bold text-ink-900">MOYO</span>
+              <span className="font-bold tracking-tight text-ink-900">MOYO</span>
             </div>
-            <p className="mt-3 text-sm text-ink-500">
+            <p className="mt-3 text-sm text-ink-500 leading-relaxed">
               MOYO is a service operations platform delivering field services across 20 official
               categories.
             </p>
           </div>
 
-          <div className="grid grid-cols-2 gap-8 sm:grid-cols-3">
+          <div className="grid grid-cols-2 gap-10 sm:grid-cols-3 lg:grid-cols-4">
             <FooterColumn
               title="Platform"
               links={[
@@ -237,11 +240,14 @@ function FooterColumn({
 }) {
   return (
     <div>
-      <h3 className="text-xs font-semibold uppercase tracking-wider text-ink-400">{title}</h3>
-      <ul className="mt-3 space-y-2">
+      <h3 className="text-xs font-semibold uppercase tracking-wider text-ink-400 mb-3">{title}</h3>
+      <ul className="space-y-2">
         {links.map((l) => (
           <li key={l.href}>
-            <Link href={l.href} className="text-sm text-ink-600 transition hover:text-brand-600">
+            <Link
+              href={l.href}
+              className="text-sm text-ink-600 transition-all duration-200 hover:text-brand-600 hover:pl-1"
+            >
               {l.label}
             </Link>
           </li>
@@ -262,25 +268,30 @@ export async function ProviderContactCard() {
     'Hello, I would like to book a service on MOYO.',
   );
   return (
-    <section className="rounded-card border border-ink-200 bg-white p-5">
-      <h2 className="text-sm font-semibold text-ink-900">Service provider</h2>
-      <p className="mt-1 text-sm font-medium text-ink-700">{provider.displayName}</p>
+    <section className="rounded-card border border-ink-200 bg-white p-6 shadow-card transition-all hover:shadow-raised">
+      <div className="flex items-center gap-3 mb-4">
+        <span className="grid h-9 w-9 place-items-center rounded-xl bg-brand-50 text-brand-600">
+          <Icon name="bolt" size={20} />
+        </span>
+        <h2 className="text-sm font-semibold text-ink-900">Service provider</h2>
+      </div>
+      <p className="mt-0.5 text-sm font-medium text-ink-700">{provider.displayName}</p>
       {provider.description && (
         <p className="mt-2 text-sm leading-relaxed text-ink-600">{provider.description}</p>
       )}
 
-      <dl className="mt-4 space-y-2 text-sm">
+      <dl className="mt-5 space-y-3 text-sm">
         {provider.registeredAddress && (
-          <div className="flex gap-2">
+          <div className="flex gap-3">
             <dt className="shrink-0 pt-0.5 text-ink-400">
               <Icon name="location" size={16} />
               <span className="sr-only">Registered address</span>
             </dt>
-            <dd className="text-ink-600">{provider.registeredAddress}</dd>
+            <dd className="text-ink-600 leading-relaxed">{provider.registeredAddress}</dd>
           </div>
         )}
         {provider.serviceAreaCities && (
-          <div className="flex gap-2">
+          <div className="flex gap-3">
             <dt className="shrink-0 pt-0.5 text-ink-400">
               <Icon name="location" size={16} />
               <span className="sr-only">Service areas</span>
@@ -290,11 +301,11 @@ export async function ProviderContactCard() {
         )}
       </dl>
 
-      <div className="mt-4 flex flex-wrap gap-2">
+      <div className="mt-5 flex flex-wrap gap-2">
         {tel && (
           <a
             href={tel}
-            className="inline-flex items-center gap-1.5 rounded-lg bg-brand-600 px-3 py-2 text-xs font-semibold text-white transition hover:bg-brand-700"
+            className="inline-flex items-center gap-1.5 rounded-xl bg-brand-600 px-3 py-2 text-xs font-semibold text-white transition-all hover:bg-brand-700 focus-visible:ring-2 focus-visible:ring-brand-600 focus-visible:ring-offset-2"
           >
             <Icon name="phone" size={14} />
             Call
@@ -305,7 +316,7 @@ export async function ProviderContactCard() {
             href={wa}
             target="_blank"
             rel="noopener noreferrer nofollow"
-            className="inline-flex items-center gap-1.5 rounded-lg bg-success px-3 py-2 text-xs font-semibold text-white transition hover:bg-success/90"
+            className="inline-flex items-center gap-1.5 rounded-xl bg-success px-3 py-2 text-xs font-semibold text-white transition-all hover:bg-success/90 focus-visible:ring-2 focus-visible:ring-brand-600 focus-visible:ring-offset-2"
           >
             <Icon name="whatsapp" size={14} />
             WhatsApp

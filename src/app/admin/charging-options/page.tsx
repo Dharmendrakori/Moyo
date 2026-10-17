@@ -94,7 +94,7 @@ export default async function AdminChargingOptionsPage({
         actions={
           <Link
             href="/admin/pricing"
-            className="rounded-lg bg-brand-600 px-3 py-2 text-sm font-semibold text-white transition hover:bg-brand-700"
+            className="rounded-xl bg-brand-600 px-3 py-2 text-sm font-semibold text-white shadow-card transition-all duration-300 hover:bg-brand-700 hover:shadow-elevated"
           >
             Manage pricing
           </Link>

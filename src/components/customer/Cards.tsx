@@ -51,10 +51,13 @@ export function CategoryCard({ category }: { category: CategoryCardData }) {
   return (
     <Link
       href={`/categories/${category.slug}`}
-      className="group flex items-start gap-4 rounded-card border border-ink-200 bg-white p-4 transition hover:border-brand-300 hover:shadow-raised"
+      className={cn(
+        'group flex flex-col items-start gap-4 rounded-xl border border-ink-200 bg-white p-5 transition-all duration-300',
+        'hover:border-brand-300 hover:shadow-elevated hover:-translate-y-1'
+      )}
     >
-      <span className="grid h-11 w-11 shrink-0 place-items-center rounded-lg bg-brand-50 text-brand-600 transition group-hover:bg-brand-600 group-hover:text-white">
-        <Icon name={icon} size={20} />
+      <span className="grid h-12 w-12 shrink-0 place-items-center rounded-xl bg-brand-50 text-brand-600 transition-all duration-300 group-hover:bg-brand-600 group-hover:text-white">
+        <Icon name={icon} size={22} />
       </span>
 
       <div className="min-w-0 flex-1">
@@ -65,11 +68,11 @@ export function CategoryCard({ category }: { category: CategoryCardData }) {
           {category.name}
         </h3>
         {category.description && (
-          <p className="mt-1 line-clamp-2 text-xs leading-relaxed text-ink-500">
+          <p className="mt-2 line-clamp-2 text-sm leading-relaxed text-ink-500">
             {category.description}
           </p>
         )}
-        <p className="mt-2 text-xs font-medium text-ink-400">
+        <p className="mt-3 text-xs font-medium text-ink-400">
           {category.serviceCount} {category.serviceCount === 1 ? 'service' : 'services'}
         </p>
       </div>
@@ -77,7 +80,7 @@ export function CategoryCard({ category }: { category: CategoryCardData }) {
       <Icon
         name="chevron-right"
         size={18}
-        className="mt-1 shrink-0 text-ink-300 transition group-hover:text-brand-500"
+        className="mt-auto shrink-0 text-ink-300 transition-all duration-300 group-hover:text-brand-500 group-hover:translate-x-1"
       />
     </Link>
   );
@@ -98,10 +101,14 @@ export function ServiceCard({ service }: { service: ServiceCardData }) {
   return (
     <Link
       href={`/services/${service.slug}`}
-      className="group flex flex-col rounded-card border border-ink-200 bg-white p-5 transition hover:border-brand-300 hover:shadow-raised"
+      className={cn(
+        'group flex flex-col rounded-xl border border-ink-200 bg-white p-5 transition-all duration-300',
+        'hover:border-brand-300 hover:shadow-elevated hover:-translate-y-1'
+      )}
     >
       <div className="flex items-center justify-between gap-2">
-        <span className="rounded-md bg-ink-100 px-2 py-0.5 text-[11px] font-semibold text-ink-600">
+        <span className="inline-flex items-center gap-1 rounded-xl bg-brand-50 px-2.5 py-0.5 text-[11px] font-semibold text-brand-700">
+          <Icon name="bolt" size={12} className="shrink-0" />
           {SERVICE_TYPE_LABEL[service.serviceType as ServiceType] ?? service.serviceType}
         </span>
         <span className="truncate text-[11px] font-medium text-ink-400">{service.categoryName}</span>
@@ -112,18 +119,18 @@ export function ServiceCard({ service }: { service: ServiceCardData }) {
       </h3>
 
       {service.description && (
-        <p className="mt-2 line-clamp-2 flex-1 text-xs leading-relaxed text-ink-500">
+        <p className="mt-2 line-clamp-2 flex-1 text-sm leading-relaxed text-ink-500">
           {service.description}
         </p>
       )}
 
-      <div className="mt-4 border-t border-ink-100 pt-3">
-        <p className="text-[11px] font-medium uppercase tracking-wider text-ink-400">
+      <div className="mt-5 border-t border-ink-100 pt-4">
+        <p className="text-[10px] font-medium uppercase tracking-wider text-ink-400">
           {service.priceFromPaise != null ? 'From' : 'Pricing'}
         </p>
         <p
           className={cn(
-            'mt-0.5 text-sm font-bold',
+            'mt-1 text-sm font-bold tabular-nums',
             service.priceFromPaise != null ? 'text-ink-900' : 'text-ink-400',
           )}
         >

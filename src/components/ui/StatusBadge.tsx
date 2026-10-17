@@ -132,11 +132,15 @@ export function StatCard({ label, value, hint, icon, tone = 'neutral', href }: S
     </>
   );
 
-  const className = 'block rounded-card border border-ink-200 bg-white p-4 shadow-card';
+  const className =
+    'block rounded-xl border border-ink-200 bg-white p-4 shadow-card transition-all duration-300';
 
   if (href) {
     return (
-      <a href={href} className={cn(className, 'transition hover:border-brand-300 hover:shadow-raised')}>
+      <a
+        href={href}
+        className={cn(className, 'hover:-translate-y-0.5 hover:border-brand-300 hover:shadow-elevated')}
+      >
         {content}
       </a>
     );
