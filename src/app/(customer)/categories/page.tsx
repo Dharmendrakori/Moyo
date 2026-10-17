@@ -1,6 +1,5 @@
 import type { Metadata } from 'next';
-import Link from 'next/link';
-import { Icon } from '@/components/ui/Icon';
+import { Breadcrumbs } from '@/components/ui/Breadcrumbs';
 import { CategoryCard } from '@/components/customer/Cards';
 import { listCategories } from '@/lib/queries';
 
@@ -22,21 +21,7 @@ export default async function CategoriesPage() {
 
   return (
     <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
-      <nav aria-label="Breadcrumb" className="mb-5">
-        <ol className="flex items-center gap-1.5 text-xs text-ink-500">
-          <li>
-            <Link href="/" className="transition hover:text-brand-600">
-              Home
-            </Link>
-          </li>
-          <li aria-hidden>
-            <Icon name="chevron-right" size={12} className="text-ink-300" />
-          </li>
-          <li className="font-medium text-ink-700" aria-current="page">
-            Categories
-          </li>
-        </ol>
-      </nav>
+      <Breadcrumbs trail={[{ label: 'Home', href: '/' }, { label: 'Categories' }]} />
 
       <header>
         <h1 className="text-2xl font-bold tracking-tight text-ink-900 sm:text-3xl">

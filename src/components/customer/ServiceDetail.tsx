@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { Breadcrumbs } from '@/components/ui/Breadcrumbs';
 import { Icon } from '@/components/ui/Icon';
 import { StatusBadge } from '@/components/ui/StatusBadge';
 import { EmptyState } from '@/components/ui/States';
@@ -47,32 +48,60 @@ export function ServiceDetailView({
 
   return (
     <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
-      <ServiceBreadcrumbs service={service} />
+      <Breadcrumbs
+        trail={[
+          { label: 'Home', href: '/' },
+          { label: 'Categories', href: '/categories' },
+          { label: service.categoryName, href: `/categories/${service.categorySlug}` },
+          { label: service.name },
+        ]}
+      />
 
-      <div className="grid gap-8 lg:grid-cols-3">
+      <div className="grid items-start gap-8 lg:grid-cols-3">
         <div className="lg:col-span-2">
-          <header>
-            <div className="flex flex-wrap items-center gap-2">
-              <StatusBadge
-                label={SERVICE_TYPE_LABEL[service.serviceType as ServiceType] ?? service.serviceType}
-                tone="brand"
-              />
-              <span className="text-xs text-ink-500">{service.subCategoryName}</span>
+          {/*
+            Premium hero card: oversized icon tile + title + provider/rating meta.
+            Sticky panel aside carries the booking action.
+          */}
+          <header className="overflow-hidden rounded-card border border-ink-200 bg-white shadow-card">
+            <div className="flex flex-col gap-5 p-6 sm:flex-row sm:items-start sm:gap-6 sm:p-8">
+              <span className="grid h-16 w-16 shrink-0 place-items-center rounded-xl bg-brand-600 text-white shadow-raised">
+                <Icon name="bolt" size={30} />
+              </span>
+              <div className="min-w-0 flex-1">
+                <div className="flex flex-wrap items-center gap-2">
+                  <StatusBadge
+                    label={SERVICE_TYPE_LABEL[service.serviceType as ServiceType] ?? service.serviceType}
+                    tone="brand"
+                  />
+                  <Link
+                    href={`/categories/${service.categorySlug}`}
+                    className="text-xs font-medium text-ink-500 transition hover:text-brand-600"
+                  >
+                    {service.categoryName}
+                  </Link>
+                  <span aria-hidden className="text-ink-300">·</span>
+                  <span className="text-xs text-ink-500">{service.subCategoryName}</span>
+                </div>
+                <h1 className="mt-2 text-2xl font-bold tracking-tight text-ink-900 sm:text-3xl">
+                  {service.name}
+                </h1>
+                {service.description && (
+                  <p className="mt-3 max-w-3xl text-sm leading-relaxed text-ink-600">
+                    {service.description}
+                  </p>
+                )}
+              </div>
             </div>
-            <h1 className="mt-3 text-2xl font-bold tracking-tight text-ink-900 sm:text-3xl">
-              {service.name}
-            </h1>
-            {service.description && (
-              <p className="mt-3 max-w-3xl text-sm leading-relaxed text-ink-600">
-                {service.description}
-              </p>
-            )}
           </header>
 
           <RatingsPanel average={avg} count={service.rating?.count ?? 0} />
 
           {service.includedWork && (
-            <section className="mt-8" aria-labelledby="included-heading">
+            <section
+              className="mt-6 rounded-card border border-ink-200 bg-white p-6 shadow-card sm:p-8"
+              aria-labelledby="included-heading"
+            >
               <h2 id="included-heading" className="text-lg font-bold tracking-tight text-ink-900">
                 What the visit covers
               </h2>
@@ -84,7 +113,7 @@ export function ServiceDetailView({
 
           {service.related.length > 0 && (
             <section
-              className="mt-8 border-t border-ink-200 pt-8"
+              className="mt-6 rounded-card border border-ink-200 bg-white p-6 shadow-card sm:p-8"
               aria-labelledby="related-heading"
             >
               <h2 id="related-heading" className="text-lg font-bold tracking-tight text-ink-900">
@@ -121,36 +150,6 @@ export function ServiceDetailView({
         />
       </div>
     </div>
-  );
-}
-
-function ServiceBreadcrumbs({ service }: { service: ServiceDetail }) {
-  const crumbs = [
-    { href: '/', label: 'Home' },
-    { href: '/categories', label: 'Categories' },
-    { href: `/categories/${service.categorySlug}`, label: service.categoryName },
-    { href: `/services/${service.slug}`, label: service.name },
-  ];
-
-  return (
-    <nav aria-label="Breadcrumb" className="mb-5">
-      <ol className="flex flex-wrap items-center gap-1.5 text-xs text-ink-500">
-        {crumbs.map((crumb, i) => (
-          <li key={crumb.href} className="flex items-center gap-1.5">
-            {i > 0 && <Icon name="chevron-right" size={12} className="text-ink-300" aria-hidden />}
-            {i === crumbs.length - 1 ? (
-              <span className="font-medium text-ink-700" aria-current="page">
-                {crumb.label}
-              </span>
-            ) : (
-              <Link href={crumb.href} className="transition hover:text-brand-600">
-                {crumb.label}
-              </Link>
-            )}
-          </li>
-        ))}
-      </ol>
-    </nav>
   );
 }
 

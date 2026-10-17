@@ -1260,6 +1260,9 @@ booking logic, tests, or URL structure. Validated with `npm run lint` (0 errors)
   detail panels (`shadow-card`), category/service pages, login/register cards.
 - **Admin** - `StatCard` tiles with hover lift on linked tiles, primary action
   buttons across toolbar/dialogs/tables, access-denied page actions.
+- **Catalog detail (Phase 4)** - shared `Breadcrumbs` component with premium
+  category headers (icon tile + anchored sub-category nav) and service hero
+  cards with a sticky booking panel.
 
 No functional or accessibility regressions: focus-visible rings, ARIA
 attributes, test IDs, and semantic structure are unchanged.
