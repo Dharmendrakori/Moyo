@@ -56,7 +56,7 @@ export function AccountManager({
 }
 
 function cardClass(extra = ''): string {
-  return `rounded-3xl border border-ink-200 bg-white p-6 shadow-card ${extra}`.trim();
+  return `rounded-3xl border border-ink-200 bg-white p-6 sm:p-7 lg:p-8 shadow-card ${extra}`.trim();
 }
 
 async function apiJson(
@@ -132,13 +132,13 @@ function ProfileCard({ profile }: { profile: AccountProfile }) {
 
   return (
     <section aria-labelledby="profile-heading" className={cardClass()}>
-      <div className="flex items-center justify-between gap-3">
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between gap-3">
         <div className="flex items-center gap-3">
-          <span className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-gold-400 font-display text-xl font-semibold text-night-950">
+          <span className="grid h-10 w-10 shrink-0 place-items-center rounded-2xl bg-gold-400 font-display text-xl font-semibold text-night-950 sm:h-12 sm:w-12 sm:text-2xl">
             {profile.name.charAt(0).toUpperCase()}
           </span>
           <div>
-            <h2 id="profile-heading" className="font-display text-base font-semibold tracking-tight text-ink-900">
+            <h2 id="profile-heading" className="font-display text-base font-bold tracking-tight text-ink-900 sm:text-lg">
               Profile
             </h2>
             <p className="mt-0.5 text-[12px] text-ink-500">
@@ -317,13 +317,13 @@ function AddressCard({ address }: { address: AccountAddress }) {
 
   return (
     <section aria-labelledby="address-heading" className={cardClass()}>
-      <div className="flex items-center justify-between gap-3">
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between gap-3">
         <div className="flex items-center gap-3">
-          <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-ink-900 text-gold-400 font-display text-sm font-semibold">
+          <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-ink-900 text-gold-400 font-display text-sm font-semibold sm:h-12 sm:w-12 sm:text-base">
             <Icon name="location" size={16} />
           </span>
           <div>
-            <h2 id="address-heading" className="font-display text-base font-semibold tracking-tight text-ink-900">
+            <h2 id="address-heading" className="font-display text-base font-bold tracking-tight text-ink-900 sm:text-lg">
               Saved address
             </h2>
             <p className="mt-0.5 text-[12px] text-ink-500">
@@ -462,11 +462,11 @@ function PasswordCard() {
   return (
     <section aria-labelledby="password-heading" className={cardClass()}>
       <div className="flex items-center gap-3">
-        <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-ink-900 text-gold-400 font-display text-sm font-semibold">
+        <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-ink-900 text-gold-400 font-display text-sm font-semibold sm:h-12 sm:w-12 sm:text-base">
           <Icon name="lock" size={16} />
         </span>
         <div>
-          <h2 id="password-heading" className="font-display text-base font-semibold tracking-tight text-ink-900">
+          <h2 id="password-heading" className="font-display text-base font-bold tracking-tight text-ink-900 sm:text-lg">
             Change password
           </h2>
           <p className="mt-0.5 text-[12px] text-ink-500">

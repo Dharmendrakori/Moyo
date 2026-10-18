@@ -3,7 +3,7 @@ import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { Icon } from '@/components/ui/Icon';
 import { StatusBadge, toneForStatus } from '@/components/ui/StatusBadge';
-import { EmptyState } from '@/components/ui/States';
+import { EmptyState, ErrorState } from '@/components/ui/States';
 import { getCurrentUser } from '@/lib/auth';
 import { listCustomerBookings, type BookingListItem } from '@/lib/customer-bookings';
 import { formatDate, formatINR } from '@/lib/format';
@@ -32,7 +32,16 @@ export default async function BookingsPage({ searchParams }: { searchParams: Sea
   const rawPage = Number(firstValue(params.page) ?? '1');
   const page = Number.isFinite(rawPage) && rawPage >= 1 ? Math.floor(rawPage) : 1;
 
-  const { items, total } = await listCustomerBookings(user.id, { status, page });
+  let items: BookingListItem[] = [];
+  let total = 0;
+  let bookingsError: string | null = null;
+  try {
+    const result = await listCustomerBookings(user.id, { status, page });
+    items = result.items;
+    total = result.total;
+  } catch {
+    bookingsError = 'We could not load your bookings. Please try again.';
+  }
 
   return (
     <div className="bg-cream-50 min-h-screen">
@@ -73,8 +82,12 @@ export default async function BookingsPage({ searchParams }: { searchParams: Sea
         </div>
 
       <div className="mt-4">
-        {items.length === 0 ? (
-          <div className="rounded-3xl border border-ink-200 bg-white p-6 shadow-card">
+        {bookingsError ? (
+          <div className="rounded-3xl border border-ink-200 bg-white p-6 sm:p-7 lg:p-8 shadow-card">
+            <ErrorState title="Could not load bookings" description={bookingsError} />
+          </div>
+        ) : items.length === 0 ? (
+          <div className="rounded-3xl border border-ink-200 bg-white p-6 sm:p-7 lg:p-8 shadow-card">
             <EmptyState
               icon="clipboard"
               title={status ? 'No bookings with this status' : 'No bookings yet'}

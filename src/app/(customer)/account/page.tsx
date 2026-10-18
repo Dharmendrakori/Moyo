@@ -4,6 +4,7 @@ import { redirect } from 'next/navigation';
 import { AccountManager, AccountSignOutButton } from '@/components/customer/AccountManager';
 import { Icon } from '@/components/ui/Icon';
 import { EmptyState } from '@/components/ui/States';
+import { StatusBadge, toneForStatus } from '@/components/ui/StatusBadge';
 import { getCurrentUser } from '@/lib/auth';
 import { ROLE_LABEL } from '@/lib/domain';
 import { formatDate } from '@/lib/format';
@@ -69,42 +70,50 @@ export default async function AccountPage() {
   return (
     <div className="bg-cream-50">
       <div className="mx-auto max-w-5xl px-4 py-10 sm:px-6 sm:py-14 lg:px-8">
-        <header className="relative overflow-hidden rounded-3xl bg-night-950 p-7 text-white shadow-overlay sm:p-10">
+        <header className="relative overflow-hidden rounded-3xl bg-night-950 text-white shadow-overlay">
           <div className="absolute inset-0 texture-dots opacity-60" aria-hidden />
-          <div className="relative flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
-            <div className="flex items-center gap-4">
-              <span className="grid h-14 w-14 shrink-0 place-items-center rounded-2xl bg-gold-400 font-display text-xl font-semibold text-night-950">
+          <div className="absolute left-0 top-0 h-1 w-full bg-gradient-to-r from-transparent via-gold-400/60 to-transparent" aria-hidden />
+          <div className="relative flex flex-col gap-6 p-6 sm:p-8 lg:flex-row lg:items-center lg:justify-between">
+            <div className="flex min-w-0 items-start gap-4 sm:items-center">
+              <span className="grid h-16 w-16 shrink-0 place-items-center rounded-2xl bg-gold-400 font-display text-xl font-semibold text-night-950 sm:h-20 sm:w-20 sm:text-2xl" aria-hidden>
                 {profile.name.charAt(0).toUpperCase()}
               </span>
-              <div>
-                <p className="eyebrow text-gold-400">
-                  <span className="h-px w-6 bg-gold-400" aria-hidden />
+              <div className="min-w-0">
+                <p className="eyebrow flex items-center gap-2 text-sm font-semibold uppercase tracking-[0.14em] text-gold-400">
+                  <span className="h-px w-8 bg-gold-400" aria-hidden />
                   {roleLabel}
                 </p>
-                <h1 className="mt-1.5 font-display text-2xl font-semibold tracking-tight sm:text-3xl">
+                <h1 className="mt-1.5 truncate font-display text-2xl font-bold tracking-tight text-white sm:text-3xl">
                   {profile.name}
                 </h1>
-                <p className="mt-1 text-xs text-white/60">
+                <p className="mt-1 text-xs leading-5 text-white/60 sm:text-[13px]">
                   Member since {formatDate(profile.createdAt)}
                 </p>
               </div>
             </div>
-            <div className="flex flex-wrap gap-2">
+            <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center lg:justify-end">
               {isAdmin && (
                 <Link
                   href="/admin"
-                  className="inline-flex items-center gap-1.5 rounded-full bg-white/10 px-4 py-2 text-xs font-bold text-white ring-1 ring-inset ring-white/25 transition hover:bg-white/20"
+                  className="inline-flex shrink-0 items-center justify-center gap-1.5 whitespace-nowrap rounded-full bg-white/10 px-4 py-2 text-xs font-bold leading-5 text-white ring-1 ring-inset ring-white/25 transition hover:bg-white/20"
                 >
-                  <Icon name="grid" size={15} />
+                  <Icon name="grid" size={15} className="shrink-0" />
                   Admin Console
                 </Link>
               )}
               <Link
                 href="/bookings"
-                className="inline-flex items-center gap-1.5 rounded-full bg-white px-4 py-2 text-xs font-bold text-ink-900 transition hover:bg-gold-400 hover:text-night-950"
+                className="inline-flex shrink-0 items-center gap-2 rounded-full bg-brand-600 px-5 py-2.5 text-sm font-bold text-white transition hover:bg-brand-700 hover:shadow-elevated"
               >
-                <Icon name="clipboard" size={15} />
+                <Icon name="clipboard" size={16} />
                 My bookings
+              </Link>
+              <Link
+                href="/book"
+                className="inline-flex shrink-0 items-center gap-2 rounded-full bg-gold-400 px-5 py-2.5 text-sm font-bold text-night-950 transition hover:bg-gold-500 hover:shadow-elevated"
+              >
+                <Icon name="bolt" size={16} />
+                Book a service
               </Link>
             </div>
           </div>
@@ -138,66 +147,65 @@ export default async function AccountPage() {
 
       <section
         aria-labelledby="recent-bookings-heading"
-        className="mt-5 rounded-3xl border border-ink-200 bg-white p-6 shadow-card sm:p-7"
+        className="mt-5 rounded-3xl border border-ink-200 bg-white p-6 shadow-card sm:p-7 lg:p-8"
       >
-        <div className="flex items-center justify-between gap-3">
-          <h2 id="recent-bookings-heading" className="font-display text-lg font-semibold text-ink-900">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <h2 id="recent-bookings-heading" className="font-display text-lg font-bold tracking-tight text-ink-900">
             Recent activity
           </h2>
           {bookingTotal > 0 && (
             <Link
               href="/bookings"
-              className="inline-flex items-center gap-1 text-sm font-semibold text-brand-600 transition hover:text-brand-700"
+              className="inline-flex shrink-0 items-center gap-1 self-start text-sm font-semibold text-brand-600 transition hover:text-brand-700 sm:self-center"
             >
               View all ({bookingTotal})
               <Icon name="chevron-right" size={16} />
             </Link>
           )}
         </div>
-          {recentBookings.length === 0 ? (
-            <EmptyState
-              icon="clipboard"
-              title="No bookings yet"
-              description="Browse the service catalogue to place your first booking."
-              action={
+        {recentBookings.length === 0 ? (
+          <EmptyState
+            icon="clipboard"
+            title="No bookings yet"
+            description="Browse the service catalogue to place your first booking."
+            action={
+              <Link
+                href="/categories"
+                className="inline-flex shrink-0 items-center gap-2 rounded-xl bg-brand-600 px-4 py-2 text-sm font-semibold text-white shadow-card transition-all duration-300 hover:bg-brand-700 hover:shadow-elevated"
+              >
+                <Icon name="bolt" size={16} />
+                Browse services
+              </Link>
+            }
+            className="py-8"
+          />
+        ) : (
+          <ul className="mt-4 divide-y divide-ink-100">
+            {recentBookings.map((booking) => (
+              <li key={booking.id}>
                 <Link
-                  href="/categories"
-                  className="rounded-xl bg-brand-600 px-4 py-2 text-sm font-semibold text-white shadow-card transition-all duration-300 hover:bg-brand-700 hover:shadow-elevated"
+                  href={`/bookings/${booking.id}`}
+                  className="group flex items-center justify-between gap-3 py-3"
                 >
-                  Browse services
+                  <div className="min-w-0">
+                    <p className="truncate text-sm font-semibold text-ink-900 group-hover:text-brand-700">
+                      {booking.service.name}
+                    </p>
+                    <p className="mt-0.5 font-mono text-xs text-ink-500">
+                      {booking.reference} &middot; {formatDate(booking.createdAt)}
+                    </p>
+                  </div>
+                  <span className="shrink-0 text-right">
+                    <StatusBadge label={booking.status} tone={toneForStatus(booking.status)} dot />
+                  </span>
                 </Link>
-              }
-              className="py-8"
-            />
-          ) : (
-            <ul className="mt-4 divide-y divide-ink-100">
-              {recentBookings.map((booking) => (
-                <li key={booking.id}>
-                  <Link
-                    href={`/bookings/${booking.id}`}
-                    className="group flex items-center justify-between gap-3 py-3"
-                  >
-                    <div className="min-w-0">
-                      <p className="truncate text-sm font-semibold text-ink-900 group-hover:text-brand-700">
-                        {booking.service.name}
-                      </p>
-                      <p className="mt-0.5 font-mono text-xs text-ink-500">
-                        {booking.reference} &middot; {formatDate(booking.createdAt)}
-                      </p>
-                    </div>
-                    <Icon
-                      name="chevron-right"
-                      size={16}
-                      className="shrink-0 text-ink-300 transition group-hover:text-brand-600"
-                    />
-                  </Link>
-                </li>
-              ))}
-            </ul>
-          )}
-        </section>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
 
-      <nav aria-label="Account shortcuts" className="mt-5 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <nav aria-label="Account shortcuts" className="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
         <ShortcutCard
           href="/bookings"
           icon="clipboard"
@@ -220,7 +228,20 @@ export default async function AccountPage() {
           title="Book a service"
           description="Start a new booking in a few steps."
         />
-        <SignOutCard />
+        <div className="group rounded-3xl border border-ink-200 bg-white p-5 shadow-card transition-all duration-300 hover:border-brand-300 hover:shadow-elevated hover:-translate-y-1">
+          <span className="grid h-11 w-11 place-items-center rounded-2xl bg-ink-900 text-gold-400 transition-colors duration-300 group-hover:bg-brand-600 group-hover:text-white">
+            <Icon name="logout" size={20} />
+          </span>
+          <h2 className="mt-3 font-display text-[17px] font-semibold text-ink-900 group-hover:text-brand-700">
+            Sign out
+          </h2>
+          <p className="mt-1 text-[13px] leading-relaxed text-ink-500">
+            End this session on this device.
+          </p>
+          <div className="mt-4">
+            <AccountSignOutButton />
+          </div>
+        </div>
       </nav>
     </div>
     </div>

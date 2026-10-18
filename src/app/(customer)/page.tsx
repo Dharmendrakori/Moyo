@@ -321,20 +321,6 @@ export default async function HomePage() {
                 </div>
               </li>
             </ul>
-            <div className="mt-7 flex flex-wrap gap-3">
-              <Link
-                href="/bookings"
-                className="inline-flex items-center gap-2 rounded-full bg-ink-900 px-5 py-2.5 text-sm font-bold text-white transition hover:bg-brand-600"
-              >
-                <Icon name="clipboard" size={16} /> My bookings
-              </Link>
-              <Link
-                href="/book"
-                className="inline-flex items-center gap-2 rounded-full px-5 py-2.5 text-sm font-bold text-ink-900 ring-1 ring-inset ring-ink-300 transition hover:bg-ink-50"
-              >
-                <Icon name="bolt" size={16} /> Book a service
-              </Link>
-            </div>
           </div>
           <div className="reveal-slow">
             <ProviderContactCard />
@@ -354,18 +340,20 @@ export default async function HomePage() {
           <h2 className="mt-4 font-display text-3xl font-semibold tracking-tight sm:text-5xl">
             Your next job starts with one search
           </h2>
-          <div className="mt-8 flex flex-wrap justify-center gap-3">
+          <div className="mt-8 flex flex-col items-stretch gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-center">
             <Link
               href="/categories"
-              className="inline-flex items-center gap-2 rounded-full bg-white px-7 py-3 text-sm font-bold text-ink-900 transition hover:bg-gold-400 hover:text-night-950"
+              className="inline-flex w-full items-center justify-center gap-2 whitespace-nowrap rounded-full bg-white px-7 py-3 text-sm font-bold leading-5 text-ink-900 transition hover:bg-gold-400 hover:text-night-950 sm:w-auto"
             >
-              <Icon name="bolt" size={16} /> Browse categories
+              <Icon name="bolt" size={16} className="shrink-0" />
+              <span className="whitespace-nowrap">Browse categories</span>
             </Link>
             <Link
               href="/book"
-              className="inline-flex items-center gap-2 rounded-full px-7 py-3 text-sm font-bold text-white ring-1 ring-inset ring-white/30 transition hover:bg-white/10"
+              className="inline-flex w-full items-center justify-center gap-2 whitespace-nowrap rounded-full px-7 py-3 text-sm font-bold leading-5 text-white ring-1 ring-inset ring-white/30 transition hover:bg-white/10 sm:w-auto"
             >
-              Start a booking
+              <Icon name="clipboard" size={16} className="shrink-0" />
+              <span className="whitespace-nowrap">Start a booking</span>
             </Link>
           </div>
         </div>
@@ -420,20 +408,20 @@ function HeroSection({ categoryCount, totalServices }: { categoryCount: number; 
             </div>
           </form>
 
-          <div className="mt-5 flex flex-wrap gap-3">
+          <div className="mt-5 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
             <Link
               href="/categories"
-              className="inline-flex items-center gap-2 rounded-full bg-brand-600 px-6 py-3 text-sm font-bold text-white transition hover:bg-brand-500"
+              className="inline-flex w-full items-center justify-center gap-2 whitespace-nowrap rounded-full bg-brand-600 px-6 py-3 text-sm font-bold leading-5 text-white transition hover:bg-brand-500 sm:w-auto"
             >
-              <Icon name="bolt" size={16} />
-              Book a service
+              <Icon name="bolt" size={16} className="shrink-0" />
+              <span className="whitespace-nowrap">Browse categories</span>
             </Link>
             <Link
-              href="/bookings"
-              className="inline-flex items-center gap-2 rounded-full px-6 py-3 text-sm font-bold text-white ring-1 ring-inset ring-white/25 transition hover:bg-white/10"
+              href="/book"
+              className="inline-flex w-full items-center justify-center gap-2 whitespace-nowrap rounded-full px-6 py-3 text-sm font-bold leading-5 text-white ring-1 ring-inset ring-white/25 transition hover:bg-white/10 sm:w-auto"
             >
-              <Icon name="clipboard" size={16} />
-              Track a booking
+              <Icon name="clipboard" size={16} className="shrink-0" />
+              <span className="whitespace-nowrap">Start a booking</span>
             </Link>
           </div>
         </div>
