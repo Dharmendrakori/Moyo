@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import Image from 'next/image';
 import { Icon } from '@/components/ui/Icon';
 import { ServiceCard } from '@/components/customer/Cards';
 import { CategoryMarquee, CategoryMosaicTile } from '@/components/customer/Showcase';
@@ -10,9 +11,9 @@ import { CHARGING_HINT, CHARGING_LABEL, CHARGING_OPTIONS } from '@/lib/domain';
 import { prisma } from '@/lib/prisma';
 
 export const metadata = {
-  title: 'MOYO - Book field services',
+  title: 'Seric Tech Solutions - Book technology services',
   description:
-    'MOYO is a service operations platform for booking, tracking and managing field services across 20 service categories.',
+    'Seric Tech Solutions is a technology services platform for booking, tracking and managing field services across 20 service categories.',
 };
 
 /**
@@ -48,7 +49,7 @@ const BOOKING_JOURNEY: JourneyStep[] = [
 ];
 
 /**
- * MOYO CUSTOMER HOMEPAGE
+ * SERIC TECH SOLUTIONS CUSTOMER HOMEPAGE
  *
  * Nothing on this page asserts an operational fact that is not in the database.
  * Where a value is unknown (a price, a rating, technician availability) the UI
@@ -281,7 +282,7 @@ export default async function HomePage() {
               Trust & support
             </p>
             <h2 className="mt-3 font-display text-3xl font-semibold tracking-tight text-ink-900 sm:text-4xl">
-              Run by MOYO, backed by the record
+              Run by Seric Tech Solutions, backed by the record
             </h2>
             <ul className="mt-8 space-y-5">
               <li className="flex gap-4">
@@ -374,16 +375,16 @@ function HeroSection({ categoryCount, totalServices }: { categoryCount: number; 
       <div className="relative mx-auto grid max-w-7xl items-center gap-12 px-4 pb-20 pt-14 sm:px-6 lg:grid-cols-[1.1fr_0.9fr] lg:px-8 lg:pb-28 lg:pt-20">
         <div className="reveal">
           <p className="inline-flex items-center gap-2 rounded-full bg-white/10 px-4 py-1.5 text-xs font-bold uppercase tracking-[0.14em] text-white ring-1 ring-inset ring-white/20">
-            <Icon name="bolt" size={13} className="text-gold-400" />
+            <Image src="/brand/seric-tech-symbol.png" alt="" width={623} height={523} className="h-4 w-4 shrink-0 object-contain" />
             {categoryCount} categories · {totalServices} services
           </p>
           <h1 className="mt-6 font-display text-4xl font-semibold leading-[1.05] tracking-tight sm:text-6xl">
-            Field services,
-            <span className="block text-gold-400">booked beautifully.</span>
+            Innovative Technology for a Smarter Tomorrow.
           </h1>
           <p className="mt-5 max-w-xl text-sm leading-relaxed text-white/70 sm:text-base">
-            Choose a category, select a service, pick how you want to be charged,
-            and follow the booking from request through invoice to feedback.
+            Book technology services, field work, and technical support across {categoryCount} official service
+            categories. Choose a service, pick how you want to be charged, and follow your booking from request
+            through to completion.
           </p>
 
           <form action="/search" method="get" role="search" className="mt-7 max-w-xl">
@@ -413,7 +414,7 @@ function HeroSection({ categoryCount, totalServices }: { categoryCount: number; 
               href="/categories"
               className="inline-flex w-full items-center justify-center gap-2 whitespace-nowrap rounded-full bg-brand-600 px-6 py-3 text-sm font-bold leading-5 text-white transition hover:bg-brand-500 sm:w-auto"
             >
-              <Icon name="bolt" size={16} className="shrink-0" />
+              <Image src="/brand/seric-tech-symbol.png" alt="" width={623} height={523} className="h-4 w-4 shrink-0 object-contain" />
               <span className="whitespace-nowrap">Browse categories</span>
             </Link>
             <Link
@@ -432,7 +433,7 @@ function HeroSection({ categoryCount, totalServices }: { categoryCount: number; 
               <div className="absolute inset-0 texture-dots" aria-hidden />
               <div className="relative">
                 <p className="inline-flex items-center gap-1.5 rounded-full bg-white/12 px-3 py-1 text-[11px] font-bold uppercase tracking-[0.14em] text-white ring-1 ring-inset ring-white/25">
-                  <Icon name="bolt" size={12} /> Live catalogue
+                  <Image src="/brand/seric-tech-symbol.png" alt="" width={623} height={523} className="h-3 w-3 shrink-0 object-contain" /> Live catalogue
                 </p>
                 <p className="mt-4 font-display text-3xl font-semibold leading-tight text-white">
                   Every job,

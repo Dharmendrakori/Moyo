@@ -11,7 +11,7 @@ export async function generateMetadata({ params }: Params): Promise<Metadata> {
   if (!service) return { title: 'Service not found' };
   return {
     title: service.name,
-    description: service.description ?? `${service.name} on MOYO`,
+    description: service.description ?? `${service.name} on Seric Tech Solutions`,
   };
 }
 

@@ -86,7 +86,7 @@ export default async function AdminBookingsPage({
           name="q"
           label="Search"
           defaultValue={query.q ?? ''}
-          placeholder="Reference, e.g. MOYO-2026-000123"
+          placeholder="Reference, e.g. SERIC-2026-000123"
         />
         <SelectField
           name="status"

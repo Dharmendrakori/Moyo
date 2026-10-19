@@ -45,7 +45,7 @@ export default async function LoginPage({ searchParams }: { searchParams: Search
   return (
     <div className="mx-auto flex min-h-[70vh] max-w-md flex-col justify-center px-4 py-12 sm:px-6">
       <div className="rounded-card border border-ink-200 bg-white p-6 shadow-card sm:p-8">
-        <h1 className="text-xl font-bold tracking-tight text-ink-900">Sign in to MOYO</h1>
+        <h1 className="text-xl font-bold tracking-tight text-ink-900">Sign in to Seric Tech Solutions</h1>
         <p className="mt-1 text-sm text-ink-500">
           Access your bookings, invoices and material orders.
         </p>
@@ -71,7 +71,7 @@ export default async function LoginPage({ searchParams }: { searchParams: Search
           <LoginForm nextPath={nextPath} />
         </div>
         <p className="mt-6 border-t border-ink-100 pt-4 text-center text-sm text-ink-500">
-          New to MOYO?{' '}
+          New to Seric Tech Solutions?{' '}
           <a
             href={nextPath === '/' ? '/register' : `/register?next=${encodeURIComponent(nextPath)}`}
             className="font-semibold text-brand-600 hover:underline"

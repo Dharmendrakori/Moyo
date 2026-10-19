@@ -22,7 +22,7 @@ import { telLink, whatsappLink } from '../src/lib/format';
 
 /** The current, authoritative identity and contact details. */
 const EXPECTED = {
-  displayName: 'MOYO',
+  displayName: 'Seric Tech Solutions',
   slug: 'moyo',
   email: 'dharmendra.kori@outlook.com',
   /** Stored with the country code so link builders emit the right target. */
@@ -32,10 +32,16 @@ const EXPECTED = {
   address: 'Top Floor, Multicare Hospital, Royal Market, Bhopal, Madhya Pradesh 462030',
 };
 
-/** Values that must not survive anywhere in active application data or copy. */
+/**
+ * Values that must not survive anywhere in active application data or copy.
+ * The brand names are matched case-sensitively on purpose: lowercase `moyo`
+ * remains allowed as a legacy internal identifier (provider slug, cookie
+ * names, signature header), while the display brand must read "Seric Tech
+ * Solutions" everywhere a customer or operator can see it.
+ */
 const RETIRED = [
-  'SERIC TECH SOLUTIONS',
-  'Seric Tech Solutions',
+  'MOYO',
+  'Moyo',
   'Seric.TechSolutions@gmail.com',
   'seric.techsolutions@gmail.com',
   '9993043078',
@@ -59,9 +65,10 @@ function collectSourceFiles(dir: string, acc: string[] = []): string[] {
 }
 
 describe('provider identity (seeded data)', () => {
-  it('seeds MOYO as the provider display and legal name', () => {
-    expect(SEED_SOURCE).toContain("displayName: 'MOYO'");
-    expect(SEED_SOURCE).toContain("legalName: 'MOYO'");
+  it('seeds Seric Tech Solutions as the provider display and legal name', () => {
+    expect(SEED_SOURCE).toContain("displayName: 'Seric Tech Solutions'");
+    expect(SEED_SOURCE).toContain("legalName: 'Seric Tech Solutions'");
+    // The slug stays `moyo`: it is baked into stored rows and internal identifiers.
     expect(SEED_SOURCE).toContain("slug: 'moyo'");
   });
 
@@ -93,7 +100,7 @@ describe('provider identity (seeded data)', () => {
     expect(SEED_SOURCE).toContain("const LEGACY_PROVIDER_SLUGS = ['seric-tech-solutions']");
     expect(SEED_SOURCE).toContain('migrateLegacyProviderSlug()');
     // Keyed on the current slug, never on the legacy one.
-    expect(SEED_SOURCE).toContain('where: { slug: MOYO_PROVIDER.slug }');
+    expect(SEED_SOURCE).toContain('where: { slug: SERIC_PROVIDER.slug }');
   });
 
   it('updates seeded settings rather than only creating them', () => {
@@ -150,12 +157,12 @@ describe('active application code and copy', () => {
     expect(files.some((f) => f.includes(join('legacy', 'index.html')))).toBe(false);
   });
 
-  it('presents MOYO consistently in customer-facing provider copy', () => {
+  it('presents Seric Tech Solutions consistently in customer-facing provider copy', () => {
     const wizard = readFileSync(
       join(process.cwd(), 'src', 'components', 'customer', 'BookingWizard.tsx'),
       'utf8',
     );
-    expect(wizard).toContain('MOYO is the service identity you are booking');
-    expect(wizard).toContain('place this booking with MOYO');
+    expect(wizard).toContain('Seric Tech Solutions is the service identity you are booking');
+    expect(wizard).toContain('place this booking with Seric Tech Solutions');
   });
 });

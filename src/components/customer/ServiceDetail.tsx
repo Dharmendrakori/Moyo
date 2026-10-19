@@ -41,7 +41,7 @@ export function ServiceDetailView({
 
   const wa = whatsappLink(
     service.provider?.whatsappNumber,
-    `Hello, I would like to book "${service.name}" on MOYO.`,
+    `Hello, I would like to book "${service.name}" on Seric Tech Solutions.`,
   );
   const tel = telLink(service.provider?.contactPhone);
   const avg = service.rating?.average ?? 0;

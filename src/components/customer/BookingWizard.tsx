@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Icon } from '@/components/ui/Icon';
 import { StatusBadge } from '@/components/ui/StatusBadge';
+import { SericInlineSpinner, SericLoader } from '@/components/ui/SericLoader';
 import {
   CHARGING_HINT,
   CHARGING_LABEL,
@@ -327,7 +328,7 @@ export function BookingWizard({
           <span className="font-mono font-bold text-ink-900">{created.reference}</span>.
         </p>
         <p className="mx-auto mt-3 max-w-md text-sm text-ink-600">
-          The provider will confirm this request. MOYO is the service identity you are booking
+          The provider will confirm this request. Seric Tech Solutions is the service identity you are booking
           with; technician details appear here once a technician is assigned.
         </p>
         <div className="mt-6 flex flex-wrap justify-center gap-2">
@@ -808,9 +809,10 @@ export function BookingWizard({
           </div>
 
           {loadingQuote && (
-            <p className="mt-3 text-sm text-ink-500" aria-live="polite">
-              Checking pricing with the server…
-            </p>
+            <div className="mt-3 flex items-center gap-3 text-sm text-ink-500" aria-live="polite">
+              <SericInlineSpinner />
+              <span>Checking pricing with the server…</span>
+            </div>
           )}
 
           {quoteError && (
@@ -851,7 +853,7 @@ export function BookingWizard({
             className="mt-0.5 h-4 w-4 shrink-0 accent-brand-600"
           />
           <span className="text-sm text-ink-700">
-            I confirm these details are correct and I want to place this booking with MOYO.
+            I confirm these details are correct and I want to place this booking with Seric Tech Solutions.
           </span>
         </label>
       </div>
@@ -873,8 +875,17 @@ export function BookingWizard({
           disabled={!confirmed || submitting}
           className="inline-flex items-center gap-2 rounded-xl bg-brand-600 px-5 py-2.5 text-sm font-semibold text-white shadow-card transition-all duration-300 hover:bg-brand-700 hover:shadow-elevated disabled:opacity-50"
         >
-          {submitting ? 'Submitting…' : 'Confirm and place booking'}
-          {!submitting && <Icon name="check" size={16} />}
+          {submitting ? (
+            <>
+              <SericInlineSpinner />
+              <span>Submitting…</span>
+            </>
+          ) : (
+            <>
+              <Icon name="check" size={16} />
+              <span>Confirm and place booking</span>
+            </>
+          )}
         </button>
       </div>
     </form>

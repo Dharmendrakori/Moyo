@@ -13,7 +13,7 @@ import {
 
 export const metadata: Metadata = {
   title: 'Search',
-  description: 'Search MOYO services by name, or browse all service categories.',
+  description: 'Search Seric Tech Solutions services by name, or browse all service categories.',
   // Utility page; not useful as a search-engine target.
   robots: { index: false, follow: true },
 };
@@ -74,7 +74,7 @@ export default async function SearchPage({ searchParams }: { searchParams: Searc
       <Breadcrumbs trail={[{ label: 'Home', href: '/' }, { label: 'Search' }]} />
 
       <header>
-        <h1 className="text-2xl font-bold tracking-tight text-ink-900 sm:text-3xl">Search MOYO</h1>
+        <h1 className="text-2xl font-bold tracking-tight text-ink-900 sm:text-3xl">Search Seric Tech Solutions</h1>
         <p className="mt-2 max-w-2xl text-sm text-ink-500">
           Find a service by name, or search a category like plumbing, solar or cleaning.
         </p>

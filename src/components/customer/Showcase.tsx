@@ -1,5 +1,5 @@
 /**
- * MOYO PHASE 2 — SHOWCASE COMPONENTS (part 1)
+ * SERIC TECH SOLUTIONS PHASE 2 — SHOWCASE COMPONENTS (part 1)
  *
  * Art-directed presentation over live catalogue data. No business logic:
  * every tile receives real rows and links to real routes. Category tiles show

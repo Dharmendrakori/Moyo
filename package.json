@@ -2,7 +2,7 @@
   "name": "moyo-platform",
   "version": "1.0.0",
   "private": true,
-  "description": "MOYO - service operations platform for booking, tracking and managing field services.",
+  "description": "Seric Tech Solutions - technology services platform for booking, tracking and managing field services.",
   "scripts": {
     "dev": "next dev",
     "build": "prisma generate && next build",

@@ -111,7 +111,7 @@ export const POST = apiHandler(async (request: Request) => {
     throw err;
   }
 
-  const reference = await nextReference('MOYO');
+  const reference = await nextReference('SERIC');
 
   const booking = await prisma.$transaction(async (tx) => {
     const created = await tx.booking.create({

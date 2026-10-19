@@ -120,7 +120,7 @@ beforeEach(() => {
 
 describe('GET /api/admin/bookings: authorization', () => {
   it('rejects an unauthenticated caller', async () => {
-    seedBooking({ id: 'cbooking0000000000000001', reference: 'MOYO-2026-000001', status: 'REQUESTED' });
+    seedBooking({ id: 'cbooking0000000000000001', reference: 'SERIC-2026-000001', status: 'REQUESTED' });
     const getBookings = await loadHandler();
     const res = await getBookings(get('/api/admin/bookings'));
     expect(res.status).toBe(401);
@@ -128,7 +128,7 @@ describe('GET /api/admin/bookings: authorization', () => {
   });
 
   it('rejects a CUSTOMER session', async () => {
-    seedBooking({ id: 'cbooking0000000000000001', reference: 'MOYO-2026-000001', status: 'REQUESTED' });
+    seedBooking({ id: 'cbooking0000000000000001', reference: 'SERIC-2026-000001', status: 'REQUESTED' });
     const getBookings = await loadHandler();
     signIn(CUSTOMER_ID);
     const res = await getBookings(get('/api/admin/bookings'));
@@ -137,7 +137,7 @@ describe('GET /api/admin/bookings: authorization', () => {
   });
 
   it('rejects a cross-origin ADMIN read', async () => {
-    seedBooking({ id: 'cbooking0000000000000001', reference: 'MOYO-2026-000001', status: 'REQUESTED' });
+    seedBooking({ id: 'cbooking0000000000000001', reference: 'SERIC-2026-000001', status: 'REQUESTED' });
     const getBookings = await loadHandler();
     signIn(ADMIN_ID);
     const res = await getBookings(
@@ -147,14 +147,14 @@ describe('GET /api/admin/bookings: authorization', () => {
   });
 
   it('lets an ADMIN read the queue', async () => {
-    seedBooking({ id: 'cbooking0000000000000001', reference: 'MOYO-2026-000001', status: 'REQUESTED' });
+    seedBooking({ id: 'cbooking0000000000000001', reference: 'SERIC-2026-000001', status: 'REQUESTED' });
     const getBookings = await loadHandler();
     signIn(ADMIN_ID);
     const res = await getBookings(get('/api/admin/bookings'));
     expect(res.status).toBe(200);
     const body = await res.json();
     expect(body.total).toBe(1);
-    expect(body.items[0].reference).toBe('MOYO-2026-000001');
+    expect(body.items[0].reference).toBe('SERIC-2026-000001');
     expect(body.items[0].customer.name).toBe('Asha Verma');
   });
 });
@@ -162,8 +162,8 @@ describe('GET /api/admin/bookings: authorization', () => {
 
 describe('GET /api/admin/bookings: filters and pagination', () => {
   it('filters by status with an allowlisted value only', async () => {
-    seedBooking({ id: 'cbooking0000000000000001', reference: 'MOYO-2026-000001', status: 'REQUESTED' });
-    seedBooking({ id: 'cbooking0000000000000002', reference: 'MOYO-2026-000002', status: 'CONFIRMED' });
+    seedBooking({ id: 'cbooking0000000000000001', reference: 'SERIC-2026-000001', status: 'REQUESTED' });
+    seedBooking({ id: 'cbooking0000000000000002', reference: 'SERIC-2026-000002', status: 'CONFIRMED' });
     const getBookings = await loadHandler();
     signIn(ADMIN_ID);
     const res = await getBookings(get('/api/admin/bookings?status=CONFIRMED'));
@@ -174,14 +174,14 @@ describe('GET /api/admin/bookings: filters and pagination', () => {
   });
 
   it('searches by reference substring', async () => {
-    seedBooking({ id: 'cbooking0000000000000001', reference: 'MOYO-2026-000001', status: 'REQUESTED' });
-    seedBooking({ id: 'cbooking0000000000000002', reference: 'MOYO-2026-000002', status: 'REQUESTED' });
+    seedBooking({ id: 'cbooking0000000000000001', reference: 'SERIC-2026-000001', status: 'REQUESTED' });
+    seedBooking({ id: 'cbooking0000000000000002', reference: 'SERIC-2026-000002', status: 'REQUESTED' });
     const getBookings = await loadHandler();
     signIn(ADMIN_ID);
     const res = await getBookings(get('/api/admin/bookings?q=000002'));
     const body = await res.json();
     expect(body.total).toBe(1);
-    expect(body.items[0].reference).toBe('MOYO-2026-000002');
+    expect(body.items[0].reference).toBe('SERIC-2026-000002');
   });
 
   it('rejects unknown params, free-form statuses and bad pages', async () => {
@@ -197,7 +197,7 @@ describe('GET /api/admin/bookings: filters and pagination', () => {
     for (let i = 1; i <= 3; i++) {
       seedBooking({
         id: `cbooking000000000000000${i}`,
-        reference: `MOYO-2026-00000${i}`,
+        reference: `SERIC-2026-00000${i}`,
         status: 'REQUESTED',
       });
     }

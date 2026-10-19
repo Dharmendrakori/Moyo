@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import Image from 'next/image';
 import { cn, initials, telLink, whatsappLink } from '@/lib/format';
 import { Icon, type IconName } from '@/components/ui/Icon';
 import { getCurrentUser } from '@/lib/auth';
@@ -84,11 +85,28 @@ export async function CustomerHeader() {
   return (
     <header className="sticky top-0 z-40 border-b border-ink-200/80 bg-night-950 text-white shadow-card">
       <div className="mx-auto flex h-16 max-w-7xl items-center gap-4 px-4 sm:px-6 lg:px-8">
-        <Link href="/" className="flex shrink-0 items-center gap-2" aria-label="MOYO home">
-          <span className="grid h-10 w-10 place-items-center rounded-xl bg-gradient-to-br from-brand-500 to-brand-700 text-white shadow-sm">
-            <Icon name="bolt" size={22} />
+        <Link
+          href="/"
+          className="flex shrink-0 items-center gap-2.5"
+          aria-label="Seric Tech Solutions home"
+        >
+          {/*
+            Approved header brand mark: favicon/Transparent.png copied to
+            public/brand/seric-tech-solutions-logo.png (500x500, transparent
+            square canvas). Rendered in a fixed square with `object-contain`
+            so the intrinsic aspect ratio is never distorted by header layout.
+          */}
+          <Image
+            src="/brand/seric-tech-solutions-logo.png"
+            alt="Seric Tech Solutions logo"
+            width={500}
+            height={500}
+            priority
+            className="h-9 w-9 shrink-0 object-contain"
+          />
+          <span className="hidden whitespace-nowrap text-sm font-semibold text-white sm:block lg:text-base">
+            Seric Tech Solutions
           </span>
-          <span className="font-display text-lg font-semibold tracking-tight text-white">MOYO</span>
         </Link>
 
         <nav className="hidden items-center gap-1 lg:flex" aria-label="Primary">
@@ -96,7 +114,7 @@ export async function CustomerHeader() {
             <Link
               key={item.href + item.label}
               href={item.href}
-              className="flex items-center gap-1.5 rounded-full px-3.5 py-2 text-sm font-medium text-white/75 transition-all hover:bg-white/10 hover:text-white focus-visible:ring-2 focus-visible:ring-gold-400 focus-visible:ring-offset-2 focus-visible:ring-offset-night-950"
+              className="flex items-center gap-1.5 whitespace-nowrap rounded-full px-3.5 py-2 text-sm font-medium text-white/75 transition-all hover:bg-white/10 hover:text-white focus-visible:ring-2 focus-visible:ring-gold-400 focus-visible:ring-offset-2 focus-visible:ring-offset-night-950"
             >
               <Icon name={item.icon} size={16} />
               {item.label}
@@ -211,7 +229,7 @@ export async function BottomNav() {
   );
 }
 
-/** Footer. Presents MOYO as the service identity customers book with. */
+/** Footer. Presents Seric Tech Solutions as the service identity customers book with. */
 export function CustomerFooter() {
   return (
     <footer className="relative overflow-hidden bg-night-950 text-white">
@@ -219,14 +237,20 @@ export function CustomerFooter() {
       <div className="relative mx-auto max-w-7xl px-4 py-14 sm:px-6 lg:px-8">
         <div className="flex flex-col gap-10 lg:flex-row lg:items-start lg:justify-between">
           <div className="max-w-sm">
-            <div className="flex items-center gap-2">
-              <span className="grid h-9 w-9 place-items-center rounded-xl bg-gradient-to-br from-brand-500 to-brand-700 text-white shadow-sm">
-                <Icon name="bolt" size={20} />
+            <div className="flex items-center gap-3">
+              <Image
+                src="/brand/seric-tech-solutions-logo.png"
+                alt=""
+                width={500}
+                height={500}
+                className="h-11 w-11 shrink-0 object-contain"
+              />
+              <span className="font-display text-lg font-semibold tracking-tight text-white sm:whitespace-nowrap lg:text-xl">
+                Seric Tech Solutions
               </span>
-              <span className="font-display text-lg font-semibold tracking-tight text-white">MOYO</span>
             </div>
             <p className="mt-3 text-sm leading-relaxed text-white/65">
-              MOYO is a service operations platform delivering field services across 20 official
+              Seric Tech Solutions is a technology services platform delivering field services across 20 official
               categories.
             </p>
             <div className="mt-5 flex flex-wrap gap-2">
@@ -273,7 +297,7 @@ export function CustomerFooter() {
         </div>
 
         <p className="mt-10 border-t border-white/10 pt-6 text-xs text-white/45">
-          © {new Date().getFullYear()} MOYO. All rights reserved.
+          © {new Date().getFullYear()} Seric Tech Solutions. All rights reserved.
         </p>
       </div>
     </footer>
@@ -314,7 +338,7 @@ export async function ProviderContactCard() {
   const tel = telLink(provider.contactPhone);
   const wa = whatsappLink(
     provider.whatsappNumber,
-    'Hello, I would like to book a service on MOYO.',
+    'Hello, I would like to book a service on Seric Tech Solutions.',
   );
   return (
     <section className="rounded-card border border-ink-200 bg-white p-6 shadow-card transition-all hover:shadow-raised">

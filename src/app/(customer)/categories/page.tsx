@@ -8,7 +8,7 @@ import { listCategories } from '@/lib/queries';
 export const metadata: Metadata = {
   title: 'Service categories',
   description:
-    'Browse all 20 official MOYO service categories, from home and household services to material ordering.',
+    'Browse all 20 official Seric Tech Solutions service categories, from home and household services to material ordering.',
 };
 
 /**

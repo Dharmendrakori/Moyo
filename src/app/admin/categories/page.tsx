@@ -34,7 +34,7 @@ export default async function AdminCategoriesPage() {
     // never serialized into the response.
     return (
       <div className="space-y-6">
-        <PageHeader title="Categories" description="The official MOYO service catalogue." />
+        <PageHeader title="Categories" description="The official Seric Tech Solutions service catalogue." />
         <ErrorState description="The category list could not be loaded. Please try again." />
       </div>
     );

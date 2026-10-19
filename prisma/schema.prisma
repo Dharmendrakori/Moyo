@@ -1,4 +1,4 @@
-// MOYO platform data model.
+// Seric Tech Solutions platform data model.
 //
 // IMPORTANT DESIGN NOTES
 // ----------------------
@@ -109,7 +109,7 @@ model CustomerAddress {
 // Provider / Technician
 // ---------------------------------------------------------------------------
 
-/// A service provider operating on Moyo. MOYO is the current one.
+/// A service provider operating on the platform. Seric Tech Solutions is the current one.
 model Provider {
   id             String  @id @default(cuid())
   userId         String  @unique
@@ -267,7 +267,7 @@ model ProviderService {
 
 model Booking {
   id          String @id @default(cuid())
-  /// Human-friendly sequential reference, e.g. MOYO-2026-000123.
+  /// Human-friendly sequential reference, e.g. SERIC-2026-000123.
   reference   String @unique
   customerId  String
   customer    User   @relation("CustomerBookings", fields: [customerId], references: [id], onDelete: Restrict)

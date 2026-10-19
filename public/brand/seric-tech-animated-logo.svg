@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 420">
+<defs><linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#050f22"/><stop offset="1" stop-color="#004b8d"/></linearGradient>
+<radialGradient id="glow"><stop stop-color="#00d4ff" stop-opacity=".32"/><stop offset="1" stop-color="#00d4ff" stop-opacity="0"/></radialGradient></defs>
+<rect width="720" height="420" rx="20" fill="url(#bg)"/>
+<ellipse cx="360" cy="150" rx="180" ry="125" fill="url(#glow)"><animate attributeName="opacity" values=".4;1;.4" dur="2.6s" repeatCount="indefinite"/></ellipse>
+<image href="../logo/seric-tech-symbol-transparent.png" x="235" y="18" width="250" height="230" preserveAspectRatio="xMidYMid meet">
+<animateTransform attributeName="transform" type="scale" values="1;1.025;1" dur="2.6s" repeatCount="indefinite" additive="sum"/>
+</image>
+<image href="../logo/seric-tech-solutions-logo-on-dark.png" x="110" y="260" width="500" height="130" preserveAspectRatio="xMidYMid meet"/>
+</svg>

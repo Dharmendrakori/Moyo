@@ -122,7 +122,7 @@ export function AdminShell({
             </span>
             {/* Branding text hides in the collapsed rail; the logo stays. */}
             <div className={`min-w-0 ${sidebarCollapsed ? 'lg:hidden' : ''}`}>
-              <p className="whitespace-nowrap text-sm font-bold tracking-tight text-white">MOYO</p>
+              <p className="whitespace-nowrap text-sm font-bold tracking-tight text-white">Seric Tech</p>
               <p className="whitespace-nowrap text-[10px] font-medium uppercase tracking-wider text-ink-400">
                 Admin console
               </p>
@@ -216,7 +216,7 @@ export function AdminShell({
                 <span className="grid h-8 w-8 place-items-center rounded-lg bg-brand-600 text-white">
                   <Icon name="bolt" size={18} />
                 </span>
-                <p className="text-sm font-bold text-white">MOYO Admin</p>
+                <p className="text-sm font-bold text-white">Seric Tech Admin</p>
               </div>
               <button
                 type="button"

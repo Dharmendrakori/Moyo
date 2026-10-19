@@ -86,7 +86,7 @@ function AdminAccessDenied({ role }: { role: string }) {
             href="/"
             className="rounded-xl bg-brand-600 px-4 py-2 text-sm font-semibold text-white shadow-card transition-all duration-300 hover:bg-brand-700 hover:shadow-elevated"
           >
-            Back to MOYO
+            Back to Seric Tech Solutions
           </Link>
           <Link
             href="/bookings"

@@ -123,7 +123,7 @@ export async function resolveBookingPricing(
 }
 
 /**
- * Builds a human-friendly, sequential reference (e.g. MOYO-2026-000123).
+ * Builds a human-friendly, sequential reference (e.g. SERIC-2026-000123).
  * Uses an atomic upsert on the Counter table to avoid a racy max()+1.
  */
 export async function nextReference(prefix: string): Promise<string> {

@@ -1,10 +1,10 @@
-# MOYO
+# Seric Tech Solutions
 
-A service operations platform for booking, tracking and managing field services.
+A technology services platform for booking, tracking and managing field services.
 
-> ## MOYO = THE CUSTOMER-FACING SERVICE PROVIDER / SERVICE IDENTITY
+> ## Seric Tech Solutions = THE CUSTOMER-FACING SERVICE IDENTITY
 >
-> For the current deployment, **MOYO is the service identity customers interact
+> For the current deployment, **Seric Tech Solutions is the service identity customers interact
 > with**. It is the name stored in `Provider.displayName` / `Provider.legalName`
 > and the name rendered on every customer-facing provider surface: the provider
 > card, the service pages, the booking wizard, the confirmation summary and the
@@ -12,9 +12,9 @@ A service operations platform for booking, tracking and managing field services.
 >
 > No other provider name is shown to customers. The `Provider` model still
 > supports multiple providers - it is a general schema - but the current seeded
-> deployment has exactly one, and it is MOYO.
+> deployment has exactly one, and it is Seric Tech Solutions.
 >
-> Contact details are the authoritative business contact for Moyo. They are
+> Contact details are the authoritative business contact for Seric Tech Solutions. They are
 > stored on the `Provider` record and rendered into the Call and WhatsApp
 > actions, both of which resolve to `+917047172454`.
 
@@ -101,8 +101,8 @@ npm run dev
 ```
 
 The seed loads all **20 official categories** (98 services) exactly as specified
-in `prisma/catalog.ts`, and registers MOYO as the service provider using only
-the business details actually supplied.
+in `prisma/catalog.ts`, and registers Seric Tech Solutions as the service
+provider using only the business details actually supplied.
 
 ### Creating an admin account
 
@@ -137,7 +137,7 @@ as the customer site. It is not a visual mockup and it runs on no mock data.
 | `/admin/categories` | The 20 official categories, read from the database |
 | `/admin/services` | Service table: search, filters, pagination |
 | `/admin/services/[id]` | Service detail, charging configuration, published pricing |
-| `/admin/charging-options` | Which options MOYO offers, and Customer Budget ranges |
+| `/admin/charging-options` | Which options Seric Tech Solutions offers, and Customer Budget ranges |
 | `/admin/pricing` | Publish / withdraw published prices |
 | `/admin/bookings` | Every booking, newest first: reference search, status filter, pagination (read-only) |
 
@@ -358,6 +358,23 @@ remains the only place the official list is defined.
 | `npm test` | Vitest suite |
 | `npm run setup` | Generate client, push schema, seed |
 | `npm run db:reset` | Drop, recreate and re-seed |
+
+### Branding assets and favicon
+
+The customer-facing brand is **Seric Tech Solutions**. The approved source
+artwork lives in `seric-tech-solutions-complete-brand-package/` (not served to
+browsers); the files the application actually serves are copies under `public/`:
+
+| Served file | Source | Used for |
+| --- | --- | --- |
+| `public/brand/seric-tech-solutions-logo.png` (500×500) | `seric-tech-solutions-complete-brand-package/favicon/Transparent.png` | Header logo (`src/components/customer/Shell.tsx`), rendered with `next/image` at its intrinsic 500×500 size inside a fixed `h-9 w-9` box with `object-contain` so the aspect ratio is never stretched |
+| `public/brand/seric-tech-symbol.png` (623×523) | `seric-tech-solutions-complete-brand-package/` logo artwork | Small decorative symbol marks on the homepage hero, same `object-contain` treatment |
+| `public/favicon.ico` + `public/favicon/*.png` | `seric-tech-solutions-complete-brand-package/favicon/` | Browser icons, declared in `src/app/layout.tsx` metadata (`icon` + `apple`); the apple-touch file is the package's 180×180 artwork |
+
+When replacing any served asset, copy the file from the package rather than
+editing it in place, keep the transparent background, and never stretch a
+raster logo with CSS to fill a box of a different aspect ratio — fit it with
+`object-contain` inside a constrained container instead.
 | `npm run db:studio` | Prisma Studio |
 | `npm run audit:prod` | Runtime dependency audit |
 
@@ -587,7 +604,7 @@ executes end to end.
 | `booking-state.test.ts` | 15 | The booking state machine, including that no role may mark a booking paid |
 | `security.test.ts` | 10 | Open-redirect prevention and role/status narrowing |
 | `booking-tracking.test.ts` | 15 | Customer-facing status rendering |
-| `provider-identity.test.ts` | 14 | MOYO identity and contact values, and that retired values are absent from source |
+| `provider-identity.test.ts` | 14 | Seric Tech Solutions identity and contact values, and that retired values (the MOYO brand, old emails and numbers) are absent from source |
 | `validation.test.ts` | 21 | Request schemas |
 | `booking-api.test.ts` | 23 | Real `/api/bookings*` routes: `requireUser → assertCsrf → rate limit → Zod → domain` |
 | **`admin-auth.test.ts`** | **16** | **Real `/api/admin/*` routes: 401, 403 for CUSTOMER, ADMIN access, CSRF, Origin, malformed ids** |
@@ -760,24 +777,27 @@ Renaming or reordering them is a data change.
 
 ## Service provider identity and contact
 
-MOYO is the customer-facing service identity for the current deployment. The
+Seric Tech Solutions is the customer-facing service identity for the current deployment. The
 values below live on the `Provider` record and are rendered by
 `getPrimaryProvider()` into every customer-facing provider surface.
 
 | Field | Value |
 | --- | --- |
-| Display name (customer-facing) | **MOYO** |
-| Legal name | **MOYO** |
-| Slug | `moyo` |
+| Display name (customer-facing) | **Seric Tech Solutions** |
+| Legal name | **Seric Tech Solutions** |
+| Slug | `moyo` (unchanged internal identifier) |
 | Registered address | Top Floor, Multicare Hospital, Royal Market, Bhopal, Madhya Pradesh 462030 |
 | Email | `dharmendra.kori@outlook.com` |
 | Phone / Call | `+917047172454` (`tel:+917047172454`) |
 | WhatsApp | `+917047172454` (`https://wa.me/917047172454`) |
 
-Call and WhatsApp deliberately use the **same number**. `Provider.contactPhone`
-and `Provider.whatsappNumber` are both stored as `917047172454` - the digits
-include the country code, because `telLink()` and `whatsappLink()` in
-`src/lib/format.ts` normalise to digits and emit the international form.
+The display name and legal name shown above are the values currently stored on the
+seeded `Provider` record. They were rebranded in place by updating
+`Provider.displayName` / `Provider.legalName` while preserving the row `id` and
+`slug`, so every existing `Booking.providerId` foreign key and `ProviderService`
+link remains intact. The slug stays `moyo` because it is baked into stored rows
+and internal identifiers; the customer-facing brand is carried by the display
+name. See the seed file for the migration pattern.
 
 ### Renaming the provider without breaking relationships
 
@@ -869,7 +889,7 @@ booking logic, pricing logic, provider/catalog data, or the customer UI.
   the desktop sidebar was a permanently expanded `w-64` column with its own
   separate X/close affordance nearby - two disconnected navigation behaviors
   instead of one coherent collapse/expand system.
-- **Desktop expanded:** full `w-64` sidebar column - MOYO/Admin-console
+- **Desktop expanded:** full `w-64` sidebar column - Seric Tech/Admin-console
   branding, section headings, icon + label items, SOON badges and "View
   customer site" all visible; main uses the remaining width.
 - **Desktop collapsed:** narrow `w-20` icon rail, still a structural sticky
@@ -1000,7 +1020,7 @@ auth-security files.
   only other nav state is `drawerOpen`, which is the separate below-`lg`
   mobile overlay — not a duplicate.
 - **Component rendering the three-lines button:** the sidebar's own brand
-  row inside `AdminShell`'s `<aside id="admin-sidebar">` (☰ ⚡ MOYO /
+  row inside `AdminShell`'s `<aside id="admin-sidebar">` (☰ ⚡ Seric Tech /
   Admin console when expanded, ☰ ⚡ when collapsed). `Topbar` no longer
   receives any desktop-toggle props and renders no desktop hamburger; it
   keeps only the page title, administrator identity/role/avatar/logout, and
@@ -1035,9 +1055,10 @@ auth-security files.
   - Keyboard: focus reaches the sidebar toggle and toggling changes width
     (256 → 80).
   - Total: **977 checks passed**; the single failing probe was the console
-    network check because the app ships no `favicon.ico` (pre-existing
-    `/favicon.ico` → 404 on every admin page load, unrelated to this
-    change). No uncaught exceptions, no hydration errors in the clean
+    network check because the app shipped no `favicon.ico` at the time
+    (pre-existing `/favicon.ico` → 404 on every admin page load, unrelated to
+    this change; the Seric favicon set is now documented under § Scripts →
+    Branding assets and favicon). No uncaught exceptions, no hydration errors in the clean
     session. Expanded/collapsed screenshots at 1440×900 were captured and
     visually reviewed (full sidebar with sidebar-owned ☰ toggle; clean
     icon rail beside an expanded dashboard).
@@ -1320,7 +1341,7 @@ business logic, APIs, routes or existing components' behaviour.
   and written straight to the DOM through refs: zero React state updates per
   scroll event. All observers, listeners and animation frames are released
   on unmount.
-- **Integration** - homepage section "How a MOYO booking works": four
+- **Integration** - homepage section "From problem to finished job": four
   milestones describing the real booking funnel (category, service,
   charging option, tracking). Milestones light up as the line reaches them.
 - **Accessibility** - `prefers-reduced-motion` renders the complete static

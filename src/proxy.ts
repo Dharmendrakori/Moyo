@@ -128,7 +128,7 @@ function withSecurityHeaders(
   response.headers.set('X-DNS-Prefetch-Control', 'off');
   response.headers.set('Cross-Origin-Opener-Policy', 'same-origin');
   response.headers.set('Cross-Origin-Resource-Policy', 'same-origin');
-  response.headers.set('X-Powered-By', 'Moyo');
+  response.headers.set('X-Powered-By', 'Seric Tech Solutions');
 
   if (process.env.NODE_ENV === 'production') {
     response.headers.set('Strict-Transport-Security', 'max-age=63072000; includeSubDomains; preload');

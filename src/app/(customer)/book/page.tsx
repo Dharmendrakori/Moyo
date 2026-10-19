@@ -12,7 +12,7 @@ import type { WizardCatalog } from '@/components/customer/BookingWizard';
 export const metadata: Metadata = {
   title: 'Book a service',
   description:
-    'Book a field service on MOYO: choose a category, a service and a charging option, then confirm your booking.',
+    'Book a field service on Seric Tech Solutions: choose a category, a service and a charging option, then confirm your booking.',
 };
 
 /**

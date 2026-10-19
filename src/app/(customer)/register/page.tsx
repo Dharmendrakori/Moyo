@@ -27,7 +27,7 @@ export default async function RegisterPage({ searchParams }: { searchParams: Sea
   return (
     <div className="mx-auto flex min-h-[70vh] max-w-md flex-col justify-center px-4 py-12 sm:px-6">
       <div className="rounded-card border border-ink-200 bg-white p-6 shadow-card sm:p-8">
-        <h1 className="text-xl font-bold tracking-tight text-ink-900">Create your MOYO account</h1>
+        <h1 className="text-xl font-bold tracking-tight text-ink-900">Create your Seric Tech Solutions account</h1>
         <p className="mt-1 text-sm text-ink-500">
           Track bookings, download invoices and order materials.
         </p>

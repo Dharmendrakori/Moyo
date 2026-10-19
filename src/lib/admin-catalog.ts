@@ -18,7 +18,7 @@ import type { z } from 'zod';
 /**
  * ADMIN CATALOG READ / WRITE MODELS
  *
- * Server-only data access for the MOYO operations console.
+ * Server-only data access for the Seric Tech Solutions operations console.
  *
  * FOUR RULES ARE ENFORCED HERE, NOT IN THE UI:
  *

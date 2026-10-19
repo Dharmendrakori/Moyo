@@ -56,7 +56,7 @@ describe('safeRedirectPath credential check', () => {
 });
 
 describe('stripCredentialParams', () => {
-  const ORIGIN = 'https://moyo.example';
+  const ORIGIN = 'https://seric.example';
 
   it('returns null for an already-clean URL (no redirect loop)', () => {
     expect(stripCredentialParams(`${ORIGIN}/login`)).toBeNull();

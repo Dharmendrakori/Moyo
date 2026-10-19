@@ -150,7 +150,7 @@ export function BookingLifecycle({ status }: { status: string }) {
 export function TechnicianCard({ technician }: { technician: TechnicianSummary }) {
   const assigned = hasAssignedTechnician(technician);
   const tel = telLink(technician?.phone);
-  const wa = whatsappLink(technician?.phone, 'Hello, regarding my MOYO booking.');
+  const wa = whatsappLink(technician?.phone, 'Hello, regarding my Seric Tech Solutions booking.');
 
   return (
     <div className="rounded-card border border-ink-200 bg-white p-5">

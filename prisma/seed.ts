@@ -13,7 +13,7 @@ import { CHARGING_OPTIONS, type ServiceType } from '../src/lib/domain';
  * WHAT IS AND IS NOT SEEDED:
  * - The 20 official categories and their sub-catalogues are seeded exactly as
  *   specified. Service names are specification-derived, not invented.
- * - MOYO is seeded as the current service provider, using only the business
+ * - Seric Tech Solutions is seeded as the current service provider, using only the business
  *   details that were supplied (identity, registered address, email, contacts).
  *   No ratings, certifications, ETAs or guarantees are fabricated.
  * - Admin credentials are created ONLY when SEED_ADMIN_PASSWORD is set in the
@@ -140,20 +140,20 @@ async function seedCatalog() {
 }
 
 /**
- * MOYO - the current customer-facing service provider.
+ * Seric Tech Solutions - the current customer-facing service provider.
  *
  * Only the business details that were actually supplied to us are recorded.
  * Fields that would require verification (GSTIN, certifications, ratings,
  * ETAs, availability guarantees) are intentionally left NULL. The customer
  * UI renders neutral copy for any null value instead of inventing one.
  *
- * IDENTITY: for the current deployment MOYO is the service identity customers
- * interact with. It is the value stored in `Provider.displayName` /
+ * IDENTITY: for the current deployment Seric Tech Solutions is the service
+ * identity customers interact with. It is the value stored in `Provider.displayName` /
  * `legalName` and the value every customer-facing surface renders.
  */
-const MOYO_PROVIDER = {
-  legalName: 'MOYO',
-  displayName: 'MOYO',
+const SERIC_PROVIDER = {
+  legalName: 'Seric Tech Solutions',
+  displayName: 'Seric Tech Solutions',
   slug: 'moyo',
   description:
     'Service provider operating across the 20 official service categories, covering electrical, electronic, solar, plumbing and allied works.',
@@ -182,7 +182,7 @@ const LEGACY_PROVIDER_SLUGS = ['seric-tech-solutions'] as const;
 
 async function migrateLegacyProviderSlug(): Promise<void> {
   for (const legacy of LEGACY_PROVIDER_SLUGS) {
-    if (legacy === MOYO_PROVIDER.slug) continue;
+    if (legacy === SERIC_PROVIDER.slug) continue;
 
     const existing = await prisma.provider.findUnique({
       where: { slug: legacy },
@@ -193,28 +193,28 @@ async function migrateLegacyProviderSlug(): Promise<void> {
     // Only migrate if the target slug is free; otherwise the current row is
     // already correct and must not be disturbed.
     const target = await prisma.provider.findUnique({
-      where: { slug: MOYO_PROVIDER.slug },
+      where: { slug: SERIC_PROVIDER.slug },
       select: { id: true },
     });
     if (target) continue;
 
     await prisma.provider.update({
       where: { id: existing.id },
-      data: { slug: MOYO_PROVIDER.slug },
+      data: { slug: SERIC_PROVIDER.slug },
     });
-    console.log(`  migrated provider slug "${legacy}" -> "${MOYO_PROVIDER.slug}" (id preserved)`);
+    console.log(`  migrated provider slug "${legacy}" -> "${SERIC_PROVIDER.slug}" (id preserved)`);
   }
 }
 
 async function seedProvider() {
-  console.log(`Seeding provider: ${MOYO_PROVIDER.displayName}...`);
+  console.log(`Seeding provider: ${SERIC_PROVIDER.displayName}...`);
 
   // Move any legacy-slug row onto the current slug BEFORE upserting, so the
   // rename preserves the provider id and all of its foreign keys instead of
   // creating a second provider row.
   await migrateLegacyProviderSlug();
 
-  const email = MOYO_PROVIDER.contactEmail.toLowerCase();
+  const email = SERIC_PROVIDER.contactEmail.toLowerCase();
 
   // The provider PROFILE is keyed on its slug, not on the owning user.
   //
@@ -236,7 +236,7 @@ async function seedProvider() {
   if (!providerUser) {
     providerUser = await prisma.user.upsert({
       where: { email },
-      update: { name: MOYO_PROVIDER.legalName, isActive: true },
+      update: { name: SERIC_PROVIDER.legalName, isActive: true },
       create: {
         email,
         // Unusable random password. This account is managed via password reset.
@@ -244,8 +244,8 @@ async function seedProvider() {
         passwordHash: await bcrypt.hash(randomPassword(), 12),
         // User.phone is @unique and stores a bare 10-digit number, so the
         // international form used for provider contact links is stripped here.
-        phone: MOYO_PROVIDER.contactPhone.replace(/^91/, ''),
-        name: MOYO_PROVIDER.legalName,
+        phone: SERIC_PROVIDER.contactPhone.replace(/^91/, ''),
+        name: SERIC_PROVIDER.legalName,
         role: 'PROVIDER',
         isActive: true,
       },
@@ -264,8 +264,8 @@ async function seedProvider() {
     await prisma.user.update({
       where: { id: providerUser.id },
       data: {
-        name: MOYO_PROVIDER.legalName,
-        phone: MOYO_PROVIDER.contactPhone.replace(/^91/, ''),
+        name: SERIC_PROVIDER.legalName,
+        phone: SERIC_PROVIDER.contactPhone.replace(/^91/, ''),
         isActive: true,
         // `User.email` is @unique; only claim it when it is genuinely free.
         ...(emailTakenByOther ? {} : { email }),
@@ -290,31 +290,31 @@ async function seedProvider() {
   }
 
   const provider = await prisma.provider.upsert({
-    where: { slug: MOYO_PROVIDER.slug },
+    where: { slug: SERIC_PROVIDER.slug },
     update: {
       userId: providerUser.id,
-      legalName: MOYO_PROVIDER.legalName,
-      displayName: MOYO_PROVIDER.displayName,
-      description: MOYO_PROVIDER.description,
-      registeredAddress: MOYO_PROVIDER.registeredAddress,
-      contactEmail: MOYO_PROVIDER.contactEmail,
-      contactPhone: MOYO_PROVIDER.contactPhone,
-      whatsappNumber: MOYO_PROVIDER.whatsappNumber,
-      isVerified: MOYO_PROVIDER.isVerified,
-      isActive: MOYO_PROVIDER.isActive,
+      legalName: SERIC_PROVIDER.legalName,
+      displayName: SERIC_PROVIDER.displayName,
+      description: SERIC_PROVIDER.description,
+      registeredAddress: SERIC_PROVIDER.registeredAddress,
+      contactEmail: SERIC_PROVIDER.contactEmail,
+      contactPhone: SERIC_PROVIDER.contactPhone,
+      whatsappNumber: SERIC_PROVIDER.whatsappNumber,
+      isVerified: SERIC_PROVIDER.isVerified,
+      isActive: SERIC_PROVIDER.isActive,
     },
     create: {
       userId: providerUser.id,
-      legalName: MOYO_PROVIDER.legalName,
-      displayName: MOYO_PROVIDER.displayName,
-      slug: MOYO_PROVIDER.slug,
-      description: MOYO_PROVIDER.description,
-      registeredAddress: MOYO_PROVIDER.registeredAddress,
-      contactEmail: MOYO_PROVIDER.contactEmail,
-      contactPhone: MOYO_PROVIDER.contactPhone,
-      whatsappNumber: MOYO_PROVIDER.whatsappNumber,
-      isVerified: MOYO_PROVIDER.isVerified,
-      isActive: MOYO_PROVIDER.isActive,
+      legalName: SERIC_PROVIDER.legalName,
+      displayName: SERIC_PROVIDER.displayName,
+      slug: SERIC_PROVIDER.slug,
+      description: SERIC_PROVIDER.description,
+      registeredAddress: SERIC_PROVIDER.registeredAddress,
+      contactEmail: SERIC_PROVIDER.contactEmail,
+      contactPhone: SERIC_PROVIDER.contactPhone,
+      whatsappNumber: SERIC_PROVIDER.whatsappNumber,
+      isVerified: SERIC_PROVIDER.isVerified,
+      isActive: SERIC_PROVIDER.isActive,
     },
   });
 
@@ -432,7 +432,7 @@ async function seedAdmin() {
       email,
       passwordHash: await bcrypt.hash(password, 12),
       phone: process.env.SEED_ADMIN_PHONE?.trim() || '9999999999',
-      name: process.env.SEED_ADMIN_NAME?.trim() || 'Moyo Administrator',
+      name: process.env.SEED_ADMIN_NAME?.trim() || 'Seric Tech Solutions Administrator',
       role: 'ADMIN',
       isActive: true,
     },
@@ -442,7 +442,7 @@ async function seedAdmin() {
 
 async function seedSettings() {
   const defaults: Array<[string, string]> = [
-    ['platform.name', 'MOYO'],
+    ['platform.name', 'Seric Tech Solutions'],
     ['platform.currency', 'INR'],
     ['platform.taxRateBps', '1800'],
     ['support.email', 'dharmendra.kori@outlook.com'],

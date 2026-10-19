@@ -229,7 +229,7 @@ describe('POST /api/bookings', () => {
     );
     expect(res.status).toBe(201);
     const body = await res.json();
-    expect(body.booking.reference).toMatch(/^MOYO-\d{4}-\d{6}$/);
+    expect(body.booking.reference).toMatch(/^SERIC-\d{4}-\d{6}$/);
     expect(body.booking.status).toBe('REQUESTED');
   });
 
@@ -452,15 +452,15 @@ describe('GET /api/bookings', () => {
     const { listBookings } = await loadHandlers();
     signIn('customer-1');
     bookingRows.push(
-      { id: 'b-mine', customerId: 'customer-1', reference: 'MOYO-1', status: 'REQUESTED' },
-      { id: 'b-theirs', customerId: 'customer-2', reference: 'MOYO-2', status: 'PAID' },
+      { id: 'b-mine', customerId: 'customer-1', reference: 'SERIC-1', status: 'REQUESTED' },
+      { id: 'b-theirs', customerId: 'customer-2', reference: 'SERIC-2', status: 'PAID' },
     );
 
     const res = await listBookings(new Request(`${ORIGIN}/api/bookings`, { headers: { origin: ORIGIN } }));
     expect(res.status).toBe(200);
     const body = await res.json();
     expect(body.items).toHaveLength(1);
-    expect(body.items[0].reference).toBe('MOYO-1');
+    expect(body.items[0].reference).toBe('SERIC-1');
   });
 });
 
@@ -477,13 +477,13 @@ describe('GET /api/bookings/:id (ownership isolation)', () => {
     bookingRows.push({
       id: 'b-mine',
       customerId: 'customer-1',
-      reference: 'MOYO-1',
+      reference: 'SERIC-1',
       status: 'CONFIRMED',
     });
 
     const res = await getBooking(new Request(`${ORIGIN}/api/bookings/b-mine`), ctx('b-mine'));
     expect(res.status).toBe(200);
-    expect((await res.json()).booking.reference).toBe('MOYO-1');
+    expect((await res.json()).booking.reference).toBe('SERIC-1');
   });
 
   it('returns 404 for another customer\'s booking (IDOR)', async () => {
@@ -492,7 +492,7 @@ describe('GET /api/bookings/:id (ownership isolation)', () => {
     bookingRows.push({
       id: 'b-theirs',
       customerId: 'customer-2',
-      reference: 'MOYO-2',
+      reference: 'SERIC-2',
       status: 'PAID',
     });
 
@@ -507,7 +507,7 @@ describe('GET /api/bookings/:id (ownership isolation)', () => {
     bookingRows.push({
       id: 'b-theirs',
       customerId: 'customer-2',
-      reference: 'MOYO-2',
+      reference: 'SERIC-2',
       status: 'PAID',
     });
 
