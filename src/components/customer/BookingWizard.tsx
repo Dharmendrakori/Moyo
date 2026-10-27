@@ -143,7 +143,6 @@ export function BookingWizard({
   const [submitting, setSubmitting] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
-  const [locationError, setLocationError] = useState<string | null>(null);
   const { detect: detectLocation, loading: locating, error: locationHookError } = useBrowserGeolocation();
   const [confirmed, setConfirmed] = useState(false);
   const [created, setCreated] = useState<{ id: string; reference: string } | null>(null);
@@ -178,7 +177,6 @@ export function BookingWizard({
   }, []);
 
   async function onUseLocation(): Promise<void> {
-    setLocationError(null);
     const result = await detectLocation();
     if (!result) {
       // The hook sets its own error; mirror it for display.
@@ -624,9 +622,9 @@ export function BookingWizard({
                 {locating ? 'Detecting…' : 'Use My Current Location'}
               </button>
             </div>
-            {(locationHookError || locationError) && (
+            {locationHookError && (
               <p role="alert" className="text-xs font-medium text-danger">
-                {(locationHookError || locationError)?.message}
+                {locationHookError.message}
               </p>
             )}
             {locating && (

@@ -137,6 +137,9 @@ export function useBrowserGeolocation() {
       } else if (geoErr?.code === 'unsupported') {
         code = 'unsupported';
         message = geoErr.message ?? message;
+      } else if (geoErr?.code === 'failed' || geoErr?.code === 'geocode_failed') {
+        code = 'failed';
+        message = geoErr.message ?? 'Could not look up your address from your location. Please enter it manually.';
       } else if (geoErr?.name === 'AbortError') {
         code = 'aborted';
         message = 'Location detection was cancelled.';
