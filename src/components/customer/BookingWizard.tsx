@@ -5,7 +5,8 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Icon } from '@/components/ui/Icon';
 import { StatusBadge } from '@/components/ui/StatusBadge';
-import { SericInlineSpinner, SericLoader } from '@/components/ui/SericLoader';
+import { SericInlineSpinner, SericOverlayLoader } from '@/components/ui/SericLoader';
+import { useBrowserGeolocation } from '@/components/customer/useBrowserGeolocation';
 import {
   CHARGING_HINT,
   CHARGING_LABEL,
@@ -142,6 +143,8 @@ export function BookingWizard({
   const [submitting, setSubmitting] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
+  const [locationError, setLocationError] = useState<string | null>(null);
+  const { detect: detectLocation, loading: locating, error: locationHookError } = useBrowserGeolocation();
   const [confirmed, setConfirmed] = useState(false);
   const [created, setCreated] = useState<{ id: string; reference: string } | null>(null);
 
@@ -173,6 +176,24 @@ export function BookingWizard({
       return next;
     });
   }, []);
+
+  async function onUseLocation(): Promise<void> {
+    setLocationError(null);
+    const result = await detectLocation();
+    if (!result) {
+      // The hook sets its own error; mirror it for display.
+      return;
+    }
+    setDetails((prev) => ({
+      ...prev,
+      addressLine1: result.line1 || prev.addressLine1,
+      area: result.area || prev.area,
+      city: result.city || prev.city,
+      state: result.state || prev.state,
+      pincode: result.pincode || prev.pincode,
+      landmark: result.landmark || prev.landmark,
+    }));
+  }
 
   const needsBudget = charging === 'CUSTOMER_BUDGET';
   const needsSchedule = details.mode === 'LATER' || details.mode === 'SCHEDULED';
@@ -249,6 +270,9 @@ export function BookingWizard({
   async function onConfirmSubmit(event: FormEvent) {
     event.preventDefault();
     if (!catalog.service || !confirmed) return;
+    // Duplicate-submission guard: the disabled button covers re-render races,
+    // this covers two clicks landing before React commits the disabled state.
+    if (submitting) return;
 
     setSubmitting(true);
     setFormError(null);
@@ -588,6 +612,28 @@ export function BookingWizard({
         <fieldset className="mt-4 rounded-card border border-ink-200 bg-white p-5">
           <legend className="px-1 text-sm font-semibold text-ink-900">Service location</legend>
           <div className="mt-3 space-y-3">
+            <div className="flex items-center justify-between gap-2">
+              <span className="text-xs text-ink-500">Fill the address from your current location.</span>
+              <button
+                type="button"
+                onClick={() => void onUseLocation()}
+                disabled={locating}
+                className="inline-flex items-center gap-1.5 rounded-xl border border-ink-300 bg-white px-3 py-1.5 text-xs font-semibold text-ink-700 shadow-card transition-all duration-300 hover:bg-ink-50 disabled:opacity-60"
+              >
+                <Icon name="location" size={14} />
+                {locating ? 'Detecting…' : 'Use My Current Location'}
+              </button>
+            </div>
+            {(locationHookError || locationError) && (
+              <p role="alert" className="text-xs font-medium text-danger">
+                {(locationHookError || locationError)?.message}
+              </p>
+            )}
+            {locating && (
+              <p className="text-xs text-ink-500" aria-live="polite">
+                Requesting location permission…
+              </p>
+            )}
             <Field label="Address" error={fieldErrors.addressLine1}>
               <input
                 id="addressLine1"
@@ -757,6 +803,9 @@ export function BookingWizard({
 
   return (
     <form onSubmit={onConfirmSubmit} noValidate>
+      {/* Blocking state: placing a booking owns the whole screen until the
+          request settles (success or failure both clear `submitting`). */}
+      {submitting && <SericOverlayLoader label="Placing your booking" />}
       <h2 id={headingId} className="text-base font-bold tracking-tight text-ink-900">
         Review your booking
       </h2>

@@ -1,48 +1,21 @@
-'use client';
-
-import { useEffect, useState, type CSSProperties } from 'react';
-import { SericLoader } from '@/components/ui/SericLoader';
+import { SericFullPageLoader } from '@/components/ui/SericLoader';
 
 /**
- * GLOBAL LOADING STATE
+ * ROUTE LOADING FALLBACK (App Router `loading` boundary)
  *
- * Replaces Next.js's browser dev-overlay fallback ("Rendering…") with a
- * branded Seric loader. The optional `delay` gives real network requests
- * time to settle so a fleeting loading frame doesn't flash on fast
- * connections.
+ * Shown by Next.js while a client-side navigation suspends (the route's RSC
+ * payload is still being fetched or the segment is still rendering). Once
+ * the destination is ready the boundary swaps it out for the real page, so
+ * fast, already-prefetched navigations never show it - by design.
+ *
+ * This is the application's branded loader and is unrelated to the Next.js
+ * development indicator (the framework's own "Rendering" pill in dev mode).
+ *
+ * Server component by design: no hooks and no artificial delay, so the
+ * branded screen paints in the boundary's HTML immediately rather than
+ * flashing an empty backdrop first. `SericFullPageLoader` owns the
+ * `role="status"` announcement and respects `prefers-reduced-motion`.
  */
-
-const BLUR: CSSProperties = {
-  position: 'fixed',
-  inset: 0,
-  zIndex: 9999,
-  backgroundColor: 'rgba(15, 23, 42, 0.85)',
-};
-
-const WRAP: CSSProperties = {
-  position: 'fixed',
-  inset: 0,
-  display: 'flex',
-  alignItems: 'center',
-  justifyContent: 'center',
-  zIndex: 10000,
-};
-
-export default function RootLoading({ delay = 120 }: { delay?: number }) {
-  const [visible, setVisible] = useState(false);
-
-  useEffect(() => {
-    const id = setTimeout(() => setVisible(true), delay);
-    return () => clearTimeout(id);
-  }, [delay]);
-
-  return (
-    <div style={BLUR} aria-hidden>
-      {visible && (
-        <div style={WRAP}>
-          <SericLoader variant="brand" size="lg" glow label="Loading Seric" />
-        </div>
-      )}
-    </div>
-  );
+export default function RootLoading() {
+  return <SericFullPageLoader label="Loading" />;
 }

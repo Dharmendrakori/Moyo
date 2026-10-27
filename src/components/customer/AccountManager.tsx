@@ -6,6 +6,7 @@ import { Field, FormAlert, inputClass } from '@/components/customer/AuthForms';
 import { readCsrfToken } from '@/components/admin/LogoutButton';
 import { Icon } from '@/components/ui/Icon';
 import { formatDate } from '@/lib/format';
+import { useBrowserGeolocation } from '@/components/customer/useBrowserGeolocation';
 
 export type AccountProfile = {
   name: string;
@@ -280,9 +281,25 @@ function AddressCard({ address }: { address: AccountAddress }) {
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
   const [success, setSuccess] = useState<string | null>(null);
 
+  const { detect, loading: locating, error: locationError } = useBrowserGeolocation();
+
   function update(key: keyof typeof form) {
     return (e: React.ChangeEvent<HTMLInputElement>) =>
       setForm((prev) => ({ ...prev, [key]: e.target.value }));
+  }
+
+  async function onUseLocation(): Promise<void> {
+    const result = await detect();
+    if (!result) return;
+    setForm((prev) => ({
+      ...prev,
+      line1: result.line1 || prev.line1,
+      area: result.area || prev.area,
+      city: result.city || prev.city,
+      state: result.state || prev.state,
+      pincode: result.pincode || prev.pincode,
+      landmark: result.landmark || prev.landmark,
+    }));
   }
 
   async function onSave(e: FormEvent): Promise<void> {
@@ -359,6 +376,27 @@ function AddressCard({ address }: { address: AccountAddress }) {
               <FormAlert message={formError} />
             </div>
           )}
+          <div className="sm:col-span-2">
+            <button
+              type="button"
+              onClick={() => void onUseLocation()}
+              disabled={locating || pending}
+              className="inline-flex items-center gap-1.5 rounded-xl border border-ink-300 bg-white px-4 py-2 text-sm font-semibold text-ink-700 shadow-card transition-all duration-300 hover:bg-ink-50 disabled:opacity-60"
+            >
+              <Icon name="location" size={15} />
+              {locating ? 'Detecting location…' : 'Use My Current Location'}
+            </button>
+            {locationError && (
+              <p role="alert" className="mt-2 text-xs font-medium text-danger">
+                {locationError.message}
+              </p>
+            )}
+            {locating && (
+              <p className="mt-2 text-xs text-ink-500" aria-live="polite">
+                Requesting location permission…
+              </p>
+            )}
+          </div>
           <Field id="addr-label" label="Label" error={fieldErrors.label}>
             <input id="addr-label" value={form.label} onChange={update('label')} className={inputClass} />
           </Field>

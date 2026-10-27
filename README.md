@@ -1403,3 +1403,46 @@ ratings or guarantees.
 - **Validation** — run `npm run lint`, `npm run typecheck`, `npm run build`
   and `npm test` before pushing; see § Rollback for the protected
   `backup/pre-moyo-refactor` branch and the `feature/moyo-platform` workflow.
+
+
+## Changelog - Browser current-location detection for saved addresses and booking
+
+**Scope:** adds a user-initiated "Use My Current Location" action to the saved-address
+form (`AccountManager`) and the service-location step of the booking wizard
+(`BookingWizard`). No schema change, no new provider, no new dependency.
+
+- **Hook:** `src/components/customer/useBrowserGeolocation.ts` wraps
+  `navigator.geolocation.getCurrentPosition` and reverse-geocodes the resulting
+  coordinates with the free OpenStreetMap Nominatim endpoint
+  (`https://nominatim.openstreetmap.org/reverse`). It exposes `detect()`,
+  `loading`, `status` and `error`. It is deliberately user-initiated: nothing
+  runs on mount and no permission prompt fires until `detect()` is called.
+- **Fields populated** (when reliably available): address line 1 (road +
+  house number), area / locality, city, state, PIN code, and landmark (only
+  when Nominatim returns an amenity/tourism/historic value). Every populated
+  field stays editable; existing values are preserved unless the user clicks
+  the button.
+- **Saved addresses:** the button is rendered inside the Add/Edit address form
+  in `AccountManager`, spanning both columns, so it is visible for both new and
+  existing addresses. Success populates the form state; the user still presses
+  Save. Create/edit/default/delete flows are unchanged.
+- **Booking:** the button sits directly above the Address field in the
+  "Service location" fieldset, at the step where customers actually enter their
+  service address. It is not nested inside `BOOKING_MODES.map()` and does not
+  interfere with Instant / Later / Scheduled / Emergency selections. Contact
+  details, issue description, service selection and charging options are
+  untouched; detected values remain editable and the booking still requires a
+  normal submit.
+- **Error handling:** denied permission, timeout, unsupported browser,
+  unavailable position, failed HTTP request and missing address components are
+  each reported with a plain-language message; manual entry always remains
+  available. Concurrent requests are ignored via an in-flight guard; an
+  `AbortController` cancels stale responses. No precise coordinates or full
+  addresses are logged.
+- **Provider / policy:** OpenStreetMap Nominatim (free, no API key). Client-side
+  usage is subject to Nominatim's usage policy (~1 request/second, attribution
+  required); no paid provider or secret is introduced. HTTPS is required in
+  deployment; `localhost` is acceptable for development. The browser
+  `Permissions-Policy` already permits `geolocation=(self)`.
+- **Verification commands:** `npm run lint`, `npm run typecheck`, `npm run build`,
+  `npm test`.

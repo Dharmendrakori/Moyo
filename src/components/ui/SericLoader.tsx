@@ -1,3 +1,4 @@
+import Image from 'next/image';
 import { cn } from '@/lib/format';
 
 /**
@@ -50,6 +51,13 @@ const BRAND_TILE: Record<SericLoaderSize, string> = {
   lg: 'h-14 w-14 rounded-2xl text-2xl',
 };
 
+const BRAND_MARK: Record<SericLoaderSize, string> = {
+  xs: 'h-3 w-3',
+  sm: 'h-3.5 w-3.5',
+  md: 'h-6 w-6',
+  lg: 'h-9 w-9',
+};
+
 const PIXEL_DOT: Record<SericLoaderSize, string> = {
   xs: 'h-1 w-1 rounded-[1px]',
   sm: 'h-1.5 w-1.5 rounded-[2px]',
@@ -82,34 +90,23 @@ export function SericLoader({
         <span
           aria-hidden
           className={cn(
-            'seric-loader-brand grid shrink-0 place-items-center bg-night-950 font-display font-semibold text-gold-400',
+            'seric-loader-brand grid shrink-0 place-items-center bg-night-950',
             'ring-1 ring-inset ring-white/15',
             BRAND_TILE[size],
             glow && 'seric-loader-glow',
           )}
         >
-          {/* Seric Tech symbol echoes the header brand tile; pixel squares carry the motion. */}
-          <svg
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth={2}
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            className="h-[55%] w-[55%]"
-          >
-            <path d="M13 2 4 14h6l-1 8 9-12h-6l1-8Z" />
-          </svg>
+          {/* Approved Seric mark (500x500 transparent) - the square tile keeps
+              the logo's aspect ratio exactly. Never the legacy MOYO bolt. */}
+          <Image
+            src="/brand/seric-tech-solutions-logo.png"
+            alt=""
+            width={56}
+            height={56}
+            className={cn('object-contain', BRAND_MARK[size])}
+          />
         </span>
-        <span aria-hidden className={cn('flex items-center', PIXEL_GAP[size])}>
-          {[0, 1, 2, 3, 4].map((i) => (
-            <span
-              key={i}
-              className={cn('seric-loader-pixel bg-brand-600', PIXEL_DOT[size])}
-              style={{ animationDelay: `${i * 120}ms` }}
-            />
-          ))}
-        </span>
+        <PixelDots size={size} />
         <span className="sr-only">{label}</span>
       </span>
     );
@@ -143,7 +140,10 @@ export function SericInlineSpinner({ className }: { className?: string }) {
   return (
     <span
       aria-hidden
-      className={cn('seric-inline-spinner h-3.5 w-3.5 shrink-0 rounded-full', className)}
+      className={cn(
+        'seric-inline-spinner h-3.5 w-3.5 shrink-0 rounded-full border-2 border-brand-500 border-t-transparent',
+        className,
+      )}
     />
   );
 }
@@ -170,6 +170,54 @@ export function BookingCardSkeleton() {
         <div className="skeleton h-3 w-1/3 rounded" />
         <div className="skeleton h-3 w-1/4 rounded" />
       </div>
+    </div>
+  );
+}
+
+function PixelDots({ size }: { size: SericLoaderSize }) {
+  return (
+    <span aria-hidden className={cn('flex items-center', PIXEL_GAP[size])}>
+      {[0, 1, 2, 3, 4].map((i) => (
+        <span
+          key={i}
+          className={cn(
+            'seric-loader-pixel',
+            i % 2 === 0 ? 'bg-brand-500' : 'bg-brand-cyan',
+            PIXEL_DOT[size],
+          )}
+          style={{ animationDelay: `${i * 120}ms` }}
+        />
+      ))}
+    </span>
+  );
+}
+
+export function SericFullPageLoader({ label = 'Loading' }: { label?: string }) {
+  return (
+    <div className="fixed inset-0 z-[10000] flex flex-col items-center justify-center gap-5 bg-night-950 px-6">
+      <Image
+        src="/brand/seric-tech-solutions-logo.png"
+        alt=""
+        width={112}
+        height={112}
+        priority
+        className="h-24 w-24 object-contain sm:h-28 sm:w-28"
+      />
+      <span role="status" aria-live="polite" className="flex flex-col items-center gap-3">
+        <PixelDots size="md" />
+        <span className="text-sm font-medium tracking-wide text-white/75">{label}…</span>
+      </span>
+    </div>
+  );
+}
+
+export function SericOverlayLoader({ label = 'Working' }: { label?: string }) {
+  return (
+    <div className="fixed inset-0 z-[9998] flex flex-col items-center justify-center gap-4 bg-night-950/75 px-6 backdrop-blur-[2px]">
+      <SericLoader variant="brand" size="lg" glow label={label} />
+      <span aria-hidden className="text-sm font-medium tracking-wide text-white/80">
+        {label}…
+      </span>
     </div>
   );
 }
