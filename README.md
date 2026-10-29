@@ -545,9 +545,59 @@ server-side guards.
 | **`POST`** | **`/api/bookings/[id]/attachments`** | Session + CSRF | Upload one validated image |
 | `POST` | `/api/bookings/[id]/transition` | Session + role | Advance a booking's state |
 | `POST` | `/api/webhooks/payment` | Signature | Mark a booking `PAID` |
+| `GET` | `/api/geocode/reverse` | Public (same-origin only) | Reverse-geocoding proxy to Nominatim — see *GPS location detection* below |
 
 Errors always return `{ error: { code, message, fields? } }`. Stack traces, SQL
 errors and Prisma messages are never serialised to the client.
+
+### GPS location detection
+
+The Booking Wizard ("Use my location") and the Saved Address form both call
+`useBrowserGeolocation()`, which asks the browser for the user's coordinates and
+then fetches `/api/geocode/reverse?lat=…&lon=…` — a server-side proxy to
+OpenStreetMap Nominatim. This is necessary because Nominatim does not send
+`Access-Control-Allow-Origin` headers and the site runs a strict Content-Security-Policy
+(`connect-src 'self'`), so a direct browser fetch would be blocked by both CORS and CSP.
+
+The proxy sends the User-Agent `Moyo/1.0`, which complies with Nominatim's usage
+policy (~1 request/second per client).
+
+#### Locality fallback order
+
+The `area` (locality) field is populated from the first Nominatim `address` key
+in this priority order, after trimming and skipping any candidate that is case-
+insensitively equal to the selected **City** or **State**:
+
+| # | Key |
+| --- | --- |
+| 1 | `neighbourhood` |
+| 2 | `suburb` |
+| 3 | `quarter` |
+| 4 | `residential` |
+| 5 | `city_district` |
+| 6 | `borough` |
+| 7 | `hamlet` |
+| 8 | `village` |
+| 9 | `town` |
+| 10 | `municipality` |
+
+If all candidates are empty or duplicate City/State, `area` is left as an empty
+string. **City**, **State**, and **PIN code** are populated independently and are
+not affected by locality normalization.
+
+#### Street / address fallback
+
+The `line1` field combines `house_number` with the first available of:
+`road`, `residential`, `pedestrian`, `service`, `path`. Missing street-level
+data does not prevent Area from being populated.
+
+#### Limitations
+
+- Nominatim does not guarantee a neighbourhood-level result for every coordinate;
+  in dense rural or remote areas the Area field may be empty even on a successful
+  lookup. Users can always edit or fill in the field manually.
+- The geolocation lookup is best-effort and user-initiated; it never fires on page
+  load and the user may decline the browser permission prompt.
 
 ---
 

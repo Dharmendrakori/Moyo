@@ -17,6 +17,60 @@ import { useCallback, useRef, useState } from 'react';
  *
  * We never log coordinates or full addresses.
  */
+export type NominatimAddress = Record<string, string>;
+
+/**
+ * Normalise a Nominatim `address` object into the project's GeolocationAddress.
+ *
+ * Exported so it can be unit-tested independently of the browser geolocation +
+ * fetch flow.
+ */
+export function normalizeGeocodingAddress(addr: NominatimAddress): GeolocationAddress {
+  const houseNumber = addr.house_number ? String(addr.house_number).trim() : '';
+  const road = addr.road ?? addr.residential ?? addr.pedestrian ?? addr.service ?? addr.path ?? '';
+  const line1 = [houseNumber, road].filter(Boolean).join(' ').trim() || road || houseNumber || '';
+
+  // City normalization is independent of locality/area.
+  const city = addr.city ?? addr.town ?? addr.municipality ?? addr.city_district ?? '';
+  const state = addr.state ?? '';
+  const cityLower = city.trim().toLowerCase();
+  const stateLower = state.trim().toLowerCase();
+
+  // Area / locality: priority order from most specific to more general.
+  // Trim candidates, ignore empty/whitespace values, and skip candidates
+  // that duplicate the selected City or State (case-insensitive).
+  const localityCandidates = [
+    addr.neighbourhood,
+    addr.suburb,
+    addr.quarter,
+    addr.residential,
+    addr.city_district,
+    addr.borough,
+    addr.hamlet,
+    addr.village,
+    addr.town,
+    addr.municipality,
+  ].map((s) => (s ?? '').trim()).filter(Boolean);
+
+  let area = '';
+  for (const candidate of localityCandidates) {
+    const lower = candidate.toLowerCase();
+    if (lower !== cityLower && lower !== stateLower) {
+      area = candidate;
+      break;
+    }
+  }
+
+  return {
+    line1,
+    area,
+    city,
+    state,
+    pincode: addr.postcode ?? '',
+    landmark: addr.amenity ?? addr.tourism ?? addr.historic ?? undefined,
+  };
+}
+
 export type GeolocationAddress = {
   line1: string;
   area: string;
@@ -75,8 +129,8 @@ export function useBrowserGeolocation() {
       const { latitude, longitude } = position.coords;
 
       const res = await fetch(
-        `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}&addressdetails=1`,
-        { signal: abort.signal, headers: { 'Accept-Language': 'en' } },
+        `/api/geocode/reverse?lat=${latitude}&lon=${longitude}&addressdetails=1`,
+        { signal: abort.signal },
       );
 
       if (!res.ok) {
@@ -86,30 +140,7 @@ export function useBrowserGeolocation() {
       const data = (await res.json()) as { address?: Record<string, string> } | null;
       const addr = data?.address ?? {};
 
-      // Normalise incomplete results safely; never fabricate missing fields.
-      const houseNumber = addr.house_number ? String(addr.house_number).trim() : '';
-      const road = addr.road ?? addr.pedestrian ?? addr.footway ?? addr.path ?? '';
-      const line1 = [houseNumber, road].filter(Boolean).join(' ').trim() || road;
-
-      const result: GeolocationAddress = {
-        line1,
-        area:
-          addr.suburb ??
-          addr.neighbourhood ??
-          addr.quarter ??
-          addr.village ??
-          addr.hamlet ??
-          '',
-        city:
-          addr.city ??
-          addr.town ??
-          addr.municipality ??
-          addr.city_district ??
-          '',
-        state: addr.state ?? '',
-        pincode: addr.postcode ?? '',
-        landmark: addr.amenity ?? addr.tourism ?? addr.historic ?? undefined,
-      };
+      const result = normalizeGeocodingAddress(addr);
 
       if (abort.signal.aborted) return null;
 
@@ -121,11 +152,20 @@ export function useBrowserGeolocation() {
         return null;
       }
 
-      const geoErr = err as { code?: number | string; message?: string; name?: string };
+      const geoErr = err as { code?: number | string; message?: string; name?: string; type?: string };
       let code: GeolocationFailureCode = 'failed';
       let message = 'Could not detect your location. Please enter it manually.';
 
-      if (geoErr?.code === 1) {
+      // Network / fetch failures (e.g. our geocode proxy unreachable, DNS)
+      // surface as a TypeError without a geolocation code.
+      if (geoErr?.name === 'TypeError' || geoErr?.type === 'fetch-error') {
+        code = 'failed';
+        message =
+          geoErr?.message?.includes('Failed to fetch') ||
+          geoErr?.message?.includes('network')
+            ? 'Could not reach the location service. Please check your internet connection and try again.'
+            : 'Could not look up your address. Please enter it manually.';
+      } else if (geoErr?.code === 1) {
         code = 'denied';
         message = 'Location permission denied. Please enable it in your browser settings.';
       } else if (geoErr?.code === 2) {
