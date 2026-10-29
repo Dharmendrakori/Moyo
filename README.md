@@ -575,11 +575,12 @@ insensitively equal to the selected **City** or **State**:
 | 3 | `quarter` |
 | 4 | `residential` |
 | 5 | `city_district` |
-| 6 | `borough` |
-| 7 | `hamlet` |
-| 8 | `village` |
-| 9 | `town` |
-| 10 | `municipality` |
+| 6 | `county` |
+| 7 | `borough` |
+| 8 | `hamlet` |
+| 9 | `village` |
+| 10 | `town` |
+| 11 | `municipality` |
 
 If all candidates are empty or duplicate City/State, `area` is left as an empty
 string. **City**, **State**, and **PIN code** are populated independently and are

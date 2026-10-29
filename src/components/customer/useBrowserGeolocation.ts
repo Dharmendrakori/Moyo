@@ -45,6 +45,7 @@ export function normalizeGeocodingAddress(addr: NominatimAddress): GeolocationAd
     addr.quarter,
     addr.residential,
     addr.city_district,
+    addr.county,
     addr.borough,
     addr.hamlet,
     addr.village,

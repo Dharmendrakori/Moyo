@@ -194,3 +194,69 @@ describe('normalizeGeocodingAddress - missing street does not block area', () =>
     expect(result.city).toBe('Bhopal');
   });
 });
+
+describe('normalizeGeocodingAddress - real Nominatim response shapes', () => {
+  it('populates county as area when city_district duplicates city (Sehore response shape)', () => {
+    // Mirrors the actual Nominatim response for lat=23.209129, lon=77.086742
+    const addr = {
+      city_district: 'Sehore',
+      city: 'Sehore',
+      county: 'Sehore Nagar Tahsil',
+      state_district: 'Sehore',
+      state: 'Madhya Pradesh',
+      postcode: '466002',
+    };
+    const result = normalizeGeocodingAddress(addr);
+    expect(result.city).toBe('Sehore');
+    expect(result.state).toBe('Madhya Pradesh');
+    expect(result.pincode).toBe('466002');
+    // city_district "Sehore" duplicates city "Sehore" → skipped
+    // county "Sehore Nagar Tahsil" is distinct → used as area
+    expect(result.area).toBe('Sehore Nagar Tahsil');
+    // No road data → address line remains empty
+    expect(result.line1).toBe('');
+    // No amenity/tourism/historic → landmark undefined
+    expect(result.landmark).toBeUndefined();
+  });
+
+  it('uses county as area when no more specific locality exists and county is distinct', () => {
+    const addr = { county: 'South Delhi', city: 'Delhi', state: 'Delhi' };
+    expect(normalizeGeocodingAddress(addr).area).toBe('South Delhi');
+  });
+
+  it('skips county when it duplicates city', () => {
+    const addr = { city_district: 'Bhopal', county: 'Bhopal', city: 'Bhopal', suburb: 'Sector 15' };
+    expect(normalizeGeocodingAddress(addr).area).toBe('Sector 15');
+  });
+
+  it('populates all fields from a complete road + neighbourhood response', () => {
+    const addr = {
+      house_number: '123',
+      road: 'Main Street',
+      neighbourhood: 'Sector 15',
+      city: 'Bhopal',
+      state: 'Madhya Pradesh',
+      postcode: '462001',
+      amenity: 'City Hospital',
+    };
+    const result = normalizeGeocodingAddress(addr);
+    expect(result.line1).toBe('123 Main Street');
+    expect(result.area).toBe('Sector 15');
+    expect(result.city).toBe('Bhopal');
+    expect(result.state).toBe('Madhya Pradesh');
+    expect(result.pincode).toBe('462001');
+    expect(result.landmark).toBe('City Hospital');
+  });
+
+  it('uses residential as area when city_district duplicates city', () => {
+    const addr = { city_district: 'Delhi', residential: 'Green Park', city: 'Delhi' };
+    expect(normalizeGeocodingAddress(addr).area).toBe('Green Park');
+  });
+
+  it('does not fabricate address line from display_name or coordinates', () => {
+    const addr = { city: 'Sehore', state: 'Madhya Pradesh', postcode: '466002' };
+    const result = normalizeGeocodingAddress(addr);
+    expect(result.line1).toBe('');
+    expect(result.area).toBe('');
+  });
+});
