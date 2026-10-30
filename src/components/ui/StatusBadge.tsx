@@ -120,26 +120,31 @@ export function StatCard({ label, value, hint, icon, tone = 'neutral', href }: S
   const content = (
     <>
       <div className="flex items-start justify-between gap-3">
-        <p className="text-sm font-medium text-ink-500">{label}</p>
+        <p className="text-[13px] font-medium text-ink-500">{label}</p>
         {icon && (
           <span className={cn('rounded-lg p-2', accent[tone])}>
             <Icon name={icon} size={16} />
           </span>
         )}
       </div>
-      <p className="mt-2 text-2xl font-bold tracking-tight text-ink-900 tabular-nums">{value}</p>
-      {hint && <p className="mt-1 text-xs text-ink-500">{hint}</p>}
+      <p className="mt-2.5 text-2xl font-bold leading-none tracking-tight text-ink-900 tabular-nums">
+        {value}
+      </p>
+      {hint && <p className="mt-2 text-[11px] leading-relaxed text-ink-400">{hint}</p>}
     </>
   );
 
   const className =
-    'block rounded-xl border border-ink-200 bg-white p-4 shadow-card transition-all duration-300';
+    'block rounded-card border border-ink-200 bg-white p-4 shadow-card transition duration-200';
 
   if (href) {
     return (
       <a
         href={href}
-        className={cn(className, 'hover:-translate-y-0.5 hover:border-brand-300 hover:shadow-elevated')}
+        className={cn(
+          className,
+          'hover:-translate-y-0.5 hover:border-brand-300 hover:shadow-raised motion-reduce:transform-none motion-reduce:transition-none',
+        )}
       >
         {content}
       </a>

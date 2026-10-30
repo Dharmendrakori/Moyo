@@ -190,7 +190,7 @@ export async function listAllBookings(opts: {
   q?: string;
   page?: number;
   pageSize?: number;
-}): Promise<{ items: AdminBookingRow[]; total: number }> {
+}): Promise<{ items: AdminBookingRow[]; total: number; awaitingTotal: number }> {
   const page = Math.max(1, opts.page ?? 1);
   const pageSize = Math.min(100, Math.max(1, opts.pageSize ?? 20));
 
@@ -199,7 +199,7 @@ export async function listAllBookings(opts: {
   // Prisma parameterises this value, so a search term cannot become SQL.
   if (opts.q) where.reference = { contains: opts.q };
 
-  const [rows, total] = await Promise.all([
+  const [rows, total, awaitingTotal] = await Promise.all([
     prisma.booking.findMany({
       where,
       orderBy: { createdAt: 'desc' },
@@ -222,10 +222,88 @@ export async function listAllBookings(opts: {
       },
     }),
     prisma.booking.count({ where }),
+    // Whole-queue figure, independent of the current filter and page, so the
+    // awaiting-confirmation indicator is never a page-local guess.
+    prisma.booking.count({ where: { status: 'REQUESTED' } }),
   ]);
 
-  return { items: rows, total };
+  return { items: rows, total, awaitingTotal };
 }
+
+/**
+ * One booking with everything an administrator needs to dispatch it, for
+ * `/admin/bookings/[id]`.
+ *
+ * Reachable only from an admin-guarded page. The projection is still explicit:
+ * it carries the contact details the job actually needs (the booking's own
+ * contact name and phone, plus the account email and phone so an operator can
+ * reach the customer), and deliberately excludes password hashes, session
+ * tokens, IP hashes, payment provider references and every other table.
+ *
+ * The status history is the real append-only `BookingStatusEvent` log - there is
+ * no second source of truth and no reconstructed timeline.
+ */
+export async function getAdminBookingDetail(bookingId: string) {
+  return prisma.booking.findUnique({
+    where: { id: bookingId },
+    select: {
+      id: true,
+      reference: true,
+      status: true,
+      mode: true,
+      serviceType: true,
+      charging: true,
+      quotedPaise: true,
+      budgetMinPaise: true,
+      budgetMaxPaise: true,
+      scheduledFor: true,
+      addressLine1: true,
+      addressLine2: true,
+      area: true,
+      city: true,
+      state: true,
+      pincode: true,
+      landmark: true,
+      contactName: true,
+      contactPhone: true,
+      description: true,
+      isEmergency: true,
+      createdAt: true,
+      updatedAt: true,
+      customer: { select: { id: true, name: true, email: true, phone: true, createdAt: true } },
+      service: {
+        select: {
+          id: true,
+          name: true,
+          slug: true,
+          serviceType: true,
+          subCategory: { select: { name: true, category: { select: { name: true } } } },
+        },
+      },
+      provider: { select: { id: true, displayName: true } },
+      technician: {
+        select: {
+          id: true,
+          displayName: true,
+          headline: true,
+          phone: true,
+          skills: true,
+          isActive: true,
+          isAvailable: true,
+        },
+      },
+      statusEvents: {
+        orderBy: { createdAt: 'asc' },
+        select: { id: true, from: true, to: true, actorRole: true, note: true, createdAt: true },
+      },
+      invoice: {
+        select: { id: true, number: true, status: true, totalPaise: true, currency: true, issuedAt: true },
+      },
+    },
+  });
+}
+
+export type AdminBookingDetail = NonNullable<Awaited<ReturnType<typeof getAdminBookingDetail>>>;
 
 export type AdminBookingRow = {
   id: string;

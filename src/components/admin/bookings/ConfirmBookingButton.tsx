@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { ConfirmDialog } from '@/components/ui/States';
+import { Icon } from '@/components/ui/Icon';
 import { useAdminMutation } from '@/components/admin/useAdminMutation';
 
 /**
@@ -41,9 +42,10 @@ export function ConfirmBookingButton({
         onClick={() => (error ? clearError() : setConfirming(true))}
         disabled={busy}
         aria-label={`Confirm booking ${booking.reference}`}
-        className="rounded-lg px-3 py-1.5 text-xs font-semibold bg-brand-600 text-white ring-1 ring-inset ring-brand-600/30 transition hover:bg-brand-700 disabled:opacity-60"
+        className="inline-flex items-center gap-1.5 rounded-lg bg-brand-600 px-3.5 py-2 text-sm font-semibold text-white shadow-card transition hover:bg-brand-700 active:bg-brand-800 disabled:cursor-not-allowed disabled:opacity-60"
       >
-        {busy ? 'Confirming…' : 'Confirm'}
+        <Icon name="check-circle" size={15} />
+        {busy ? 'Confirming…' : 'Confirm booking'}
       </button>
 
       <ConfirmDialog

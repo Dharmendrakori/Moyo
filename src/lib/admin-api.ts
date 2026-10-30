@@ -70,13 +70,17 @@ export async function adminWriteGuard(request: Request): Promise<Guarded> {
 }
 
 /**
- * Narrows the session user to the actor shape the catalog write models expect.
+ * Narrows the session user to the actor shape the catalog and booking write
+ * models expect.
  *
  * `requireAdmin()` has already proven the role is ADMIN; this re-states it in
  * the type so a future refactor cannot pass an arbitrary role into a write.
+ * An administrator owns no provider or technician record, so both scopes are
+ * explicitly null - `ownershipWhere()` reads ADMIN first and returns the bare
+ * `{ id }` scope, so these values never widen access.
  */
 export function asAdminActor(user: SessionUser) {
-  return { id: user.id, role: 'ADMIN' as const };
+  return { id: user.id, role: 'ADMIN' as const, providerId: null, technicianId: null };
 }
 
 /**

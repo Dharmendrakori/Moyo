@@ -94,10 +94,22 @@ export function AdminShell({
           }`}
         >
           <div
-            className={`flex h-16 shrink-0 items-center gap-2 border-b border-ink-800 px-5 ${
-              sidebarCollapsed ? 'lg:justify-center lg:gap-1 lg:px-1' : ''
+            className={`flex h-16 shrink-0 items-center gap-2.5 border-b border-white/10 ${
+              sidebarCollapsed ? 'lg:justify-center lg:gap-1 lg:px-1' : 'px-4'
             }`}
           >
+            {/* Brand mark. The wordmark hides in the collapsed rail; the mark stays. */}
+            <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-white/10 text-white ring-1 ring-inset ring-white/15">
+              <Icon name="bolt" size={18} />
+            </span>
+            <div className={`min-w-0 flex-1 ${sidebarCollapsed ? 'lg:hidden' : ''}`}>
+              <p className="truncate text-sm font-bold leading-tight tracking-tight text-white">
+                Seric Tech
+              </p>
+              <p className="truncate text-[10px] font-semibold uppercase tracking-[0.12em] text-ink-400">
+                Operations console
+              </p>
+            </div>
             {/*
               Desktop collapse toggle: switches the lg+ sidebar between the
               full w-64 column and the w-20 icon rail. The sidebar itself is
@@ -113,20 +125,12 @@ export function AdminShell({
               aria-expanded={!sidebarCollapsed}
               aria-label={sidebarCollapsed ? 'Expand admin sidebar' : 'Collapse admin sidebar'}
               title={sidebarCollapsed ? 'Expand admin sidebar' : 'Collapse admin sidebar'}
-              className="shrink-0 rounded-lg p-2 text-ink-400 hover:bg-ink-800 hover:text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-500"
+              className={`shrink-0 rounded-lg p-1.5 text-ink-400 transition hover:bg-white/10 hover:text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-400 ${
+                sidebarCollapsed ? 'lg:hidden' : ''
+              }`}
             >
               <Icon name="menu" size={18} />
             </button>
-            <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-brand-600 text-white">
-              <Icon name="bolt" size={18} />
-            </span>
-            {/* Branding text hides in the collapsed rail; the logo stays. */}
-            <div className={`min-w-0 ${sidebarCollapsed ? 'lg:hidden' : ''}`}>
-              <p className="whitespace-nowrap text-sm font-bold tracking-tight text-white">Seric Tech</p>
-              <p className="whitespace-nowrap text-[10px] font-medium uppercase tracking-wider text-ink-400">
-                Admin console
-              </p>
-            </div>
           </div>
 
           <nav
@@ -139,7 +143,7 @@ export function AdminShell({
           </nav>
 
           <div
-            className={`hidden shrink-0 border-t border-ink-800 lg:block ${
+            className={`hidden shrink-0 space-y-1 border-t border-white/10 lg:block ${
               sidebarCollapsed ? 'p-2' : 'p-3'
             }`}
           >
@@ -147,51 +151,40 @@ export function AdminShell({
               href="/"
               title={sidebarCollapsed ? 'View customer site' : undefined}
               aria-label={sidebarCollapsed ? 'View customer site' : undefined}
-              className={`flex items-center gap-2 rounded-lg py-2 text-xs font-medium text-ink-400 transition hover:bg-ink-800 hover:text-white ${
+              className={`flex items-center gap-2.5 rounded-lg py-2 text-xs font-medium text-ink-400 transition hover:bg-white/10 hover:text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-400 ${
                 sidebarCollapsed ? 'justify-center px-0' : 'px-3'
               }`}
             >
-              <Icon name="external" size={14} />
+              <Icon name="external" size={14} className="shrink-0" />
               <span className={sidebarCollapsed ? 'hidden' : ''}>View customer site</span>
             </Link>
+            <p
+              className={`px-3 pb-1 pt-2 text-[10px] leading-relaxed text-ink-500 ${
+                sidebarCollapsed ? 'hidden' : ''
+              }`}
+            >
+              Sign-in session checked on every request.
+            </p>
           </div>
         </aside>
 
         <div className="flex min-w-0 flex-1 flex-col">
           {/*
             The header sits INSIDE the right-hand column, beside the sidebar.
-            It carries the page title, administrator identity and logout plus
-            one mobile-only opener for the below-lg drawer — the desktop
-            collapse toggle lives in the sidebar's brand row (see the aside
-            below), so the header never duplicates it.
+            It carries the breadcrumb, page title, administrator identity and
+            logout plus one mobile-only opener for the below-lg drawer — the
+            desktop collapse toggle lives in the sidebar's brand row, so the
+            header never duplicates it.
           */}
           <Topbar
             title={activeItem?.label ?? 'Dashboard'}
+            isAdminHome={!activeItem || activeItem.href === '/admin'}
             userName={userName}
             userInitials={userInitials}
             roleLabel={roleLabel}
             onOpenDrawer={() => setDrawerOpen(true)}
           />
-          <main id="admin-main" className="min-w-0 flex-1 px-4 pb-12 pt-4 sm:px-6 lg:p-8">
-            <nav aria-label="Breadcrumb" className="mb-4">
-              <ol className="flex items-center gap-1.5 text-xs text-ink-500">
-                <li>
-                  <Link href="/admin" className="transition hover:text-brand-600">
-                    Admin
-                  </Link>
-                </li>
-                {activeItem && activeItem.href !== '/admin' && (
-                  <>
-                    <li aria-hidden className="text-ink-300">
-                      /
-                    </li>
-                    <li className="font-medium text-ink-700" aria-current="page">
-                      {activeItem.label}
-                    </li>
-                  </>
-                )}
-              </ol>
-            </nav>
+          <main id="admin-main" className="min-w-0 flex-1 px-4 pb-14 pt-6 sm:px-6 lg:px-8 lg:pt-8">
             {children}
           </main>
         </div>
@@ -199,29 +192,34 @@ export function AdminShell({
 
       {/* ---------- Mobile drawer (overlay only, z-index legitimate here) ---------- */}
       {drawerOpen && (
-        <div className="fixed inset-0 z-40 lg:hidden">
+        <div id="admin-mobile-drawer" className="fixed inset-0 z-40 lg:hidden">
           <div
-            className="absolute inset-0 animate-fade-in bg-ink-900/60"
+            className="absolute inset-0 animate-fade-in bg-ink-900/60 backdrop-blur-sm"
             onClick={() => setDrawerOpen(false)}
             aria-hidden
           />
           <aside
-            className="absolute inset-y-0 left-0 flex w-72 animate-slide-up flex-col border-r border-ink-800 bg-ink-900"
+            className="absolute inset-y-0 left-0 flex w-[17rem] max-w-[85vw] animate-slide-up flex-col border-r border-ink-800 bg-ink-900"
             role="dialog"
             aria-modal="true"
             aria-label="Admin navigation"
           >
-            <div className="flex h-16 shrink-0 items-center justify-between border-b border-ink-800 px-5">
-              <div className="flex items-center gap-2">
-                <span className="grid h-8 w-8 place-items-center rounded-lg bg-brand-600 text-white">
+            <div className="flex h-16 shrink-0 items-center justify-between border-b border-white/10 px-4">
+              <div className="flex min-w-0 items-center gap-2.5">
+                <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-white/10 text-white ring-1 ring-inset ring-white/15">
                   <Icon name="bolt" size={18} />
                 </span>
-                <p className="text-sm font-bold text-white">Seric Tech Admin</p>
+                <div className="min-w-0">
+                  <p className="truncate text-sm font-bold leading-tight text-white">Seric Tech</p>
+                  <p className="truncate text-[10px] font-semibold uppercase tracking-[0.12em] text-ink-400">
+                    Operations console
+                  </p>
+                </div>
               </div>
               <button
                 type="button"
                 onClick={() => setDrawerOpen(false)}
-                className="rounded-lg p-1.5 text-ink-400 hover:bg-ink-800 hover:text-white"
+                className="rounded-lg p-2 text-ink-400 transition hover:bg-white/10 hover:text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-400"
                 aria-label="Close navigation"
               >
                 <Icon name="close" size={18} />
@@ -234,6 +232,13 @@ export function AdminShell({
               onClick={() => setDrawerOpen(false)}
             >
               <NavList nav={nav} pathname={pathname} />
+              <Link
+                href="/"
+                className="mt-2 flex items-center gap-2.5 rounded-lg px-3 py-2 text-xs font-medium text-ink-400 transition hover:bg-white/10 hover:text-white"
+              >
+                <Icon name="external" size={14} />
+                View customer site
+              </Link>
             </nav>
           </aside>
         </div>
@@ -258,16 +263,16 @@ function NavList({
       {nav.map((group, index) => (
         <div
           key={group.heading}
-          className={`mb-5 ${index > 0 && !collapsed ? 'border-t border-ink-800 pt-4' : ''}`}
+          className={`${index > 0 ? 'mt-5' : ''} ${index > 0 && !collapsed ? 'border-t border-white/10 pt-4' : ''}`}
         >
           {/*
-            Group separation: a subtle hairline in the sidebar's existing
-            border colour with matching padding below — but never above the
-            first group, and not in the collapsed icon rail where the section
-            headings that give the separators meaning are hidden.
+            Group separation: a subtle hairline with matching padding above —
+            but never above the first group, and not in the collapsed icon rail
+            where the section headings that give the separators meaning are
+            hidden.
           */}
           <p
-            className={`px-3 pb-1.5 text-[10px] font-semibold uppercase tracking-wider text-ink-500 ${
+            className={`px-3 pb-2 text-[10px] font-semibold uppercase tracking-[0.12em] text-ink-500 ${
               collapsed ? 'hidden' : ''
             }`}
             aria-hidden={collapsed || undefined}
@@ -291,7 +296,7 @@ function NavList({
                       aria-disabled="true"
                       aria-label={collapsed ? soonLabel : undefined}
                       title={item.hint ? `Coming soon - ${item.hint}` : soonLabel}
-                      className={`flex cursor-not-allowed items-center gap-2.5 rounded-lg py-2 text-sm font-medium text-ink-600 ${
+                      className={`flex cursor-not-allowed items-center gap-2.5 rounded-lg py-2 text-[13px] font-medium text-ink-500 ${
                         collapsed ? 'justify-center px-0' : 'px-3'
                       }`}
                     >
@@ -300,7 +305,7 @@ function NavList({
                         {item.label}
                       </span>
                       <span
-                        className={`rounded bg-ink-800 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-ink-400 ${
+                        className={`rounded bg-white/5 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-ink-500 ${
                           collapsed ? 'hidden' : ''
                         }`}
                       >
@@ -318,15 +323,26 @@ function NavList({
                     aria-current={active ? 'page' : undefined}
                     aria-label={collapsed ? item.label : undefined}
                     title={collapsed ? item.label : undefined}
-                    className={`flex items-center gap-2.5 rounded-lg py-2 text-sm font-medium transition ${
+                    className={`relative flex items-center gap-2.5 rounded-lg py-2 text-[13px] font-medium transition ${
                       collapsed ? 'justify-center px-0' : 'px-3'
                     } ${
                       active
-                        ? 'bg-brand-600 text-white'
-                        : 'text-ink-300 hover:bg-ink-800 hover:text-white'
+                        ? 'bg-white/10 text-white shadow-xs'
+                        : 'text-ink-300 hover:bg-white/5 hover:text-white'
                     }`}
                   >
-                    <Icon name={item.icon} size={16} className="shrink-0" />
+                    {/* Active marker: a second, non-colour cue beside the tint. */}
+                    {active && (
+                      <span
+                        aria-hidden
+                        className="absolute inset-y-2 left-0 w-0.5 rounded-full bg-brand-400"
+                      />
+                    )}
+                    <Icon
+                      name={item.icon}
+                      size={16}
+                      className={`shrink-0 ${active ? 'text-brand-300' : 'text-ink-500'}`}
+                    />
                     <span className={`truncate ${collapsed ? 'hidden' : ''}`}>{item.label}</span>
                   </Link>
                 </li>
@@ -341,18 +357,21 @@ function NavList({
 
 function Topbar({
   title,
+  isAdminHome,
   userName,
   userInitials,
   roleLabel,
   onOpenDrawer,
 }: {
   title: string;
+  /** On the dashboard there is no parent trail beyond the console root. */
+  isAdminHome: boolean;
   /**
    * The header deliberately owns NO desktop navigation button: the desktop
    * collapse toggle lives in the sidebar's brand row (see AdminShell), and
-   * the header keeps only its mobile-only drawer opener plus the page title,
-   * administrator identity, avatar and logout — so there is never a desktop
-   * duplicate toggle.
+   * the header keeps only its mobile-only drawer opener plus the breadcrumb,
+   * page title, administrator identity, avatar and logout — so there is never
+   * a desktop duplicate toggle.
    */
   userName: string;
   userInitials: string;
@@ -360,7 +379,7 @@ function Topbar({
   onOpenDrawer: () => void;
 }) {
   return (
-    <header className="sticky top-0 z-20 flex h-16 shrink-0 items-center gap-3 border-b border-ink-200 bg-white px-4 sm:px-6 lg:px-8">
+    <header className="sticky top-0 z-20 flex h-16 shrink-0 items-center gap-3 border-b border-ink-200 bg-white/95 px-4 backdrop-blur supports-[backdrop-filter]:bg-white/85 sm:px-6 lg:px-8">
       {/*
         Mobile-only drawer opener (`lg:hidden`). The desktop collapse toggle
         is NOT here: it lives in the sidebar's brand row (see AdminShell), so
@@ -378,23 +397,50 @@ function Topbar({
       >
         <Icon name="menu" size={18} />
       </button>
-      <h2 className="text-base font-semibold text-ink-900">{title}</h2>
 
-      <div className="ml-auto flex items-center gap-3">
-        {/*
-          Authenticated operator identity and role. Rendered as text, never as
-          an image, and derived from the session the server already verified.
-        */}
+      <div className="min-w-0">
+        <nav aria-label="Breadcrumb">
+          <ol className="flex items-center gap-1.5 text-[11px] leading-none text-ink-400">
+            <li>
+              <Link href="/admin" className="transition hover:text-brand-600">
+                Console
+              </Link>
+            </li>
+            {!isAdminHome && (
+              <>
+                <li aria-hidden>
+                  <Icon name="chevron-right" size={11} className="text-ink-300" />
+                </li>
+                <li className="truncate font-medium text-ink-600" aria-current="page">
+                  {title}
+                </li>
+              </>
+            )}
+          </ol>
+        </nav>
+        <h2 className="mt-1 truncate text-[15px] font-semibold leading-none tracking-tight text-ink-900">
+          {title}
+        </h2>
+      </div>
+
+      <div className="ml-auto flex items-center gap-2 sm:gap-3">
+        {/* Role is stated as text, from the session the server already verified. */}
+        <span className="hidden items-center gap-1.5 rounded-full bg-ink-100 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-ink-600 md:inline-flex">
+          <Icon name="shield" size={11} />
+          {roleLabel}
+        </span>
+        {/* Authenticated operator identity. Rendered as text, never as an image. */}
         <div className="hidden text-right sm:block">
           <p className="max-w-[12rem] truncate text-xs font-semibold text-ink-800">{userName}</p>
-          <p className="text-[10px] uppercase tracking-wider text-ink-400">{roleLabel}</p>
+          <p className="text-[10px] uppercase tracking-wider text-ink-400">Signed in</p>
         </div>
         <span
-          className="grid h-9 w-9 place-items-center rounded-full bg-ink-900 text-xs font-bold text-white"
+          className="grid h-9 w-9 place-items-center rounded-full bg-ink-900 text-xs font-bold text-white ring-2 ring-white"
           aria-hidden
         >
           {userInitials}
         </span>
+        <span className="h-6 w-px bg-ink-200" aria-hidden />
         <LogoutButton />
       </div>
     </header>

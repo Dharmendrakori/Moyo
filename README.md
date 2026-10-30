@@ -42,6 +42,8 @@ A technology services platform for booking, tracking and managing field services
 | **Admin charging-option management** | **Implemented** |
 | **Admin published-pricing management** | **Implemented** |
 | **Admin bookings list** | **Implemented** - search by reference, status filter, server-side pagination; confirm and assign bookings; state transitions enforced server-side through the booking state machine |
+| **Admin booking details** | **Implemented** - `/admin/bookings/[id]`: full persisted record, status history from the append-only log, confirm and assign-technician actions |
+| **Admin console UI** | **Redesigned** - one shared design system across every admin route: responsive sidebar, breadcrumb header, KPI dashboard, premium tables and dialogs |
 | Admin bookings / dispatch / technicians / customers | **Implemented** - bookings list is live; confirm, assign, and state transitions are functional via the admin console |
 | Admin invoices / payments / reviews / audit log / settings | **Not yet implemented** - shown as disabled "Soon" |
 | Payment provider integration | **Requires production configuration** |
@@ -140,11 +142,42 @@ as the customer site. It is not a visual mockup and it runs on no mock data.
 | `/admin/services/[id]` | Service detail, charging configuration, published pricing |
 | `/admin/charging-options` | Which options Seric Tech Solutions offers, and Customer Budget ranges |
 | `/admin/pricing` | Publish / withdraw published prices |
-| `/admin/bookings` | Every booking, newest first: reference search, status filter, pagination (read-only) |
+| `/admin/bookings` | Every booking, newest first: reference search, status filter, pagination; rows open the booking detail |
+| `/admin/bookings/[id]` | One booking in full: request details, location, customer, pricing vs invoice, technician, status history, and the confirm / assign actions |
 
 Modules that are **not yet built** (Customers, Materials, Invoices, Payments, Reviews, Audit log, Settings) appear in the sidebar as **disabled entries marked "Soon"**. They are deliberately not links: a navigation item that leads to a 404 advertises a capability the console does not have. No planned module is dressed up with fake functionality, sample rows or placeholder metrics.
 
-**Booking confirmation and technician dispatch** are now implemented: administrators can confirm REQUESTED→CONFIRMED bookings and assign real technician records (active, provider-bound) to CONFIRMED bookings, advancing the state to TECHNICIAN_ASSIGNED. State transitions are enforced server-side through the booking state machine.
+### Console design system
+
+The console has one visual language, declared once and shared by every admin
+route. There is no new UI framework and no new dependency: the design is built
+from the existing Tailwind CSS v4 tokens in `src/app/globals.css` (brand blue,
+the `ink` neutral ramp, the functional status colours, `--radius-card`, and the
+layered `shadow-card` / `shadow-raised` / `shadow-overlay` scales). The
+customer-facing site is untouched by this work.
+
+| Piece | Where it lives | What it gives every screen |
+| --- | --- | --- |
+| Shell, sidebar, header | `src/components/admin/Chrome.tsx` | Brand block, grouped navigation (Overview / Catalog / Operations / Commerce / Platform), active-route marker, hover and focus states, collapsed icon rail at `lg`, overlay drawer below `lg`, breadcrumb + page title + role chip + identity + logout |
+| Surfaces | `Panel`, `PageHeader`, `Notice` in `src/components/admin/DataTable.tsx` | Identical card border, radius, shadow and header rhythm on every page |
+| Tables | `DataTable` | Shared header typography, row spacing, hover feedback, optional whole-row link, and `secondary` columns that drop below `lg` |
+| Filters and paging | `Toolbar`, `SearchField`, `SelectField`, `Pager` | One field style, one focus ring, one pager |
+| Metrics | `StatCard` | KPI tile with icon accent, value and honest hint |
+| States | `EmptyState`, `LoadingState`, `ErrorState` in `src/components/ui/States.tsx` | No ambiguous blank areas |
+
+Behavioural guarantees kept from before: search, filters, pagination and bulk
+actions are still plain GET forms and real links, so every view is
+URL-addressable; the sidebar keeps its separate desktop-collapse and mobile-drawer
+states; animation is short and `prefers-reduced-motion` is honoured globally; and
+the "Soon" items are still non-navigable `<span>`s, never links to a 404.
+
+The dashboard was regrouped around real aggregates only: a dispatch KPI row, the
+catalogue/commerce row, the 7-day booking chart, the status breakdown, a shortcut
+panel that links only to routes that exist (and only to filters their schemas
+accept), and an attention strip driven by counts that are actually non-zero.
+Figures whose screens are still planned - invoices, reviews, support threads,
+material orders - are shown as plain numbers with a note, never as links.
+
 
 ### Admin API
 
@@ -201,24 +234,70 @@ stale claim.
 or `/api/admin/**`. `PROVIDER` and `TECHNICIAN` are scoped owners elsewhere in
 the booking model, but are **not** administrators.
 
-### Admin bookings list
+### Admin bookings: the dispatch queue
 
-`/admin/bookings` is the dispatch queue's read side: every booking in the
-database, newest first, with a reference search box, a status filter and
-server-side pagination. The page and `GET /api/admin/bookings` share one
-`.strict()` query schema (`adminBookingQuerySchema` in `src/lib/validation.ts`):
-only `q`, `status`, `page` and `pageSize` are accepted, an unknown parameter or
-a free-form status is rejected (422 on the API, safe defaults on the page), and
-`status` reaches the query only as an allowlisted canonical `BOOKING_STATUSES`
-value (`ALL` means no constraint).
+`/admin/bookings` is the dispatch queue: every booking in the database, newest
+first, with a reference search box, a status filter and server-side pagination.
+The page and `GET /api/admin/bookings` share one `.strict()` query schema
+(`adminBookingQuerySchema` in `src/lib/validation.ts`): only `q`, `status`,
+`page` and `pageSize` are accepted, an unknown parameter or a free-form status is
+rejected (422 on the API, safe defaults on the page), and `status` reaches the
+query only as an allowlisted canonical `BOOKING_STATUSES` value (`ALL` means no
+constraint).
 
 Authorization is the standard read chain (`adminReadGuard` on the API,
 `requireAdminPage` on the page): 401 with no session, 403 for any non-ADMIN
 role. The row projection (`listAllBookings` in `src/lib/customer-bookings.ts`)
 is explicit - customer name and service location only, never phone, email or
-street address. The screen is read-only: confirming a booking, assigning a
-technician and advancing booking state are not built yet, and no control on the
-page pretends otherwise.
+street address. A table row is the worst place to expose contact data.
+
+The header carries an awaiting-confirmation indicator. It is a real
+`count({ status: 'REQUESTED' })` over the whole queue, not a count of the rows on
+the current page, so it is never a page-local guess. Above the table, three
+counts are shown: in the queue, matching the current view, and on this page.
+
+Every row is a link to the booking detail. The stretched anchor in the first cell
+means the whole row is clickable, hover-highlighted and reachable by keyboard
+(`aria-label="Open booking SERIC-2026-000123"`); the reference cell stays a real
+link, so the row works even if the overlay ever misbehaved.
+
+### Admin booking detail
+
+`/admin/bookings/[id]` is where a booking is actually handled. It renders one
+booking from a single admin-only query (`getAdminBookingDetail`), with an
+explicit projection:
+
+| Section | What is shown |
+| --- | --- |
+| Booking information | Reference, status, created and updated timestamps, mode, requested service date, service, category, service type, provider, priority, charging option, and the customer's own description (or an honest "no description" line) |
+| Service location and contact | Full address, landmark, area, contact name and a `tel:` link for the contact phone |
+| Customer | Account name, email, phone, "customer since", and the account reference |
+| Technician and dispatch | Assigned technician's name, headline, skills, phone, active/available state - or an explanation of why nobody is assigned yet |
+| Pricing | The stored estimate or budget range with `summarisePrice()`, kept verbally and visually separate from the **final invoice** block (which says plainly when no invoice exists) |
+| Lifecycle | Current stage, the next action, every recorded transition from the append-only `BookingStatusEvent` log (with the actor role and real timestamp), and the remaining stages explicitly labelled "not yet recorded" |
+
+Nothing is invented. If a booking has no status event, the page says so instead
+of rendering a synthetic timeline; a `null` quote renders "Not published", never
+`₹0`; and a published price is always labelled an estimate with the note that the
+invoice is produced after the work.
+
+Two actions live on the page, and only when the current state allows them:
+
+- **Confirm booking** - rendered for `REQUESTED` only. Opens a confirmation
+  dialog, posts to `POST /api/admin/bookings/[id]/confirm`, disables while in
+  flight, and shows the server's own message on failure.
+- **Assign technician** - rendered for `CONFIRMED` with no technician. Loads real
+  technician records from `GET /api/admin/technicians`, posts to
+  `POST /api/admin/bookings/[id]/assign-technician`, and closes on Escape or
+  backdrop click.
+
+Both re-render from the database after success (`router.refresh()`), so the page
+can never disagree with the server - the status badge, the timeline, the
+technician panel and the action availability all update together. Neither
+component sends a target status: they request an action and the server resolves
+the transition through the booking state machine, so a hidden or hand-crafted
+request cannot skip a step.
+
 
 ### Mutations
 
@@ -888,6 +967,90 @@ git checkout backup/pre-moyo-refactor
 ```
 
 The refactor work is on `feature/moyo-platform`. `main` was never modified.
+
+---
+
+## Changelog - Admin console redesign and booking details
+
+### Booking details (`/admin/bookings/[id]`)
+
+Clicking any row on `/admin/bookings` now opens a dedicated detail page - not a
+modal, because the record is extensive and carries the two dispatch actions.
+
+- **Data**: one admin-only query, `getAdminBookingDetail()` in
+  `src/lib/customer-bookings.ts`, with an explicit projection. It selects what a
+  dispatcher needs (booking fields, service + category, provider, technician,
+  customer account contact, status events, invoice summary) and nothing else -
+  no password hash, session, IP hash or payment provider reference.
+- **Sections**: booking information, service location and contact, customer,
+  technician and dispatch, pricing with a separately labelled final-invoice
+  block, and the lifecycle.
+- **Lifecycle**: the current stage, the next action, every persisted
+  `BookingStatusEvent` (actor role + real timestamp) and the remaining stages
+  marked "not yet recorded". No timestamp is ever synthesised; a booking with no
+  events says so.
+- **Actions**: `Confirm booking` (REQUESTED only) and `Assign technician`
+  (CONFIRMED, unassigned). Both reuse the existing audited endpoints, re-render
+  from the database on success, and cannot send a target status.
+- **Accessibility**: `aria-label`s on both actions, a labelled dialog with
+  `aria-modal`, Escape to close, and visible focus rings.
+
+### Console redesign
+
+- `Chrome.tsx`: refined brand block, grouped nav with an active marker and hover
+  states, collapsed icon rail, mobile drawer and a header carrying breadcrumb,
+  page title, role chip, identity and logout.
+- `DataTable.tsx`: `Panel`, refined `PageHeader` and `Notice`, plus an optional
+  `rowHref` / `rowLabel` for whole-row links.
+- `Toolbar.tsx`: one field style for search and select, refined pager.
+- `StatusBadge.tsx`: refined `StatCard` KPI tile.
+- Dashboard: regrouped around live aggregates, real attention counts, and
+  shortcuts that only point at routes and filters that exist.
+- Bookings list: awaiting-confirmation indicator from a real whole-queue count,
+  three queue counts, clickable rows, technician visibility, refined empty and
+  filtered states.
+
+### Backend touch
+
+- `listAllBookings()` now also returns `awaitingTotal` (one extra
+  `count({ status: 'REQUESTED' })`) so the queue indicator is a real figure.
+- `getAdminBookingDetail()` added next to it. No schema change, no migration.
+- `asAdminActor()` now returns `providerId` / `technicianId` (both `null`), which
+  is the shape `assertCanManageBooking()` already required. This was a
+  pre-existing type error in the confirm and assign-technician routes; the
+  behaviour is unchanged because `ownershipWhere()` reads the ADMIN role first.
+
+### Verification (actual results)
+
+- `npm run lint` - PASS (0 problems).
+- `npm run typecheck` - PASS for every source file; 3 pre-existing `TS7006`
+  errors remain in the untracked `tests/seric-loader.test.ts`, which was not
+  touched by this work.
+- `npm test` - 355 passed / 4 failed out of 359. The 4 failures are pre-existing
+  and unrelated (`tests/provider-identity.test.ts` retired-identity strings,
+  `tests/seric-loader.test.ts` loader CSS assertions). 15 new tests were added and
+  all pass: `tests/admin-booking-detail.test.ts` (5) and
+  `tests/admin-booking-dispatch.test.ts` (10), plus a shared fixture in
+  `tests/stubs/booking-store.ts`.
+- `npx next build` - PASS; `/admin/bookings/[id]` is in the route manifest.
+- `npm run audit:prod` - 2 advisories in `next` (critical) and `zod` (high).
+  Both are pre-existing and neither was introduced here; no dependency was added.
+- **Browser verification was NOT performed.** The development database has no
+  ADMIN account (`SEED_ADMIN_EMAIL` / `SEED_ADMIN_PASSWORD` are empty), so the
+  console cannot be reached without creating an operator account, which is an
+  operational decision rather than part of this change.
+
+### Known limitations
+
+- Only two administrative actions exist, because only two are implemented
+  server-side. Cancellation, reassignment and later lifecycle steps have no
+  console UI.
+- Reassignment is deliberately absent: the state machine only permits
+  `CONFIRMED -> TECHNICIAN_ASSIGNED`, so once a booking moves past CONFIRMED it
+  cannot be re-assigned through this endpoint.
+- The detail page shows customer account email and phone. That is intentional for
+  dispatch and is guarded by the server-side admin check on both the page and the
+  API, but it is personal data - treat it accordingly.
 
 ---
 
