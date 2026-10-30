@@ -12,13 +12,13 @@ explicit list of what remains outstanding. Treat section 6 as a launch
 checklist, not optional reading.
 
 Verification performed for this release (Milestone 3 - invoices, measured on this
-working tree - 29 suites, 432 tests):
+working tree - 30 suites, 451 tests):
 
 | Check | Command | Result |
 | --- | --- | --- |
 | Type safety | `npm run typecheck` | PASS (0 errors) |
 | Lint | `npm run lint` | PASS (0 errors) |
-| Unit tests | `npm test` | PASS (432 tests, 29 suites) |
+| Unit tests | `npm test` | PASS (451 tests, 30 suites) |
 | Production compile | `npx next build` | PASS |
 | Production build script | `npm run build` | **PASS** - `prisma generate` ✔ (Prisma Client 5.22.0) then `next build` ✔ (44 routes). See the README changelog for the Windows file-lock cause that previously blocked it |
 | Dependency audit (runtime) | `npm run audit:prod` | 0 vulnerabilities |
@@ -366,7 +366,15 @@ changes, role changes and access denials.
 
 ## 3. Automated test coverage
 
-432 tests across 29 suites (`npm test`). The security-relevant ones:
+451 tests across 30 suites (`npm test`). The security-relevant ones:
+
+- **`tests/admin-invoices-page.test.ts`** - the invoice query schema is actually
+  exported and has a working `safeParse`, invalid statuses / unknown parameters /
+  unsafe pagination are rejected, array-valued parameters are normalised before
+  validation, and the REAL `/admin/invoices` and `/admin/invoices/[id]` server
+  components render (including their 401-redirect and non-admin not-found guards).
+  This suite exists because an undefined schema reference in that page surfaced as
+  a browser runtime error rather than a test failure.
 
 - **`tests/invoice-ledger.test.ts`** - invoice eligibility for every booking
   status (including `CLOSED`/`CANCELLED` and a `CUSTOMER_BUDGET` booking with no

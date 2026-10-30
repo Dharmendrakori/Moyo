@@ -82,7 +82,7 @@ says so plainly.
 | Auth | Opaque database-backed sessions, bcrypt (cost 12), server-side RBAC |
 | Validation | Zod **4.6.7**, `.strict()` on request bodies |
 | Styling | Tailwind CSS v4 (CSS-first `@theme`) |
-| Tests | Vitest (432 tests, 29 suites) |
+| Tests | Vitest (451 tests, 30 suites) |
 | Lint | ESLint 9 flat config |
 
 **No third-party JavaScript or CSS runs on any page.** Icons are inline SVG and
@@ -853,7 +853,7 @@ src/
 │   ├── pricing.ts           Server-side price resolution
 │   ├── customer-bookings.ts Ownership-scoped customer reads
 │   ├── queries.ts           Catalog read models
-│   ├── validation.ts        Zod schemas
+│   ├── validation.ts        Zod schemas + search-param normalisation
 │   ├── uploads.ts           Upload validation
 │   ├── audit.ts             Audit logging
 │   ├── rate-limit.ts        Rate limiting
@@ -900,7 +900,8 @@ executes end to end.
 | **`admin-bookings.test.ts`** | **12** | **Real `GET /api/admin/bookings`: 401/403, strict query rejects, allowlisted status filter, reference search, bounded pagination, nav live** |
 | **`invoice-ledger.test.ts`** | **35** | **Invoice eligibility for every booking status, integer-paise arithmetic, reconciliation guard, tax pinned to zero, snapshot reads, numbering prefix, PDF structure/escaping/figures** |
 | **`invoice-api.test.ts`** | **25** | **Real invoice routes: 401/403/CSRF/Origin, issue from a completed booking, refusal for ineligible and customer-budget bookings, repeated and simultaneous requests, sequential numbering, mass-assignment refusal, ledger search/paging, admin + customer PDFs, cross-customer 404** |
-| **Total (suites listed here)** | **259** | **The runner reports 432 tests across 29 files (see changelog)** |
+| **`admin-invoices-page.test.ts`** | **19** | **The query schema export and its `safeParse`, defaults/valid/invalid query handling, array-parameter normalisation, and the REAL `/admin/invoices` + `/admin/invoices/[id]` server components rendering (and their auth guards)** |
+| **Total (suites listed here)** | **278** | **The runner reports 451 tests across 30 files (see changelog)** |
 
 The admin suites assert the properties that must not regress: a CUSTOMER gets
 `403` on every admin endpoint and writes nothing, an unauthenticated caller gets
@@ -939,7 +940,7 @@ Current state (verified for the invoice milestone - Milestone 3):
 | --- | --- |
 | `npm run typecheck` | PASS (0 errors) |
 | `npm run lint` | PASS (0 errors, 0 warnings) |
-| `npm test` | PASS (432 tests, 29 suites) |
+| `npm test` | PASS (451 tests, 30 suites) |
 | `npm run build` | PASS (44 routes) |
 | `npm run audit:prod` | 0 vulnerabilities |
 
@@ -1121,6 +1122,94 @@ git checkout backup/pre-moyo-refactor
 ```
 
 The refactor work is on `feature/moyo-platform`. `main` was never modified.
+
+---
+
+## Changelog - Admin invoice page runtime error
+
+`/admin/invoices` crashed in the browser with
+`TypeError: Cannot read properties of undefined (reading 'safeParse')` at
+`src/app/admin/invoices/page.tsx:44`.
+
+### Root cause
+
+Not a missing, renamed or mis-imported schema. `adminInvoiceQuerySchema` is
+declared and exported exactly once in `src/lib/validation.ts`, and the page
+imports it by that same name and path. The evidence:
+
+| Check | Result |
+| --- | --- |
+| `import('../src/lib/validation.ts')` in Node | 51 exports, including `adminInvoiceQuerySchema`; `safeParse` works |
+| `GET /api/admin/invoices` (a **different chunk** using the same schema) | `200` with correct data; `?status=NOPE` → `422` naming the allowlist |
+| `/admin/bookings` (same import path, older export) | renders |
+| `/admin/invoices` | crashed |
+| Production build server | served the page normally |
+
+The compiled page chunk imports the schema through Turbopack's runtime module
+registry (`__TURBOPACK__imported__module__…["adminInvoiceQuerySchema"]`). The
+development server that was running (started 17:16, an hour before
+`validation.ts` gained this export at 18:13) still had the **pre-change
+`validation.ts` module instance** registered for that page's graph, so the named
+binding resolved to `undefined` while the same module resolved correctly in
+routes that had been recompiled since. A stale dev-server module, not a bug in
+the repository - confirmed by changing only that module's content, after which
+the live page rendered immediately without any other change.
+
+### What changed
+
+- `src/lib/validation.ts` exports `normaliseSearchParams()`, and both admin query
+  pages use it instead of each keeping an inline copy of the same
+  `searchParams` → single-valued-record mapping. Behaviour is identical: the
+  first value of a repeated parameter wins, absent parameters stay `undefined`,
+  and the strict schema still rejects an unknown parameter rather than passing it
+  into a database filter.
+- `src/app/admin/invoices/page.tsx` and `src/app/admin/bookings/page.tsx` call it.
+- No validation was relaxed, no optional chaining was added, no fallback replaced
+  a check, and no query contract changed.
+
+### Regression coverage
+
+`tests/admin-invoices-page.test.ts` (19 tests) pins the module contract - the
+schema is exported, `safeParse` is a function, defaults / valid search / valid
+status / invalid status / invalid pagination all behave - plus array-parameter
+normalisation, and drives the **real** `/admin/invoices` and
+`/admin/invoices/[id]` server components through `renderToStaticMarkup` so an
+undefined schema or a throwing parse fails a test instead of reaching a browser.
+The auth guards are asserted too (anonymous → `/login?next=%2Fadmin%2Finvoices`,
+CUSTOMER → not-found).
+
+### Verification (actual results)
+
+| Check | Result |
+| --- | --- |
+| `npm run typecheck` | PASS (0 errors) |
+| `npm run lint` | PASS (0 errors, 0 warnings) |
+| `npm test` | **PASS - 451 tests, 30 suites** (432 before this fix) |
+| `npm run build` | PASS - invoice routes compiled |
+| `npm run audit:prod` | 0 vulnerabilities |
+
+Against the running server: `/admin/invoices`, `?q=SERIC&status=ISSUED`,
+`?page=2` and a deliberately malformed `?status=NOPE&page=abc&pageSize=0&sort=desc`
+all return `200` and render the ledger (no runtime error); anonymous still gets
+`307 → /login`.
+
+Against a fresh server on a copy of the database: ledger empty/populated states,
+booking page issues an invoice (`201 SERIC-INV-2026-000001`, ₹1,499.00), a repeat
+is refused (`409 ALREADY_INVOICED`), search and the status filter find it, the
+detail page renders the line item and PDF link, the PDF downloads
+(`application/pdf`, `%PDF-1.4`, `INR 1,499.00`, `%%EOF`), and the administrator is
+refused (`404`) on the customer endpoint. The live database was left untouched
+(0 invoices, 8 bookings, counters unchanged).
+
+### Operational note
+
+A long-running `next dev` keeps module instances in memory, and this codebase
+also caches the Prisma client on `globalThis`. After pulling a change that adds a
+module export **or** alters the Prisma schema, restart `npm run dev`. On the
+server that was already running here, the page rendered after the module change
+but invoice writes and PDF reads still returned `500` because the in-memory
+Prisma client predated the schema: a restart, not a code change, is what fixes
+that. It was not killed from here.
 
 ---
 

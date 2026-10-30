@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import { requireAdminPage } from '@/lib/admin-page-guard';
 import { invoiceStatusLabel, listInvoices } from '@/lib/invoice';
-import { adminInvoiceQuerySchema } from '@/lib/validation';
+import { adminInvoiceQuerySchema, normaliseSearchParams } from '@/lib/validation';
 import { INVOICE_STATUSES } from '@/lib/domain';
 import { DataTable, Notice, PageHeader } from '@/components/admin/DataTable';
 import { Pager, SearchField, SelectField, Toolbar } from '@/components/admin/Toolbar';
@@ -38,9 +38,7 @@ export default async function AdminInvoicesPage({
 
   // `.strict()` rejects an unrecognised parameter rather than forwarding it into
   // a database filter; a bad query falls back to the defaults.
-  const raw = Object.fromEntries(
-    Object.entries(await searchParams).map(([k, v]) => [k, Array.isArray(v) ? v[0] : v]),
-  );
+  const raw = normaliseSearchParams(await searchParams);
   const parsed = adminInvoiceQuerySchema.safeParse(raw);
   const query = parsed.success ? parsed.data : adminInvoiceQuerySchema.parse({});
 

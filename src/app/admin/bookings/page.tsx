@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import { requireAdminPage } from '@/lib/admin-page-guard';
 import { listAllBookings } from '@/lib/customer-bookings';
-import { adminBookingQuerySchema } from '@/lib/validation';
+import { adminBookingQuerySchema, normaliseSearchParams } from '@/lib/validation';
 import { BOOKING_STATUSES, MODE_LABEL, type BookingMode } from '@/lib/domain';
 import { STATUS_LABEL } from '@/lib/booking-state';
 import { DataTable, Notice, PageHeader } from '@/components/admin/DataTable';
@@ -43,9 +43,7 @@ export default async function AdminBookingsPage({
 
   // `.strict()` means an unrecognised query parameter is rejected rather than
   // forwarded into a database filter; a bad query falls back to the defaults.
-  const raw = Object.fromEntries(
-    Object.entries(await searchParams).map(([k, v]) => [k, Array.isArray(v) ? v[0] : v]),
-  );
+  const raw = normaliseSearchParams(await searchParams);
   const parsed = adminBookingQuerySchema.safeParse(raw);
   const query = parsed.success ? parsed.data : adminBookingQuerySchema.parse({});
 

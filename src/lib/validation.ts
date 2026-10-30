@@ -842,3 +842,21 @@ export const searchSchema = z.object({
     .transform((s) => s.replace(controlChars, ''))
     .optional(),
 });
+
+/**
+ * Collapses Next.js `searchParams` into the single-valued record the query
+ * schemas expect.
+ *
+ * A repeated parameter (`?status=ISSUED&status=PAID`) arrives as an array, and an
+ * absent one arrives as `undefined`. The strict schemas take one value per key, so
+ * the first entry wins and the rest are dropped rather than being passed into a
+ * database filter. Normalising here keeps every admin table consistent - one place
+ * decides how a URL becomes query input, and no page can drift from it.
+ */
+export function normaliseSearchParams(
+  params: Record<string, string | string[] | undefined>,
+): Record<string, string | undefined> {
+  return Object.fromEntries(
+    Object.entries(params).map(([key, value]) => [key, Array.isArray(value) ? value[0] : value]),
+  );
+}
