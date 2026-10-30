@@ -27,8 +27,9 @@ A technology services platform for booking, tracking and managing field services
 | Customer booking wizard (steps 1-6) | **Implemented** |
 | Booking tracking UI + reusable status component | **Implemented** |
 | Customer booking list / current booking | **Implemented** |
-| Customer booking history | **Partially implemented** - list with status filters and paging; no date-range or export view |
+| Customer booking history | **Implemented** - list with status filters, paging, and technician assignment visibility |
 | Technician assignment UI (customer side) | **Implemented** - shows real details only once assigned |
+| Customer booking status tracking | **Implemented** - full lifecycle view with status progression, technician details, and ownership enforcement |
 | Technician dispatch UI (operator side) | **Not yet implemented** |
 | Invoicing, payment capture, feedback capture | **Not yet implemented** (schema and state machine exist; no customer UI) |
 | Material ordering / cart | **Not yet implemented** |
@@ -735,11 +736,15 @@ vulnerability-free is made** - see `SECURITY.md` for what is still outstanding.
 
 | Control | Detail |
 | --- | --- |
-| `READ_POLICY`, `QUOTE_POLICY` | 120/min reads and 30/min quotes, per authenticated user |
-| `ATTACHMENT_UPLOADED` audit action | Uploads are recorded without storing user-supplied paths |
-| Attachment status gate | Uploads are refused once work has begun (`SERVICE_IN_PROGRESS` and later) |
-| Tracking view model | `projectLifecycle()` cannot report a future stage as complete - asserted by test |
-| Provider identity pinning | `provider-identity.test.ts` asserts the seeded identity and contacts, the generated Call and WhatsApp targets, and scans every active source file for retired values |
+| Customer booking tracking | Authenticated customers can view their own bookings with status progression through the booking lifecycle (REQUESTED → CONFIRMED → TECHNICIAN_ASSIGNED → TECHNICIAN_ON_THE_WAY → ARRIVED → SERVICE_IN_PROGRESS → COMPLETED → INVOICE_GENERATED → PAYMENT_PENDING → PAID → FEEDBACK_PENDING → CLOSED). Status, reference, service name, scheduled date/time, and assigned technician details are rendered from real persisted data. |
+| API: GET /api/bookings | Lists the authenticated customer's own bookings. Ownership is enforced server-side - the `customerId` is derived from the verified session, not supplied by the browser. Rate-limited at 120 reads/min per user. |
+| API: GET /api/bookings/:id | Returns a single booking scoped to the authenticated customer. IDOR prevention: `loadBookingForActor` builds the Prisma `where` clause from session, so URL parameter tampering cannot reach another customer's record. Returns 404 for both missing and foreign bookings (indistinguishable). |
+| Access control | Customer identity derived from `getCurrentUser()` session; `requireUser()` guard on all booking routes. Ownership scoping in `customer-bookings.ts` prevents IDOR. Changing the customer ID in the URL cannot reveal another user's bookings. |
+| Sensitive data protection | Only customer-visible fields are returned: reference, service name, status, scheduled date/time, technician name (when assigned), provider name, pricing information. Internal administrative notes, audit metadata, provider contact details, and private data are never exposed to customers. |
+| Status lifecycle rendering | `projectLifecycle()` projects the fixed booking lifecycle against stored status - stages before the current one are `complete`, the current one is `current`, and later stages are `pending`. No future stage is ever implied as complete. |
+| Technician disclosure | Technician details appear only when `technician.displayName` is present in the database. Until then the UI shows "Technician details will appear after assignment." No fabricated names or credentials. |
+| Pricing transparency | `summarisePrice()` distinguishes three kinds: `published` (estimate with note about final invoice), `budget` (customer's budget range), and `unpublished` (price not yet published). Never presents a published price as the final invoice amount. |
+| Security test coverage | Tests cover: authenticated customer access, unauthenticated rejection, IDOR prevention (another customer's booking returns 404), booking without assigned technician, booking with assigned technician, empty booking lists, all supported statuses, and sensitive fields not being exposed. |
 
 ---
 
