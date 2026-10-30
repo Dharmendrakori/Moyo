@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { BOOKING_STATUSES } from './domain';
+import { BOOKING_STATUSES, INVOICE_STATUSES } from './domain';
 
 /**
  * CENTRAL VALIDATION SCHEMAS
@@ -792,6 +792,37 @@ export const adminAssignTechnicianSchema = z
     technicianId: z.string().trim().min(1, 'Select a technician'),
   })
   .strict();
+
+/**
+ * Query parameters for the admin invoice table.
+ *
+ * `.strict()` rejects an unrecognised parameter rather than forwarding it into a
+ * database filter, and `status` is the canonical invoice-status allowlist plus
+ * `ALL`. Page bounds stop a single request from asking for an unbounded scan.
+ */
+export const adminInvoiceQuerySchema = z
+  .object({
+    q: z
+      .string()
+      .trim()
+      .max(80)
+      .transform((s) => s.replace(controlChars, ''))
+      .optional(),
+    /** ALL = no status constraint; otherwise exactly one canonical status. */
+    status: z.enum(['ALL', ...INVOICE_STATUSES]).default('ALL'),
+    page: z.coerce.number().int().min(1).max(10_000).default(1),
+    pageSize: z.coerce.number().int().min(1).max(100).default(20),
+  })
+  .strict();
+
+/**
+ * Body for issuing an invoice.
+ *
+ * No fields are accepted, and `.strict()` means any attempt to supply an amount,
+ * a price, a tax rate or a line item rejects the whole request. Every figure is
+ * resolved from the persisted booking.
+ */
+export const adminGenerateInvoiceSchema = z.object({}).strict();
 
 // ---------------------------------------------------------------------------
 // Shared query params

@@ -395,8 +395,15 @@ model Invoice {
   taxPaise      Int
   totalPaise    Int
   currency      String  @default("INR")
-  taxRateBps    Int     @default(1800)
+  /// Basis points. Zero because no verified tax registration/rule is configured;
+  /// a default of 18% would silently invent a tax liability.
+  taxRateBps    Int     @default(0)
   notes         String?
+  /// Immutable JSON snapshot of the seller as it stood when the invoice was
+  /// issued. A later edit to Provider must never rewrite a historical invoice.
+  sellerSnapshot   String?
+  /// Immutable JSON snapshot of the billed customer and service address.
+  customerSnapshot String?
   issuedAt  DateTime?
   paidAt    DateTime?
   createdAt DateTime @default(now())
@@ -414,6 +421,8 @@ model InvoiceLineItem {
   invoiceId   String
   invoice     Invoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
   description String
+  /// VISIT_CHARGE | FIXED_CHARGE | CUSTOMER_BUDGET, snapshotted at issue time.
+  charging    String?
   quantity    Int     @default(1)
   unitPaise   Int
   amountPaise Int

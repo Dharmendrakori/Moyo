@@ -93,8 +93,7 @@ export const ADMIN_NAV: AdminNavGroup[] = [
         href: '/admin/invoices',
         label: 'Invoices',
         icon: 'receipt',
-        status: 'planned',
-        hint: 'Issue, track and void invoices',
+        status: 'live',
       },
       {
         href: '/admin/payments',

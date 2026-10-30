@@ -140,3 +140,12 @@ export const QUOTE_POLICY: RateLimitRule = { name: 'quote', limit: 30, windowMs:
 
 /** Webhook endpoint: providers retry, so the limit is generous. */
 export const WEBHOOK_POLICY: RateLimitRule = { name: 'webhook', limit: 120, windowMs: 60_000 };
+
+/**
+ * Invoice issuance and PDF generation.
+ *
+ * Tighter than the general admin mutation quota, because each invoice is a
+ * financial document: a compromised session should not be able to print hundreds
+ * of invoices a minute, and each PDF render costs real CPU.
+ */
+export const INVOICE_POLICY: RateLimitRule = { name: 'invoice', limit: 30, windowMs: 60_000 };

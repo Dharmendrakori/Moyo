@@ -21,6 +21,8 @@ import { StatusBadge, toneForStatus } from '@/components/ui/StatusBadge';
 import { Icon } from '@/components/ui/Icon';
 import { ConfirmBookingButton } from '@/components/admin/bookings/ConfirmBookingButton';
 import { AssignTechnicianDialog } from '@/components/admin/bookings/AssignTechnicianDialog';
+import { GenerateInvoiceButton } from '@/components/admin/bookings/GenerateInvoiceButton';
+import { assessInvoiceEligibility, invoiceStatusLabel } from '@/lib/invoice';
 
 export const metadata: Metadata = {
   title: 'Booking details',
@@ -93,6 +95,16 @@ export default async function AdminBookingDetailPage({
   const canConfirm = booking.status === 'REQUESTED';
   const canAssign = booking.status === 'CONFIRMED' && !booking.technician;
 
+  // Invoicing is decided by the same pure rule the API enforces, so this page can
+  // never offer an action the server would refuse.
+  const invoiceEligibility = assessInvoiceEligibility({
+    status: booking.status,
+    charging: booking.charging,
+    quotedPaise: booking.quotedPaise,
+    hasInvoice: Boolean(booking.invoice),
+    hasSeller: Boolean(booking.provider),
+  });
+
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-2">
@@ -156,6 +168,12 @@ export default async function AdminBookingDetailPage({
                 : null,
             }}
           />
+          {invoiceEligibility.eligible && (
+            <GenerateInvoiceButton
+              booking={{ id: booking.id, reference: booking.reference }}
+              amountLabel={formatINR(booking.quotedPaise ?? 0)}
+            />
+          )}
         </div>
       </header>
 
@@ -416,11 +434,16 @@ export default async function AdminBookingDetailPage({
               {booking.invoice ? (
                 <dl className="mt-2 space-y-3">
                   <Field label="Invoice number">
-                    <span className="font-mono">{booking.invoice.number}</span>
+                    <Link
+                      href={`/admin/invoices/${booking.invoice.id}`}
+                      className="font-mono text-brand-700 hover:underline"
+                    >
+                      {booking.invoice.number}
+                    </Link>
                   </Field>
                   <Field label="Invoice status">
                     <StatusBadge
-                      label={booking.invoice.status}
+                      label={invoiceStatusLabel(booking.invoice.status)}
                       tone={toneForStatus(booking.invoice.status)}
                       dot
                     />
@@ -432,11 +455,23 @@ export default async function AdminBookingDetailPage({
                     <Field label="Issued">{formatDate(booking.invoice.issuedAt)}</Field>
                   )}
                 </dl>
-              ) : (
+              ) : invoiceEligibility.eligible ? (
                 <p className="mt-1.5 text-xs text-ink-500">
-                  No invoice has been issued for this booking. Invoice generation is not part of the
-                  current console.
+                  The work is complete and a price is recorded, so this booking can be invoiced.
+                  Use <span className="font-semibold text-ink-700">Issue invoice</span> beside the
+                  booking title.
                 </p>
+              ) : (
+                <p className="mt-1.5 text-xs text-ink-500">{invoiceEligibility.reason}</p>
+              )}
+              {booking.invoice && (
+                <a
+                  href={`/api/admin/invoices/${booking.invoice.id}/pdf`}
+                  download
+                  className="mt-3 inline-flex items-center gap-1.5 text-xs font-semibold text-brand-700 underline underline-offset-2"
+                >
+                  Download invoice PDF
+                </a>
               )}
             </div>
           </Panel>

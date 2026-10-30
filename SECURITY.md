@@ -11,16 +11,16 @@ code alone. What follows is an account of what was built and verified, plus an
 explicit list of what remains outstanding. Treat section 6 as a launch
 checklist, not optional reading.
 
-Verification performed for this release (Milestone 2.5, measured on this
-working tree — 27 suites, 372 tests):
+Verification performed for this release (Milestone 3 - invoices, measured on this
+working tree - 29 suites, 432 tests):
 
 | Check | Command | Result |
 | --- | --- | --- |
 | Type safety | `npm run typecheck` | PASS (0 errors) |
 | Lint | `npm run lint` | PASS (0 errors) |
-| Unit tests | `npm test` | PASS (372 tests, 27 suites) |
+| Unit tests | `npm test` | PASS (432 tests, 29 suites) |
 | Production compile | `npx next build` | PASS |
-| Production build script | `npm run build` | **PASS** — `prisma generate` ✔ (Prisma Client 5.22.0) then `next build` ✔ (29 routes). See the README changelog for the Windows file-lock cause that previously blocked it |
+| Production build script | `npm run build` | **PASS** - `prisma generate` ✔ (Prisma Client 5.22.0) then `next build` ✔ (44 routes). See the README changelog for the Windows file-lock cause that previously blocked it |
 | Dependency audit (runtime) | `npm run audit:prod` | 0 vulnerabilities |
 
 ---
@@ -151,6 +151,79 @@ boundary at every layer.
 - Customer budgets are range-validated against provider-published bounds with an
   absolute floor and ceiling.
 - Money is stored as integer paise to avoid floating-point drift.
+
+### 1.4a Invoices - financial data handling
+
+`src/lib/invoice.ts`, `src/lib/invoice-pdf.ts`, and the `/api/**/invoice*` routes.
+
+**Nothing financial is accepted from the client.** The generation body schema is
+`z.object({}).strict()`, so a request that tries to supply an amount, a price, a
+tax rate, a status or a line item is rejected with `422` before any query runs. A
+test asserts this. Every figure is read from the persisted booking.
+
+**Eligibility is re-validated server-side, in one shared rule.**
+`assessInvoiceEligibility()` refuses a booking that is not `COMPLETED`, that
+already has an invoice, that has no seller, or that stores no confirmed amount.
+The same function drives the button on the page, so the UI can never offer an
+action the server would refuse - but the UI is never what enforces it.
+
+**Duplicate and concurrent issuance.** The write runs in one transaction that
+first claims the booking with a conditional `updateMany` on
+`status = COMPLETED`; a second request updates zero rows and receives a `409`.
+The database also enforces uniqueness on `Invoice.bookingId` and
+`Invoice.number`, and a unique-constraint violation is mapped to an honest
+`409 ALREADY_INVOICED`. A test drives two simultaneous requests and asserts one
+`201`, one `409` and exactly one invoice.
+
+**Numbering.** `SERIC-INV-<year>-NNNNNN`, allocated with an atomic
+`upsert … increment` on the existing `Counter` table *inside* the invoice
+transaction. There is no read-then-increment window, so simultaneous requests
+cannot share a number even before the unique index is consulted.
+
+**Arithmetic.** Integer paise only. Line totals are asserted to equal
+`unitPrice × quantity` and the subtotal is asserted to equal the sum of the line
+totals before persistence; a mismatch throws instead of writing a wrong document.
+No tax is applied: `taxPaise` and `taxRateBps` are pinned to 0 because no verified
+tax registration or rule is configured. Applying a default rate would fabricate a
+legal liability, so the schema default was corrected from `1800` to `0`.
+
+**Immutability.** Seller and customer details and the line items are snapshotted
+at issue time (`sellerSnapshot`, `customerSnapshot`, and the line-item columns).
+A later provider rename, address edit or catalogue price change cannot rewrite an
+issued invoice, and the PDF is rendered from those snapshots rather than by
+re-pricing. Verified against the real schema: a provider rename leaves both the
+stored snapshot and the rendered PDF unchanged.
+
+**Authorization.**
+
+| Endpoint | Control |
+| --- | --- |
+| `POST /api/admin/bookings/[id]/invoice` | `assertSameOrigin → requireAdmin → assertCsrf → admin rate limit → invoice rate limit → strict Zod` |
+| `GET /api/admin/invoices`, `/api/admin/invoices/[id]/pdf` | `adminReadGuard` + invoice rate limit |
+| `GET /api/bookings/[id]/invoice/pdf` | `requireUser`, then a query scoped by `bookingId` **and** the session's `customerId` |
+
+- A CUSTOMER cannot generate or alter an invoice: the generation route is
+  admin-only (`403`).
+- A customer id is never taken from the request, so IDOR is structurally
+  impossible here; a foreign invoice is never loaded.
+- A foreign invoice and a nonexistent one return **identical** `404` bodies, so
+  the endpoint cannot be used to probe which ids exist.
+- An administrator hitting the customer endpoint gets `404`, because authorisation
+  is ownership-based and an administrator owns no booking - customer access is
+  never widened by role.
+- Invoice issuance and PDF rendering have their own tighter rate limit
+  (`INVOICE_POLICY`, 30/minute/account).
+
+**PDF safety.** The writer emits a PDF 1.4 file itself, with no library, no
+headless browser and no network access. Every string is escaped for PDF
+string-literal syntax (backslash, `(`, `)`) after control characters are stripped
+and non-ASCII is replaced, so catalogue- or customer-supplied text cannot inject
+content-stream operators; a test drives a hostile description and asserts the
+escaped form. The file contains no server paths, hostnames, database ids or
+internal notes. Responses are `no-store`, `nosniff`, and filename-sanitised.
+
+**Auditability.** Issuance writes an `INVOICE_CREATED` audit event carrying the
+invoice number, booking id and totals only - never customer contact data.
 
 ### 1.5 Payments
 
@@ -293,8 +366,20 @@ changes, role changes and access denials.
 
 ## 3. Automated test coverage
 
-372 tests across 27 suites (`npm test`). The security-relevant ones:
+432 tests across 29 suites (`npm test`). The security-relevant ones:
 
+- **`tests/invoice-ledger.test.ts`** - invoice eligibility for every booking
+  status (including `CLOSED`/`CANCELLED` and a `CUSTOMER_BUDGET` booking with no
+  confirmed amount), integer-paise arithmetic and the reconciliation guard, tax
+  pinned to zero, snapshot reads that degrade safely, and PDF structure, escaping
+  and figures.
+- **`tests/invoice-api.test.ts`** - drives the real invoice routes: 401 for
+  anonymous, 403 for a CUSTOMER, CSRF and Origin rejection, issuing from a
+  `COMPLETED` booking from the persisted price only, refusal of ineligible and
+  customer-budget bookings, repeated and **simultaneous** requests producing one
+  invoice, sequential numbers, refusal of any financial field in the body, ledger
+  search/paging validation, admin and customer PDFs, and a cross-customer `404`
+  that is byte-identical to a nonexistent one.
 - **`tests/booking-state.test.ts`** - legal/illegal transitions, terminal
   states, per-edge role permissions, and that **no role including `ADMIN` can
   set `PAID`**. Also asserts the status hints never promise an ETA, a guarantee
@@ -488,3 +573,27 @@ Stated plainly rather than presented as complete:
 21. Define data-retention and deletion procedures to satisfy applicable
     obligations (DPDP Act in India, GDPR where applicable).
 22. Confirm the provider's published contact details before public launch.
+
+### 6.7 Invoicing and tax
+
+23. **Decide the tax position before issuing a real invoice.** No tax is
+    calculated today, and that is a deliberate refusal to invent one: the
+    provider record has no GSTIN and no tax rule is configured. If GST is
+    applicable, record the verified registration (`Provider.gstin`) and implement
+    a documented rate/basis rule in `calculateInvoiceTotals()`, then re-verify the
+    PDF, which already renders a tax line whenever `taxPaise > 0`. Until then the
+    invoice states plainly that no tax has been applied.
+24. **Establish the invoice number series** against the applicable statute and
+    retention period. The implementation is year-scoped and may contain gaps; if
+    an unbroken consecutive series is required, replace `nextInvoiceNumber()`.
+    Numbers are already unique at the database level and safe under concurrency.
+25. **Define the correction policy.** An issued invoice is immutable and there is
+    no void or credit-note flow. Decide the legally-required mechanism, implement
+    it as an explicit auditable action (never an in-place edit) and record it in
+    the audit log.
+26. **Record a final agreed amount for `CUSTOMER_BUDGET` bookings** if they are to
+    be invoiced. The domain currently stores only a range, so those bookings are
+    refused rather than billed an invented figure.
+27. **Invoice retention and backup.** Invoices, their snapshots and their PDFs are
+    financial records: include them in the backup and retention policy, and never
+    delete an issued invoice as part of routine data cleanup.

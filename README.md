@@ -31,7 +31,8 @@ A technology services platform for booking, tracking and managing field services
 | Technician assignment UI (customer side) | **Implemented** - shows real details only once assigned |
 | Customer booking status tracking | **Implemented** - full lifecycle view with status progression, technician details, and ownership enforcement |
 | Technician dispatch UI (operator side) | **Not yet implemented** |
-| Invoicing, payment capture, feedback capture | **Not yet implemented** (schema and state machine exist; no customer UI) |
+| Invoicing (generation, ledger, PDF) | **Implemented** - issued only from a `COMPLETED` booking, integer-paise arithmetic, immutable snapshots, unique sequential numbers, admin ledger + PDF download, customer view/download for their own booking |
+| Payment capture, feedback capture | **Not yet implemented** (schema and state machine exist; no UI) |
 | Material ordering / cart | **Not yet implemented** |
 | Support messaging | **Not yet implemented** |
 | Account profile, password reset, email verification | **Not yet implemented** |
@@ -45,7 +46,8 @@ A technology services platform for booking, tracking and managing field services
 | **Admin booking details** | **Implemented** - `/admin/bookings/[id]`: full persisted record, status history from the append-only log, confirm and assign-technician actions |
 | **Admin console UI** | **Redesigned** - one shared design system across every admin route: responsive sidebar, breadcrumb header, KPI dashboard, premium tables and dialogs |
 | Admin bookings / dispatch / technicians / customers | **Implemented** - bookings list is live; confirm, assign, and state transitions are functional via the admin console |
-| Admin invoices / payments / reviews / audit log / settings | **Not yet implemented** - shown as disabled "Soon" |
+| Admin invoices | **Implemented** - `/admin/invoices` and `/admin/invoices/[id]`: ledger, search, status filter, pagination, itemised detail, PDF download |
+| Admin payments / reviews / audit log / settings | **Not yet implemented** - shown as disabled "Soon" |
 | Payment provider integration | **Requires production configuration** |
 | Deployment hardening (Redis rate limiting, PostgreSQL, native enums) | **Requires production configuration** - see [SECURITY.md](./SECURITY.md) §6 |
 
@@ -80,7 +82,7 @@ says so plainly.
 | Auth | Opaque database-backed sessions, bcrypt (cost 12), server-side RBAC |
 | Validation | Zod **4.6.7**, `.strict()` on request bodies |
 | Styling | Tailwind CSS v4 (CSS-first `@theme`) |
-| Tests | Vitest (372 tests, 27 suites) |
+| Tests | Vitest (432 tests, 29 suites) |
 | Lint | ESLint 9 flat config |
 
 **No third-party JavaScript or CSS runs on any page.** Icons are inline SVG and
@@ -143,9 +145,11 @@ as the customer site. It is not a visual mockup and it runs on no mock data.
 | `/admin/charging-options` | Which options Seric Tech Solutions offers, and Customer Budget ranges |
 | `/admin/pricing` | Publish / withdraw published prices |
 | `/admin/bookings` | Every booking, newest first: reference search, status filter, pagination; rows open the booking detail |
-| `/admin/bookings/[id]` | One booking in full: request details, location, customer, pricing vs invoice, technician, status history, and the confirm / assign actions |
+| `/admin/bookings/[id]` | One booking in full: request details, location, customer, pricing vs invoice, technician, status history, and the confirm / assign / issue-invoice actions |
+| `/admin/invoices` | Every issued invoice, newest first: number / booking-reference / customer search, status filter, pagination |
+| `/admin/invoices/[id]` | One invoice as issued: line items, totals, seller and customer snapshots, PDF download |
 
-Modules that are **not yet built** (Customers, Materials, Invoices, Payments, Reviews, Audit log, Settings) appear in the sidebar as **disabled entries marked "Soon"**. They are deliberately not links: a navigation item that leads to a 404 advertises a capability the console does not have. No planned module is dressed up with fake functionality, sample rows or placeholder metrics.
+Modules that are **not yet built** (Customers, Materials, Payments, Reviews, Audit log, Settings) appear in the sidebar as **disabled entries marked "Soon"**. They are deliberately not links: a navigation item that leads to a 404 advertises a capability the console does not have. No planned module is dressed up with fake functionality, sample rows or placeholder metrics.
 
 ### Admin sidebar
 
@@ -218,6 +222,9 @@ material orders - are shown as plain numbers with a note, never as links.
 | `GET /api/admin/bookings/[id]` | Booking detail: full record for dispatch view |
 | `POST /api/admin/bookings/[id]/confirm` | Confirm booking: REQUESTED → CONFIRMED (server-validated transition) |
 | `POST /api/admin/bookings/[id]/assign-technician` | Assign technician: CONFIRMED → TECHNICIAN_ASSIGNED (server-validated, provider-bound) |
+| `POST /api/admin/bookings/[id]/invoice` | Issue an invoice for a `COMPLETED` booking (no financial input accepted; every figure comes from the booking) |
+| `GET /api/admin/invoices` | Invoice ledger: `q` (number / booking reference / customer), `status` (allowlisted or `ALL`), bounded `page` / `pageSize` |
+| `GET /api/admin/invoices/[id]/pdf` | Download one invoice as a PDF, rendered from its stored snapshots |
 
 ### Admin authorization
 
@@ -572,6 +579,126 @@ progress bar that would imply forward progress.
 
 ---
 
+## Invoices
+
+Invoices are generated from persisted bookings. Nothing about an invoice is
+computed in the browser, and nothing about it can be supplied by one.
+
+### Eligibility
+
+There is exactly **one** point in the lifecycle at which an invoice may be issued:
+a booking in **`COMPLETED`**. That is not a new rule - it is the only edge into
+invoicing that the state machine already defines (`COMPLETED → INVOICE_GENERATED`,
+ADMIN only), and `STATUS_HINT.COMPLETED` already reads "the invoice is being
+generated". No booking status was added.
+
+A booking is therefore refused when:
+
+| Condition | Response |
+| --- | --- |
+| Status is anything other than `COMPLETED` (including `CLOSED` / `CANCELLED`) | `409 NOT_COMPLETED` with the stored status named |
+| It already has an invoice | `409 ALREADY_INVOICED` |
+| `quotedPaise` is null or ≤ 0 | `409 NO_CONFIRMED_PRICE` |
+| The booking has no provider attached | `409 NO_SELLER` |
+| The stored amount is not a safe integer inside the sanity bound | `409 AMOUNT_OUT_OF_RANGE` |
+
+**`CUSTOMER_BUDGET` bookings cannot be invoiced yet, deliberately.** The domain
+stores a budget *range* for them and never a final agreed amount, so issuing an
+invoice would mean inventing a figure. They are refused with that reason rather
+than billed a guess. This is a documented gap, not an oversight - a "final agreed
+amount" field is the prerequisite.
+
+### Money
+
+- Every amount is an **integer number of paise**. There is no floating-point
+  arithmetic anywhere in the totals.
+- A line total is `unitPaise × quantity`; the subtotal is the integer sum of the
+  line totals; the total is `subtotal + tax`.
+- The line totals are **asserted to reconcile** with the subtotal before anything
+  is written. A mismatch is a data fault and fails loudly instead of producing a
+  wrong document.
+- **No tax is calculated or applied.** `taxPaise` is always 0 and `taxRateBps` is
+  0. The seeded provider has no GSTIN and no tax rule is configured; applying 18%
+  by default would fabricate a tax liability. The schema default was corrected
+  from `1800` to `0` for exactly this reason.
+
+### Numbering
+
+Numbers are `SERIC-INV-<year>-000001`, allocated from the existing `Counter`
+table with an atomic `upsert … increment` **inside the invoice transaction**, so
+there is no read-then-increment window and two simultaneous requests cannot share
+a number. Uniqueness is also enforced at the database level on `Invoice.number`
+and on `Invoice.bookingId`, so a fault in the code still cannot persist a
+duplicate. The series is separate from the booking series (`SERIC-…`), so the two
+never collide.
+
+Gaps are possible if a transaction fails after the counter moves. That is
+acceptable for an invoice series and preferable to a duplicate; it is marked in
+the code for replacement if a jurisdiction ever requires an unbroken statutory
+series.
+
+### Snapshots and immutability
+
+An issued invoice is **immutable**. It stores what it needs to be reproducible:
+
+| Stored field | Why |
+| --- | --- |
+| `sellerSnapshot` | Name, legal name, address, email, phone and GSTIN **as they were at issue time**. Renaming the provider or editing its address later cannot rewrite an issued invoice. |
+| `customerSnapshot` | Billed name, contact and service address, snapshotted from the booking. |
+| `InvoiceLineItem` `description` / `charging` / `unitPaise` / `quantity` / `amountPaise` | The service, the charging option and the price actually billed. A later catalogue price change does not touch them. |
+
+The PDF is rendered from these snapshots, never by re-pricing the booking, so a
+download can never disagree with the issued record. Verified against the real
+database: after renaming the provider, the stored snapshot and the PDF are
+unchanged.
+
+### Lifecycle
+
+Invoices are issued as **`ISSUED`**. No payment status is introduced and nothing
+is marked paid in this milestone. There is no void or credit-note flow: an issued
+invoice is never silently overwritten, and a correction path stays out of scope
+until an auditable business rule for it exists.
+
+### PDF
+
+`GET /api/admin/invoices/[id]/pdf` (admin) and
+`GET /api/bookings/[id]/invoice/pdf` (owner) return a one-page A4 PDF.
+
+- Generated by a small, dependency-free writer in `src/lib/invoice-pdf.ts` using
+  the standard Type1 fonts every reader already has - no PDF library, no headless
+  browser, nothing downloaded at runtime.
+- Every string is escaped for PDF string-literal syntax, so catalogue- or
+  customer-supplied text cannot inject content-stream operators.
+- Contains branding, invoice number, issue date, seller details, billed-to block,
+  booking reference, itemised services with quantity and unit price, subtotal,
+  a tax line only when tax exists (never today), the total, and the honest note
+  that no tax has been applied.
+- Amounts print as `INR 1,499.00` rather than with the ₹ glyph, which the
+  built-in fonts cannot draw.
+- No server paths, hostnames, database ids or internal notes appear in the file.
+
+### Authorization
+
+| Actor | Result |
+| --- | --- |
+| Anonymous | `401` on both PDF endpoints; `/admin/invoices` redirects to `/login?next=…` |
+| CUSTOMER issuing an invoice | `403` - the generation route is admin-only |
+| CUSTOMER downloading their own invoice | `200` |
+| CUSTOMER downloading another customer's invoice | `404`, byte-identical to a nonexistent one |
+| ADMIN | `200` on the ledger, detail and PDF |
+| ADMIN through the customer endpoint | `404` - an administrator owns no booking, so customer access is never widened by role |
+
+The customer id comes from the session and is part of the query
+(`bookingId` + `customerId`), so a foreign invoice is never loaded.
+
+### Limitations
+
+- `CUSTOMER_BUDGET` bookings cannot be invoiced (no persisted final amount).
+- No tax, no discounts, no payment terms - none are configured, none are invented.
+- No void / credit-note flow and no invoice e-mail delivery.
+- PDF text is limited to printable ASCII (WinAnsi); non-Latin scripts render as
+  `?` until an embedded Unicode font is used.
+
 ---
 
 ## Routes and pages
@@ -646,6 +773,7 @@ server-side guards.
 | **`POST`** | **`/api/bookings/quote`** | Session + CSRF | **Server-side price preview (persists nothing)** |
 | **`GET`** | **`/api/bookings/[id]/attachments`** | Session + ownership | List attachment metadata |
 | **`POST`** | **`/api/bookings/[id]/attachments`** | Session + CSRF | Upload one validated image |
+| **`GET`** | **`/api/bookings/[id]/invoice/pdf`** | Session + ownership | **Download the invoice for the caller's own booking** (404 for anyone else's) |
 | `POST` | `/api/bookings/[id]/transition` | Session + role | Advance a booking's state |
 | `POST` | `/api/webhooks/payment` | Signature | Mark a booking `PAID` |
 | `GET` | `/api/geocode/reverse` | Public (same-origin only) | Reverse-geocoding proxy to Nominatim — see *GPS location detection* below |
@@ -770,7 +898,9 @@ executes end to end.
 | **`registration-flow.test.ts`** | **6** | **Real `/api/auth/register`: no session minted, `registered` flag, `next` hop, no privilege escalation** |
 | **`navigation.test.ts`** | **7** | **Shared customer shell: Account nav is `/account` for every signed-in role, `/login?next=%2Faccount` anonymous, never `/admin`; shell wiring for the `(customer)` route group** |
 | **`admin-bookings.test.ts`** | **12** | **Real `GET /api/admin/bookings`: 401/403, strict query rejects, allowlisted status filter, reference search, bounded pagination, nav live** |
-| **Total (suites listed here)** | **199** | **The table above predates several suites; the runner reports 268 tests across 20 files (see changelog)** |
+| **`invoice-ledger.test.ts`** | **35** | **Invoice eligibility for every booking status, integer-paise arithmetic, reconciliation guard, tax pinned to zero, snapshot reads, numbering prefix, PDF structure/escaping/figures** |
+| **`invoice-api.test.ts`** | **25** | **Real invoice routes: 401/403/CSRF/Origin, issue from a completed booking, refusal for ineligible and customer-budget bookings, repeated and simultaneous requests, sequential numbering, mass-assignment refusal, ledger search/paging, admin + customer PDFs, cross-customer 404** |
+| **Total (suites listed here)** | **259** | **The runner reports 432 tests across 29 files (see changelog)** |
 
 The admin suites assert the properties that must not regress: a CUSTOMER gets
 `403` on every admin endpoint and writes nothing, an unauthenticated caller gets
@@ -803,16 +933,15 @@ It documents what is implemented, what was verified, and - importantly - **what
 remains outstanding**. This project makes no claim of being vulnerability-free.
 Security is a property of a deployed system, not of source code.
 
-Current state (verified for the customer booking wizard + tracking milestone):
+Current state (verified for the invoice milestone - Milestone 3):
 
 | Check | Result |
 | --- | --- |
-| `npm run typecheck` | PASS |
+| `npm run typecheck` | PASS (0 errors) |
 | `npm run lint` | PASS (0 errors, 0 warnings) |
-| `npm test` | PASS (140 tests, 9 suites) |
-| `npm run build` | PASS (no warnings) |
+| `npm test` | PASS (432 tests, 29 suites) |
+| `npm run build` | PASS (44 routes) |
 | `npm run audit:prod` | 0 vulnerabilities |
-| `npm run db:seed` | PASS (idempotent) |
 
 ### Security regression check for this milestone
 
@@ -891,39 +1020,42 @@ Renaming or reordering them is a data change.
    real availability, so none are invented. The tracking UI is built for them and
    shows the honest placeholder until one is assigned.
 3. **Rate limiting is per-process.** See `SECURITY.md` §5.
-4. **Most admin modules are not built.** The console covers the dashboard,
-   catalogue, charging options, pricing, and the read-only bookings list.
-   Booking confirmation, technician assignment, state transitions, technicians,
-   customers, materials, invoices, payments, reviews, the audit-log viewer and
-   settings are shown as disabled "Soon" entries. They have no screens and no
-   fake behaviour. The audit events *are* written to the database for every
-   mutation this milestone introduces - only the screen to browse them is missing.
-5. **Invoice, payment and feedback have no customer UI.** The schema, state
-   machine and webhook exist; the screens do not.
-6. **`/privacy` and `/terms` are linked in the footer but not implemented.**
-7. **No admin account exists in the development database** (`admins: 0`) because
+4. **Invoices have three deliberate gaps** (see *Invoices* above): no tax is
+   calculated because no tax registration is configured; `CUSTOMER_BUDGET`
+   bookings cannot be invoiced because the domain never stores a final agreed
+   amount; and there is no void or credit-note flow, so an issued invoice is
+   immutable rather than correctable.
+5. **Most admin modules are not built.** The console covers the dashboard,
+   catalogue, charging options, pricing, the bookings list with its dispatch
+   actions, and the invoice ledger. Technicians, customers, materials, payments,
+   reviews, the audit-log viewer and settings are shown as disabled "Soon"
+   entries. They have no screens and no fake behaviour. The audit events *are*
+   written to the database for every mutation - only the screen to browse them is
+   missing.
+6. **Payment and feedback have no customer UI.** The schema, state machine and
+   webhook exist; those screens do not. Invoices do: the customer booking page
+   shows the itemised invoice and a PDF download.
+7. **`/privacy` and `/terms` are linked in the footer but not implemented.**
+8. **No admin account exists in the development database** (`admins: 0`) because
    `SEED_ADMIN_EMAIL` / `SEED_ADMIN_PASSWORD` are blank in `.env`. Set them once,
    run `npm run db:seed`, then remove them. There is no default password in the
    repository.
-8. **The provider operator account still holds a retired login address.** It is
+9. **The provider operator account still holds a retired login address.** It is
    not used for authentication by the console (see
    *Operator identity and the provider contact email* above) and was deliberately
    not changed, because rewriting a live account's login address is an identity
    decision, not a cosmetic one. Rotate it deliberately before launch.
-9. SQLite and string-backed "enums" are development-only - see `SECURITY.md` §6.3.
+10. SQLite and string-backed "enums" are development-only - see `SECURITY.md` §6.3.
 
 ---
 
 ## Roadmap
 
-**Next milestone (dispatch)** - Technician dispatch console: confirm a booking, assign a technician, advance
-  the on-site states. The `/admin/bookings` list (this milestone) is the read
-  side it will act on.
-- Audit-log viewer over the events the catalogue milestones write
-- Customer invoice view and payment initiation
-- Customer cancellation flow
-
-**Later**
+**Next milestone (payment capture)** - Payment initiation against an issued invoice, and the
+  customer-facing payment status the webhook already writes.
+- Audit-log viewer over the events the catalogue and invoice milestones write
+- Invoice `CUSTOMER_BUDGET` support (needs a persisted final agreed amount)
+- Invoice void / credit note flow with an auditable rule
 - Technician roster and customer management screens
 - Review moderation (schema and `FEEDBACK_PENDING` state already exist)
 - Material ordering / cart (schema already present)
@@ -992,7 +1124,117 @@ The refactor work is on `feature/moyo-platform`. `main` was never modified.
 
 ---
 
+## Changelog - Milestone 3: invoice generation and management
+
+Invoices are generated from persisted bookings, stored with their financial
+snapshot, uniquely numbered, protected by server-side authorization and
+downloadable as PDFs.
+
+### Eligibility comes from the existing state machine
+
+`COMPLETED → INVOICE_GENERATED` is the only edge the booking state machine already
+defines into invoicing, and it is ADMIN-only. That is the rule this milestone
+uses - no booking status was added and no financial policy was invented:
+
+- anything not `COMPLETED` is refused with `409 NOT_COMPLETED`, naming the status;
+- a booking that already has an invoice is refused with `409 ALREADY_INVOICED`;
+- a `CUSTOMER_BUDGET` booking is refused with `409 NO_CONFIRMED_PRICE`, because the
+  domain stores a budget *range* and never a final agreed amount. Billing a guess
+  was rejected in favour of refusing;
+- a booking with no provider attached is refused with `409 NO_SELLER`.
+
+`assessInvoiceEligibility()` is pure and used by the page (to decide what to
+render), the API (to enforce) and the tests, so the displayed rule and the
+enforced rule cannot drift.
+
+### Schema
+
+`prisma db push` (this project's migration mechanism - there is no
+`prisma/migrations` directory) applied:
+
+| Change | Reason |
+| --- | --- |
+| `Invoice.sellerSnapshot String?` | Seller details as issued |
+| `Invoice.customerSnapshot String?` | Billed customer and address as issued |
+| `InvoiceLineItem.charging String?` | The charging option actually billed |
+| `Invoice.taxRateBps` default `1800` → **`0`** | An 18% default would fabricate a tax liability; there is no verified tax registration or rule |
+
+No column was dropped and no existing row was rewritten.
+
+### Numbering
+
+`SERIC-INV-<year>-000001`, allocated from the existing `Counter` table with an
+atomic increment **inside the invoice transaction**, with database-level
+uniqueness on both `Invoice.number` and `Invoice.bookingId` as the backstop. A
+deliberate, repeated or concurrent request cannot produce a second invoice: the
+write claims the booking with a conditional `updateMany` on `status = COMPLETED`,
+so exactly one request wins.
+
+### Money
+
+Integer paise throughout, with a reconciliation assertion (`line total = unit
+price × quantity`, `subtotal = Σ line totals`) that fails loudly rather than
+producing a wrong document. Tax is pinned to zero.
+
+### What was built
+
+| Piece | Where |
+| --- | --- |
+| Invoice domain (eligibility, arithmetic, snapshots, numbering, generation, scoped reads) | `src/lib/invoice.ts` |
+| PDF writer (dependency-free, escaped, deterministic) | `src/lib/invoice-pdf.ts` |
+| Issue an invoice | `POST /api/admin/bookings/[id]/invoice` |
+| Invoice ledger API | `GET /api/admin/invoices` |
+| Admin PDF | `GET /api/admin/invoices/[id]/pdf` |
+| Customer PDF (ownership-scoped) | `GET /api/bookings/[id]/invoice/pdf` |
+| Admin ledger + detail screens | `/admin/invoices`, `/admin/invoices/[id]` |
+| Issue action on an eligible booking | `/admin/bookings/[id]` |
+| Customer invoice view + download | `/bookings/[id]` |
+
+The sidebar's **Invoices** item moved from "Soon" to live. No other admin screen
+was touched.
+
+### Verification (actual results)
+
+| Check | Result |
+| --- | --- |
+| `npm run typecheck` | PASS (0 errors) |
+| `npm run lint` | PASS (0 errors, 0 warnings) |
+| `npm test` | **PASS - 432 tests, 29 suites** (372 before this milestone) |
+| `npm run build` | PASS - 44 routes, including the six new ones |
+| `npm run audit:prod` | 0 vulnerabilities |
+| `prisma db push` | Applied; existing bookings, users and counters intact |
+
+Real-database verification (against a copy of `prisma/dev.db`, so no live record
+was touched): invoice persisted with the expected totals, line total and subtotal
+reconciled, `taxRateBps` stored as 0, the seller snapshot held no fabricated
+GSTIN, a duplicate `bookingId` was rejected with `P2002`, a duplicate number was
+rejected with `P2002`, the snapshot survived a provider rename unmodified, and the
+rendered PDF (3,971 bytes) carried the invoice number and `INR 1,499.00`.
+
+End-to-end HTTP verification against the running application with a real
+administrator session and one temporary booking (deleted afterwards, ledger back
+to 0 invoices):
+
+`login → 200 ADMIN` · booking page shows **Issue invoice** · `POST …/invoice` →
+`201` `SERIC-INV-2026-000001`, total `149900` · repeat → `409` · `/admin/invoices`
+→ `200` and contains the number · `/admin/invoices/[id]` → `200` with the line
+item, the amount and the PDF link · admin PDF → `200 application/pdf`, `%PDF-1.4`,
+number and `INR 1,499.00` present, `%%EOF` terminated · the same administrator
+through the customer endpoint → `404` (no booking ownership).
+
+### Operational note
+
+The dev server that was already running before this change held a Prisma client
+generated *before* the schema change (it is cached on `globalThis`), so it
+returned `500` on invoice writes until restarted. Restart `npm run dev` after
+pulling this commit. It was not killed from here.
+
+---
+
+
+
 ## Changelog - Production readiness verification completed
+
 
 Closes the three items Milestone 2.5 left open. **No application source changed**
 in this task — it records verification results and two environment facts, plus

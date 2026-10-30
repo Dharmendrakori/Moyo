@@ -130,6 +130,31 @@ export async function parseJson<T>(request: Request, schema: ZodSchema<T>, maxBy
   return schema.parse(parsed);
 }
 
+/**
+ * Serves generated PDF bytes as a download.
+ *
+ * The filename is derived from a SERVER-generated invoice number and sanitised
+ * anyway, so a stored value can never inject a path or a header. Every response
+ * is `no-store` because the document is per-user financial data, and
+ * `nosniff` keeps a browser from reinterpreting the body.
+ */
+export function pdfResponse(filenameBase: string, bytes: Uint8Array) {
+  const safe = filenameBase.replace(/[^A-Za-z0-9-]/g, '') || 'invoice';
+  // A Blob is accepted as a BodyInit by both the Fetch and Next typings, and it
+  // wraps the exact byte range rather than the whole backing buffer.
+  const body = new Blob([bytes as BlobPart], { type: 'application/pdf' });
+  return new NextResponse(body, {
+    status: 200,
+    headers: {
+      'Content-Type': 'application/pdf',
+      'Content-Disposition': `attachment; filename="${safe}.pdf"`,
+      'Content-Length': String(bytes.byteLength),
+      'Cache-Control': 'private, no-store',
+      'X-Content-Type-Options': 'nosniff',
+    },
+  });
+}
+
 /** 429 response with Retry-After, used by rate limiting. */
 export function tooManyRequests(retryAfterSeconds: number) {
   return NextResponse.json(

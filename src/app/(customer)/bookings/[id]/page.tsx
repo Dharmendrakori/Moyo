@@ -10,10 +10,12 @@ import {
   MODE_LABEL,
   SERVICE_TYPE_LABEL,
   CHARGING_LABEL,
+  INVOICE_STATUS_LABEL,
+  type InvoiceStatus,
   type BookingMode,
   type ServiceType,
 } from '@/lib/domain';
-import { formatDateTime, formatINR } from '@/lib/format';
+import { formatDate, formatDateTime, formatINR } from '@/lib/format';
 
 export const metadata: Metadata = {
   title: 'Booking status',
@@ -157,6 +159,67 @@ export default async function BookingDetailPage({
             </p>
             <p className="mt-2 text-xs leading-relaxed text-ink-600">{price.note}</p>
           </section>
+
+          {booking.invoice && (
+            <section className="rounded-card border border-ink-200 bg-white p-5 shadow-card">
+              <div className="flex items-start justify-between gap-3">
+                <h2 className="text-sm font-semibold text-ink-900">Invoice</h2>
+                <span className="font-mono text-xs font-semibold text-ink-700">
+                  {booking.invoice.number}
+                </span>
+              </div>
+              <p className="mt-1 text-xs text-ink-500">
+                {INVOICE_STATUS_LABEL[booking.invoice.status as InvoiceStatus] ??
+                  booking.invoice.status}
+                {booking.invoice.issuedAt ? ` · Issued ${formatDate(booking.invoice.issuedAt)}` : ''}
+              </p>
+
+              <dl className="mt-3 divide-y divide-ink-100 border-y border-ink-100">
+                {booking.invoice.lineItems.map((line, index) => (
+                  <div key={`${line.description}-${index}`} className="flex justify-between gap-3 py-2.5">
+                    <dt className="min-w-0">
+                      <span className="block truncate text-sm text-ink-800">{line.description}</span>
+                      <span className="text-xs text-ink-500">
+                        {line.quantity} &times; {formatINR(line.unitPaise)}
+                      </span>
+                    </dt>
+                    <dd className="shrink-0 text-sm font-medium tabular-nums text-ink-900">
+                      {formatINR(line.amountPaise)}
+                    </dd>
+                  </div>
+                ))}
+              </dl>
+
+              <dl className="mt-3 space-y-1.5 text-sm">
+                <div className="flex justify-between gap-3">
+                  <dt className="text-ink-500">Subtotal</dt>
+                  <dd className="tabular-nums text-ink-800">{formatINR(booking.invoice.subtotalPaise)}</dd>
+                </div>
+                <div className="flex justify-between gap-3">
+                  <dt className="text-ink-500">Tax</dt>
+                  <dd className="tabular-nums text-ink-800">
+                    {booking.invoice.taxPaise > 0 ? formatINR(booking.invoice.taxPaise) : 'Not applied'}
+                  </dd>
+                </div>
+                <div className="flex justify-between gap-3 border-t border-ink-200 pt-2">
+                  <dt className="font-semibold text-ink-900">Total</dt>
+                  <dd className="font-bold tabular-nums text-ink-900">
+                    {formatINR(booking.invoice.totalPaise)}{' '}
+                    <span className="text-xs font-medium text-ink-400">{booking.invoice.currency}</span>
+                  </dd>
+                </div>
+              </dl>
+
+              <a
+                href={`/api/bookings/${booking.id}/invoice/pdf`}
+                download
+                className="mt-4 inline-flex w-full items-center justify-center gap-1.5 rounded-lg bg-brand-600 px-4 py-2 text-sm font-semibold text-white shadow-card transition hover:bg-brand-700 active:bg-brand-800"
+              >
+                <Icon name="download" size={15} />
+                Download invoice (PDF)
+              </a>
+            </section>
+          )}
 
           <section className="rounded-card border border-ink-200 bg-white p-5 shadow-card">
             <h2 className="text-sm font-semibold text-ink-900">Provider</h2>
