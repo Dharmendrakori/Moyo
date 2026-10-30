@@ -11,17 +11,22 @@ code alone. What follows is an account of what was built and verified, plus an
 explicit list of what remains outstanding. Treat section 6 as a launch
 checklist, not optional reading.
 
-Verification performed for this release (Milestone 3 - invoices, measured on this
-working tree - 30 suites, 451 tests):
+Verification performed for this release (Milestone 4 - payments, measured on this
+working tree - 34 suites, 532 tests):
 
 | Check | Command | Result |
 | --- | --- | --- |
 | Type safety | `npm run typecheck` | PASS (0 errors) |
-| Lint | `npm run lint` | PASS (0 errors) |
-| Unit tests | `npm test` | PASS (451 tests, 30 suites) |
-| Production compile | `npx next build` | PASS |
-| Production build script | `npm run build` | **PASS** - `prisma generate` ✔ (Prisma Client 5.22.0) then `next build` ✔ (44 routes). See the README changelog for the Windows file-lock cause that previously blocked it |
+| Lint | `npm run lint` | PASS (0 problems) |
+| Unit tests | `npm test` | PASS (532 tests, 34 suites) |
+| Production compile | `npx next build` | PASS (via `npm run build`) |
+| Production build script | `npm run build` | **PASS** - `prisma generate` ✔ (Prisma Client 5.22.0) then `next build` ✔ (30 static pages, `/admin/payments` emitted). See the README for the Windows file-lock cause that can block generation while a `next dev` server runs |
 | Dependency audit (runtime) | `npm run audit:prod` | 0 vulnerabilities |
+
+**Not verified in this environment:** any interaction with the real Razorpay
+sandbox. No test credentials were available and webhooks cannot be delivered to
+`localhost`, so checkout and webhook delivery are exercised only by automated
+tests that reproduce the documented payloads and signatures. See §6.4.
 
 ---
 
@@ -227,21 +232,65 @@ invoice number, booking id and totals only - never customer contact data.
 
 ### 1.5 Payments
 
-`src/app/api/webhooks/payment/route.ts`
+Milestone 4 replaced the draft webhook with a Razorpay integration whose
+authoritative checks live on the server. Files: `src/lib/payments/**`,
+`src/app/api/bookings/[id]/payment/**`, `src/app/api/webhooks/payment/route.ts`.
 
-- **A booking cannot be marked paid by a user.** The webhook is the only path.
-- **Signature verification**: HMAC-SHA256 over the **raw** request body,
-  compared with `timingSafeEqual`. The body is read as text before JSON
-  parsing because re-serializing parsed JSON does not reproduce the signed
-  bytes.
-- **Idempotency**: keyed on the provider event id, so an aggressive provider
-  retry cannot double-apply a settlement.
-- **Amount verification**: the webhook amount is compared against the stored
-  invoice total; a mismatch is rejected.
-- **No card data is ever stored.** Only an opaque provider reference and an
-  optional masked last-4.
-- **Fails closed**: with no payment provider configured the endpoint returns
-  `503` rather than simulating a successful charge.
+**Authority.** A payment is `CAPTURED` only after (a) the documented
+`HMAC-SHA256(order_id|payment_id, key_secret)` checkout signature recomputes
+correctly, **and** (b) a `GET /v1/payments/:id` fetch from the gateway reports
+`captured` with the same order, amount and currency as the persisted invoice. A
+browser callback alone changes nothing.
+
+**Amounts.** The gateway order is created server-side for the invoice's integer
+paise total; no amount, currency, invoice id or customer id is accepted from the
+browser (`paymentInitiateSchema` is an empty `.strict()` object). The gateway's
+echoed amount and currency are checked before use.
+
+**Ownership.** Every invoice read in the payment flow includes `customerId` in the
+query, so a foreign invoice is never loaded and answers the same `404` as a
+missing one. A customer can never verify another customer's order.
+
+**Webhook security (not CSRF).** A webhook is server-to-server with no session, so
+CSRF and same-origin checks are meaningless and are deliberately absent. The
+control is `X-Razorpay-Signature` = `HMAC-SHA256(raw_body, webhook_secret)`,
+constant-time compared over the raw text read **before** parsing. An unsigned or
+wrongly-signed delivery returns `400` and mutates nothing.
+
+**Webhook idempotency.** `x-razorpay-event-id` is stored in a `@unique` column
+(`PaymentWebhookEvent`): a retry returns `200 { duplicate: true }` without
+touching a financial record. A delivery with no event id is refused. If
+processing throws, the claim row is deleted and a `500` invites the retry, so a
+transient failure is never mistaken for a duplicate.
+
+**Forward-only state.** Every write is a conditional `updateMany` (status
+allowlist). A late `payment.failed` cannot rewind a capture; a replayed capture
+cannot pay an invoice twice; `gatewayOrderId` / `gatewayPaymentId` are unique, so
+one gateway payment settles one record. Money writes and the invoice transition
+share one transaction.
+
+**No card data.** No PAN, CVV, UPI PIN or credential is received; the customer
+enters those into the gateway's own checkout. The payment projection stores only
+gateway ids, integer amounts, status, a safe failure code/description and refund
+state.
+
+**Refunds are read-only.** No refund endpoint exists, so no administrator (or
+attacker with an admin session) can move money out. Refund state is mirrored from
+signed `refund.*` webhooks and bounded by the captured amount.
+
+**No administrative override.** Nothing in the admin console can mark a payment
+successful, change an amount or edit a gateway reference - those endpoints do not
+exist.
+
+**Fails closed.** With credentials unset, both payment endpoints return `503
+NOT_CONFIGURED` and the webhook refuses every delivery.
+
+**Secrets.** `RAZORPAY_KEY_SECRET` and `RAZORPAY_WEBHOOK_SECRET` are server-only
+and never serialised: the initiation response carries the publishable key id, the
+order id, the amount and the invoice number - nothing else. Errors from the
+gateway keep only an HTTP status, never the response body (which can echo request
+fields) and never the credentials.
+
 
 ### 1.6 Input validation
 
@@ -541,11 +590,28 @@ Stated plainly rather than presented as complete:
 
 ### 6.4 Payments
 
-11. Integrate a real payment provider and **update `verifySignature()` to match
-    that provider's exact signing scheme**.
-12. Configure `PAYMENT_PROVIDER` and `PAYMENT_WEBHOOK_SECRET` from the secret
-    manager.
-13. Test the webhook against the provider's sandbox before going live.
+The gateway integration itself is built (see 1.9). What remains is live
+verification and operations:
+
+11. **Verify against the Razorpay sandbox before taking real money.** With no
+    credentials in this environment, no checkout and no webhook delivery has run
+    against the real gateway. Register `{APP_URL}/api/webhooks/payment`
+    (test mode), complete one successful and one failed test payment, and confirm
+    the invoice moves only for the successful one.
+12. Supply `RAZORPAY_KEY_ID`, `RAZORPAY_KEY_SECRET` and `RAZORPAY_WEBHOOK_SECRET`
+    from the secret manager. Rotate the webhook secret deliberately: while a
+    rotation is in flight, use the old secret for retries of older events.
+13. **Decide the refund policy** before enabling refunds (who, window, full vs
+    partial, credit note). Until then the application only mirrors refund state.
+13a. Confirm the gateway account's **payment capture** setting. If payments are
+    left uncaptured they stay `AUTHORIZED`, which is reported honestly as
+    "processing" rather than paid.
+13b. Add alerting for: webhook deliveries that return non-2xx, payments stuck in
+    `AUTHORIZED`, and events ignored as `unknown_payment` (a mismatch between the
+    gateway account and this database).
+13c. Whitelist Razorpay's published webhook IPs at the edge if your deployment
+    requires it, in addition to signature verification.
+
 
 ### 6.5 Operations
 

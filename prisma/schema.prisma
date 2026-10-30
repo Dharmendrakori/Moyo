@@ -428,33 +428,65 @@ model InvoiceLineItem {
   amountPaise Int
 }
 
+/// One payment attempt against one issued invoice.
+///
+/// NOTHING here is card data. No PAN, CVV, UPI PIN or credential is ever
+/// received by this application - the customer enters those into the gateway's
+/// own checkout - so there is nothing sensitive to store or leak.
 model Payment {
   id             String   @id @default(cuid())
-  /// Idempotency key; unique so a retry can never double-charge.
+  /// Idempotency key. Derived from the invoice (`invoice:<invoiceId>`), so a
+  /// repeated initiation cannot create a second chargeable attempt.
   idempotencyKey String   @unique
   invoiceId      String
   invoice        Invoice  @relation(fields: [invoiceId], references: [id], onDelete: Restrict)
   bookingId      String
   booking        Booking  @relation(fields: [bookingId], references: [id], onDelete: Restrict)
 
-  /// CREATED | PENDING | SUCCEEDED | FAILED | REFUNDED
-  /// Set to SUCCEEDED ONLY by a verified webhook handler.
+  /// RAZORPAY - the only gateway integrated in this milestone.
+  provider String @default("RAZORPAY")
+  /// CREATED | PENDING | AUTHORIZED | CAPTURED | FAILED | REFUNDED | PARTIALLY_REFUNDED
+  /// Set to CAPTURED only by a signature-verified server check or webhook.
   status        String   @default("CREATED")
   amountPaise   Int
   currency      String   @default("INR")
-  /// Opaque reference from the payment provider. Never card data.
-  providerRef   String?
-  /// Last 4 digits, and only if the provider supplies them.
-  cardLast4     String?
-  failureReason String?
-  /// Whether the webhook that settled this payment passed signature checks.
+  /// Gateway order id (`order_...`). Unique: at most one order per attempt.
+  gatewayOrderId   String? @unique
+  /// Gateway payment id (`pay_...`). Unique, so one gateway payment can settle
+  /// exactly one internal record.
+  gatewayPaymentId String? @unique
+  failureCode      String?
+  /// Safe, human-readable failure text from the gateway. Never raw payloads.
+  failureReason    String?
+  refundedPaise    Int     @default(0)
+  /// Gateway-reported refund state: PENDING | PROCESSED | FAILED. Read-only.
+  refundStatus     String?
+  /// True only once a server-side gateway check confirmed this record.
   signatureVerified Boolean @default(false)
+  /// When the authoritative verification (API fetch or signed webhook) landed.
+  verifiedAt       DateTime?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   @@index([invoiceId])
   @@index([status, createdAt])
+}
+
+/// Every verified webhook delivery we have processed.
+///
+/// `eventId` is the gateway's own per-event identifier (`x-razorpay-event-id`)
+/// and is unique here, which is what makes webhook handling idempotent under
+/// the gateway's at-least-once delivery.
+model PaymentWebhookEvent {
+  id      String @id @default(cuid())
+  eventId String @unique
+  type    String
+  /// Internal Payment id, or null when the event referenced nothing we know.
+  paymentId String?
+  createdAt DateTime @default(now())
+
+  @@index([type, createdAt])
 }
 
 model Material {

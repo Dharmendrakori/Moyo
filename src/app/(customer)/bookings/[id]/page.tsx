@@ -3,9 +3,11 @@ import Link from 'next/link';
 import { notFound, redirect } from 'next/navigation';
 import { Icon } from '@/components/ui/Icon';
 import { BookingStatusPanel, DetailRow } from '@/components/customer/BookingStatus';
+import { PaymentPanel } from '@/components/customer/PaymentPanel';
 import { getCurrentUser } from '@/lib/auth';
 import { getCustomerBooking } from '@/lib/customer-bookings';
 import { summarisePrice } from '@/lib/booking-tracking';
+import { describePaymentState, paymentStatusLabel } from '@/lib/payments/ledger';
 import {
   MODE_LABEL,
   SERVICE_TYPE_LABEL,
@@ -50,6 +52,15 @@ export default async function BookingDetailPage({
     quotedPaise: booking.quotedPaise,
     budgetMinPaise: booking.budgetMinPaise,
     budgetMaxPaise: booking.budgetMaxPaise,
+  });
+
+  // Payment state is derived from the persisted invoice plus the latest attempt.
+  // The browser is never asked what happened.
+  const invoicePayment = describePaymentState({
+    invoiceStatus: booking.invoice?.status ?? '',
+    totalPaise: booking.invoice?.totalPaise ?? 0,
+    currency: booking.invoice?.currency ?? 'INR',
+    attempt: booking.payments[0] ?? null,
   });
 
   const address = [
@@ -219,6 +230,26 @@ export default async function BookingDetailPage({
                 Download invoice (PDF)
               </a>
             </section>
+          )}
+
+          {booking.invoice && (
+            <PaymentPanel
+              bookingId={booking.id}
+              invoiceNumber={booking.invoice.number}
+              amountLabel={formatINR(booking.invoice.totalPaise)}
+              payment={{
+                state: invoicePayment.state,
+                label: invoicePayment.label,
+                canPay: invoicePayment.canPay,
+                note: invoicePayment.note,
+              }}
+              attempts={booking.payments.slice(0, 3).map((attempt) => ({
+                id: attempt.id,
+                statusLabel: paymentStatusLabel(attempt.status),
+                amountLabel: formatINR(attempt.amountPaise),
+                createdLabel: formatDate(attempt.createdAt),
+              }))}
+            />
           )}
 
           <section className="rounded-card border border-ink-200 bg-white p-5 shadow-card">

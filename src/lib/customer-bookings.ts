@@ -149,10 +149,19 @@ export async function getCustomerBooking(customerId: string, bookingId: string) 
           },
         },
       },
-      // Only non-sensitive payment fields. No provider refs or idempotency keys.
+      // Only non-sensitive payment fields. No gateway references, no idempotency
+      // keys, no provider payloads.
       payments: {
         orderBy: { createdAt: 'desc' },
-        select: { id: true, status: true, amountPaise: true, currency: true, createdAt: true },
+        select: {
+          id: true,
+          status: true,
+          amountPaise: true,
+          currency: true,
+          refundedPaise: true,
+          refundStatus: true,
+          createdAt: true,
+        },
       },
       statusEvents: {
         orderBy: { createdAt: 'asc' },

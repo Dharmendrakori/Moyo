@@ -142,6 +142,15 @@ export const QUOTE_POLICY: RateLimitRule = { name: 'quote', limit: 30, windowMs:
 export const WEBHOOK_POLICY: RateLimitRule = { name: 'webhook', limit: 120, windowMs: 60_000 };
 
 /**
+ * Payment initiation and verification.
+ *
+ * Each initiation creates a gateway order, so this is deliberately tighter than
+ * the general read quota: a compromised session must not be able to mint orders
+ * in a loop. Sized for real use - a customer retrying a failed card a few times.
+ */
+export const PAYMENT_POLICY: RateLimitRule = { name: 'payment', limit: 15, windowMs: 60 * 60_000 };
+
+/**
  * Invoice issuance and PDF generation.
  *
  * Tighter than the general admin mutation quota, because each invoice is a

@@ -1,70 +1,194 @@
-import { createHmac, timingSafeEqual } from 'node:crypto';
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { audit } from '@/lib/audit';
-import { env, isPaymentConfigured } from '@/lib/env';
-import { prisma } from '@/lib/prisma';
 import { apiHandler } from '@/lib/api';
+import { isPaymentConfigured } from '@/lib/env';
+import { prisma } from '@/lib/prisma';
+import {
+  applyRefundStatus,
+  findAttemptByGatewayPayment,
+  findAttemptByOrder,
+  isUniqueViolation,
+  settleFromGateway,
+} from '@/lib/payments/ledger';
+import { getPaymentProvider, type GatewayPayment } from '@/lib/payments/provider';
 import { WEBHOOK_POLICY, rateLimitByIp } from '@/lib/rate-limit';
 
 /**
  * POST /api/webhooks/payment
  *
- * The ONLY path by which a booking can become PAID.
+ * Razorpay's notification endpoint - the authoritative, asynchronous path that
+ * settles a payment even if the customer closes the browser tab.
  *
- * Security requirements enforced here:
- *  - HMAC-SHA256 signature verification over the RAW request body, compared in
- *    constant time. The body is read as text BEFORE JSON parsing, because
- *    re-serializing parsed JSON does not reproduce the signed bytes.
- *  - Signature lives in a header, never in the payload.
- *  - Idempotent: the provider event id is unique, so an aggressive provider
- *    retry cannot double-apply a settlement.
- *  - The amount is checked against the stored invoice total; a mismatch is
- *    rejected rather than silently accepted.
- *  - No card data is read or stored - only an opaque provider reference and an
- *    optional masked last-4.
+ * SECURITY MODEL (deliberately NOT CSRF):
+ * A webhook is a server-to-server call with no cookie and no session, so CSRF
+ * tokens and same-origin checks are meaningless here and are not applied. The
+ * control is the gateway's own signature:
  *
- * When no payment provider is configured this returns 503 rather than
- * pretending to process money.
+ *  - the body is read as TEXT before parsing, because the signature covers the
+ *    exact bytes and re-serialising JSON does not reproduce them;
+ *  - `X-Razorpay-Signature` is HMAC-SHA256(raw_body, webhook_secret), compared
+ *    in constant time;
+ *  - an unsigned or wrongly-signed delivery is rejected with 400 and mutates
+ *    nothing.
+ *
+ * IDEMPOTENCY. Razorpay delivers at least once, so `x-razorpay-event-id` is
+ * recorded in a `@unique` column. A duplicate delivery returns 200 without
+ * touching a financial record. If processing fails, the claim row is released
+ * so the gateway's retry is processed rather than silently swallowed.
+ *
+ * FORWARD-ONLY STATE. The ledger's writes are conditional, so a late
+ * `payment.failed` cannot rewind a capture and a replayed capture cannot pay an
+ * invoice twice.
  */
 
-const webhookSchema = z.object({
-  /** Unique event id from the provider, used for idempotency. */
-  eventId: z.string().min(1).max(120),
-  type: z.enum(['payment.succeeded', 'payment.failed', 'payment.refunded']),
-  paymentId: z.string().min(1).max(120),
-  idempotencyKey: z.string().min(8).max(120),
-  invoiceId: z.string().min(1).max(40),
-  amountPaise: z.number().int().positive(),
+const paymentEntitySchema = z.object({
+  id: z.string().min(1).max(80),
+  amount: z.number().int().nonnegative(),
   currency: z.string().length(3),
-  /** Optional masked card digits, e.g. "**** 4242". */
-  cardLast4: z.string().regex(/^\*?\*{0,4}\d{0,4}$/).optional(),
+  status: z.string().min(1).max(20),
+  order_id: z.string().max(80).nullish(),
+  captured: z.boolean().optional(),
+  amount_refunded: z.number().int().nonnegative().optional(),
+  refund_status: z.string().max(20).nullish(),
+  error_code: z.string().max(80).nullish(),
+  error_description: z.string().max(200).nullish(),
 });
 
-function verifySignature(rawBody: string, signatureHeader: string | null): boolean {
-  const secret = env().PAYMENT_WEBHOOK_SECRET;
-  if (!secret) return false;
-  if (!signatureHeader) return false;
+const refundEntitySchema = z.object({
+  id: z.string().min(1).max(80),
+  payment_id: z.string().min(1).max(80),
+  amount: z.number().int().nonnegative(),
+  status: z.string().min(1).max(20),
+});
 
-  const expected = createHmac('sha256', secret).update(rawBody, 'utf8').digest('hex');
+const eventSchema = z.object({
+  event: z.string().min(1).max(60),
+  payload: z.object({
+    payment: z.object({ entity: paymentEntitySchema }).optional(),
+    refund: z.object({ entity: refundEntitySchema }).optional(),
+  }),
+});
 
-  // Provider may prefix the algorithm, e.g. "sha256=<hex>".
-  const provided = signatureHeader.includes('=')
-    ? signatureHeader.slice(signatureHeader.indexOf('=') + 1).trim()
-    : signatureHeader.trim();
+type PaymentEntity = z.infer<typeof paymentEntitySchema>;
 
-  const a = Buffer.from(expected, 'utf8');
-  const b = Buffer.from(provided, 'utf8');
-  if (a.length !== b.length) return false;
-  return timingSafeEqual(a, b);
+function toGatewayPayment(entity: PaymentEntity): GatewayPayment {
+  return {
+    paymentId: entity.id,
+    orderId: entity.order_id ?? null,
+    status: entity.status,
+    captured: entity.captured === true || entity.status === 'captured',
+    amountPaise: entity.amount,
+    currency: entity.currency,
+    amountRefundedPaise: entity.amount_refunded ?? 0,
+    refundStatus: entity.refund_status ?? null,
+    errorCode: entity.error_code ?? null,
+    errorDescription: entity.error_description ?? null,
+  };
+}
+
+const ok = (body: Record<string, unknown>) =>
+  NextResponse.json(body, { headers: { 'Cache-Control': 'no-store' } });
+
+const bad = (code: string, message: string, status = 400) =>
+  NextResponse.json(
+    { error: { code, message } },
+    { status, headers: { 'Cache-Control': 'no-store' } },
+  );
+
+/** Resolves the attempt an event refers to, from identifiers the gateway signed. */
+async function resolveAttempt(entity: { orderId: string | null; paymentId: string }) {
+  // The order id is the strongest link: it is ours and unique.
+  if (entity.orderId) {
+    const byOrder = await findAttemptByOrder(entity.orderId);
+    if (byOrder) return byOrder;
+  }
+  return findAttemptByGatewayPayment(entity.paymentId);
+}
+
+async function invoiceFor(attempt: { invoiceId: string }) {
+  return prisma.invoice.findUnique({
+    where: { id: attempt.invoiceId },
+    select: {
+      id: true,
+      number: true,
+      bookingId: true,
+      status: true,
+      totalPaise: true,
+      currency: true,
+    },
+  });
+}
+
+/**
+ * Applies one verified event.
+ *
+ * Unknown references and unknown event types are acknowledged with 200 so the
+ * gateway stops retrying them - they change nothing. Everything that IS applied
+ * goes through the ledger's conditional writes.
+ */
+async function processEvent(event: z.infer<typeof eventSchema>): Promise<{
+  paymentId?: string;
+  body: Record<string, unknown>;
+}> {
+  if (event.event.startsWith('payment.')) {
+    const entity = event.payload.payment?.entity;
+    if (!entity) return { body: { ignored: 'no_payment_entity' } };
+
+    const attempt = await resolveAttempt({ orderId: entity.order_id ?? null, paymentId: entity.id });
+    if (!attempt) return { body: { ignored: 'unknown_payment' } };
+
+    const invoice = await invoiceFor(attempt);
+    if (!invoice) return { body: { ignored: 'unknown_invoice' } };
+
+    const outcome = await settleFromGateway({
+      attempt,
+      invoice,
+      gatewayPayment: toGatewayPayment(entity),
+      source: 'WEBHOOK',
+    });
+
+    return {
+      paymentId: attempt.id,
+      body: { paymentStatus: outcome.status, invoiceStatus: outcome.invoiceStatus },
+    };
+  }
+
+  if (event.event.startsWith('refund.')) {
+    const refund = event.payload.refund?.entity;
+    if (!refund) return { body: { ignored: 'no_refund_entity' } };
+
+    const attempt = await findAttemptByGatewayPayment(refund.payment_id);
+    if (!attempt) return { body: { ignored: 'unknown_payment' } };
+
+    // `amount_refunded` on the payment entity is the running total; a refund
+    // entity alone only describes one refund. Prefer the total when present.
+    // shortcut: without the payment entity we report the single refund amount,
+    // which under-reports cumulative partial refunds. Upgrade when partial
+    // refunds are approved as a business process.
+    const paymentEntity = event.payload.payment?.entity;
+    const refundedPaise = Math.max(
+      paymentEntity?.amount_refunded ?? 0,
+      refund.amount,
+      paymentEntity?.amount_refunded === undefined ? attempt.refundedPaise : 0,
+    );
+
+    const changed = await applyRefundStatus(attempt.id, {
+      refundedPaise,
+      refundStatus: refund.status,
+    });
+
+    return { paymentId: attempt.id, body: { refund: changed ? 'recorded' : 'ignored' } };
+  }
+
+  // Unknown event type: acknowledged, never applied.
+  return { body: { ignored: 'unknown_event' } };
 }
 
 export const POST = apiHandler(async (request: Request) => {
   if (!isPaymentConfigured()) {
-    return NextResponse.json(
-      { error: { code: 'NOT_CONFIGURED', message: 'Payment processing is not configured' } },
-      { status: 503 },
-    );
+    // Nothing to verify against, so nothing is trusted.
+    return bad('NOT_CONFIGURED', 'Payment processing is not configured', 503);
   }
 
   const limit = await rateLimitByIp(WEBHOOK_POLICY);
@@ -75,172 +199,76 @@ export const POST = apiHandler(async (request: Request) => {
     );
   }
 
-  // Read the RAW body first - the signature covers the exact bytes.
+  // RAW body first: the signature covers these exact bytes.
   const rawBody = await request.text();
   if (rawBody.length > 64 * 1024) {
-    return NextResponse.json(
-      { error: { code: 'PAYLOAD_TOO_LARGE', message: 'Payload too large' } },
-      { status: 413 },
-    );
+    return bad('PAYLOAD_TOO_LARGE', 'Payload too large', 413);
   }
 
-  const signature = request.headers.get('x-moyo-signature') ?? request.headers.get('x-signature');
-  if (!verifySignature(rawBody, signature)) {
+  const signature = request.headers.get('x-razorpay-signature');
+  const eventId = request.headers.get('x-razorpay-event-id');
+
+  if (!getPaymentProvider().verifyWebhookSignature(rawBody, signature)) {
     await audit({
       action: 'ACCESS_DENIED',
       entityType: 'PaymentWebhook',
+      entityId: eventId,
       metadata: { reason: 'invalid_signature' },
     });
-    // 401: the caller cannot prove it is the payment provider.
-    return NextResponse.json(
-      { error: { code: 'INVALID_SIGNATURE', message: 'Signature verification failed' } },
-      { status: 401 },
-    );
+    return bad('INVALID_SIGNATURE', 'Invalid webhook signature');
   }
 
-  let payload: unknown;
+  // Only once the signature is proven may the body be parsed.
+  let parsedJson: unknown;
   try {
-    payload = JSON.parse(rawBody);
+    parsedJson = JSON.parse(rawBody);
   } catch {
-    return NextResponse.json(
-      { error: { code: 'BAD_REQUEST', message: 'Malformed payload' } },
-      { status: 400 },
-    );
+    return bad('INVALID_PAYLOAD', 'Invalid webhook payload');
   }
 
-  const parsed = webhookSchema.safeParse(payload);
+  const parsed = eventSchema.safeParse(parsedJson);
   if (!parsed.success) {
-    return NextResponse.json(
-      { error: { code: 'VALIDATION_ERROR', message: 'Invalid webhook payload' } },
-      { status: 422 },
-    );
+    await audit({
+      action: 'ACCESS_DENIED',
+      entityType: 'PaymentWebhook',
+      entityId: eventId,
+      metadata: { reason: 'invalid_payload' },
+    });
+    return bad('INVALID_PAYLOAD', 'Invalid webhook payload');
   }
+
+  // Without the gateway's event id we cannot guarantee idempotency, so the
+  // delivery is refused rather than processed blind to duplicates.
+  if (!eventId) return bad('MISSING_EVENT_ID', 'Missing x-razorpay-event-id header');
 
   const event = parsed.data;
 
-  // Idempotency: if this event id was already processed, acknowledge and stop.
-  const alreadyApplied = await prisma.auditLog.findFirst({
-    where: { action: 'PAYMENT_STATUS_CHANGED', entityId: event.eventId },
-    select: { id: true },
-  });
-  if (alreadyApplied) {
-    return NextResponse.json({ received: true, duplicate: true });
-  }
-
-  const invoice = await prisma.invoice.findUnique({
-    where: { id: event.invoiceId },
-    select: {
-      id: true,
-      number: true,
-      status: true,
-      totalPaise: true,
-      currency: true,
-      bookingId: true,
-    },
-  });
-
-  if (!invoice) {
-    return NextResponse.json(
-      { error: { code: 'NOT_FOUND', message: 'Unknown invoice' } },
-      { status: 404 },
-    );
-  }
-
-  // Never trust the amount the provider echoes back without checking it.
-  if (
-    event.amountPaise !== invoice.totalPaise ||
-    event.currency.toUpperCase() !== invoice.currency.toUpperCase()
-  ) {
-    await audit({
-      action: 'ACCESS_DENIED',
-      entityType: 'Invoice',
-      entityId: invoice.id,
-      metadata: { reason: 'amount_mismatch', eventId: event.eventId },
-    });
-    return NextResponse.json(
-      { error: { code: 'AMOUNT_MISMATCH', message: 'Payment amount does not match the invoice' } },
-      { status: 409 },
-    );
-  }
-
-  const paymentStatus =
-    event.type === 'payment.succeeded'
-      ? 'SUCCEEDED'
-      : event.type === 'payment.failed'
-        ? 'FAILED'
-        : 'REFUNDED';
-
-  await prisma.$transaction(async (tx) => {
-    await tx.payment.upsert({
-      where: { idempotencyKey: event.idempotencyKey },
-      update: {
-        status: paymentStatus,
-        providerRef: event.paymentId,
-        signatureVerified: true,
-        cardLast4: event.cardLast4 ?? null,
-      },
-      create: {
-        idempotencyKey: event.idempotencyKey,
-        invoiceId: invoice.id,
-        bookingId: invoice.bookingId,
-        status: paymentStatus,
-        amountPaise: event.amountPaise,
-        currency: event.currency.toUpperCase(),
-        providerRef: event.paymentId,
-        signatureVerified: true,
-        cardLast4: event.cardLast4 ?? null,
-      },
-    });
-
-    if (paymentStatus === 'SUCCEEDED') {
-      await tx.invoice.update({
-        where: { id: invoice.id },
-        data: { status: 'PAID', paidAt: new Date() },
-      });
-
-      // Advance the booking only along the legal edge PAYMENT_PENDING -> PAID.
-      const booking = await tx.booking.findUnique({
-        where: { id: invoice.bookingId },
-        select: { id: true, status: true, customerId: true },
-      });
-
-      if (booking && booking.status === 'PAYMENT_PENDING') {
-        await tx.booking.update({
-          where: { id: booking.id },
-          data: { status: 'PAID' },
-        });
-        await tx.bookingStatusEvent.create({
-          data: {
-            bookingId: booking.id,
-            from: 'PAYMENT_PENDING',
-            to: 'PAID',
-            // No actor: the payment provider is the actor, not a user.
-            actorId: null,
-            actorRole: null,
-            note: 'Settled by verified payment webhook',
-          },
-        });
-        await tx.notification.create({
-          data: {
-            userId: booking.customerId,
-            channel: 'IN_APP',
-            title: 'Payment received',
-            body: `Payment for invoice ${invoice.number} is confirmed.`,
-            link: `/bookings/${booking.id}`,
-            status: 'SENT',
-          },
-        });
-      }
+  // Claim the event. The unique index is the idempotency lock.
+  try {
+    await prisma.paymentWebhookEvent.create({ data: { eventId, type: event.event } });
+  } catch (err) {
+    if (isUniqueViolation(err)) {
+      // Already processed: 200 so the gateway stops retrying.
+      return ok({ received: true, duplicate: true });
     }
-  });
+    throw err;
+  }
 
-  await audit({
-    action: 'PAYMENT_STATUS_CHANGED',
-    entityType: 'Payment',
-    // entityId doubles as the provider event id, giving us idempotency.
-    entityId: event.eventId,
-    metadata: { invoiceId: invoice.id, paymentStatus, signatureVerified: true },
-  });
-
-  return NextResponse.json({ received: true });
+  try {
+    const result = await processEvent(event);
+    if (result.paymentId) {
+      await prisma.paymentWebhookEvent.updateMany({
+        where: { eventId, paymentId: null },
+        data: { paymentId: result.paymentId },
+      });
+    }
+    return ok({ received: true, ...result.body });
+  } catch (err) {
+    // Release the claim so the gateway's retry is processed instead of being
+    // mistaken for a duplicate. Re-throw so `apiHandler` logs it and returns 500,
+    // which is what tells the gateway to retry.
+    await prisma.paymentWebhookEvent.deleteMany({ where: { eventId } });
+    throw err;
+  }
 });
+

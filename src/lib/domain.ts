@@ -57,7 +57,30 @@ export type ServiceType = (typeof SERVICE_TYPES)[number];
 export const INVOICE_STATUSES = ['DRAFT', 'ISSUED', 'PAID', 'VOID', 'OVERDUE'] as const;
 export type InvoiceStatus = (typeof INVOICE_STATUSES)[number];
 
-export const PAYMENT_STATUSES = ['CREATED', 'PENDING', 'SUCCEEDED', 'FAILED', 'REFUNDED'] as const;
+/**
+ * Payment lifecycle. Every value maps to something the gateway actually
+ * reports - nothing is staged for appearance:
+ *
+ *   CREATED           an attempt row exists; no gateway order yet
+ *   PENDING           a gateway order exists and checkout may be completed
+ *   AUTHORIZED        the bank approved it but the gateway has not captured it
+ *   CAPTURED          the gateway captured the money - the only payable state
+ *   FAILED            the gateway reported a failed attempt
+ *   REFUNDED          the full captured amount was refunded
+ *   PARTIALLY_REFUNDED part of the captured amount was refunded
+ *
+ * A browser callback NEVER moves a payment to CAPTURED; only a server-side
+ * gateway check or a signature-verified webhook does.
+ */
+export const PAYMENT_STATUSES = [
+  'CREATED',
+  'PENDING',
+  'AUTHORIZED',
+  'CAPTURED',
+  'FAILED',
+  'REFUNDED',
+  'PARTIALLY_REFUNDED',
+] as const;
 export type PaymentStatus = (typeof PAYMENT_STATUSES)[number];
 
 export const ORDER_STATUSES = [
@@ -123,7 +146,9 @@ export const AUDIT_ACTIONS = [
   'ATTACHMENT_UPLOADED',
   'INVOICE_CREATED',
   'INVOICE_MODIFIED',
+  'PAYMENT_INITIATED',
   'PAYMENT_STATUS_CHANGED',
+  'PAYMENT_VERIFICATION_FAILED',
   'MATERIAL_ORDER_CREATED',
   'MATERIAL_ORDER_STATUS_CHANGED',
   'SETTINGS_CHANGED',
@@ -180,11 +205,13 @@ export const ORDER_STATUS_LABEL: Record<OrderStatus, string> = {
 };
 
 export const PAYMENT_STATUS_LABEL: Record<PaymentStatus, string> = {
-  CREATED: 'Created',
-  PENDING: 'Pending',
-  SUCCEEDED: 'Succeeded',
-  FAILED: 'Failed',
+  CREATED: 'Not started',
+  PENDING: 'Payment pending',
+  AUTHORIZED: 'Payment processing',
+  CAPTURED: 'Paid',
+  FAILED: 'Payment failed',
   REFUNDED: 'Refunded',
+  PARTIALLY_REFUNDED: 'Partly refunded',
 };
 
 export const INVOICE_STATUS_LABEL: Record<InvoiceStatus, string> = {

@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { BOOKING_STATUSES, INVOICE_STATUSES } from './domain';
+import { BOOKING_STATUSES, INVOICE_STATUSES, PAYMENT_STATUSES } from './domain';
 
 /**
  * CENTRAL VALIDATION SCHEMAS
@@ -823,6 +823,64 @@ export const adminInvoiceQuerySchema = z
  * resolved from the persisted booking.
  */
 export const adminGenerateInvoiceSchema = z.object({}).strict();
+
+// ---------------------------------------------------------------------------
+// Payments
+// ---------------------------------------------------------------------------
+
+/**
+ * Body for starting a payment.
+ *
+ * NO FIELDS are accepted. `.strict()` means an attempt to supply an amount, a
+ * currency, an invoice id or a customer id rejects the whole request - every
+ * figure is resolved from the persisted invoice.
+ */
+export const paymentInitiateSchema = z.object({}).strict();
+
+/**
+ * The checkout callback the browser posts back.
+ *
+ * These three values are the gateway's documented checkout response. They are
+ * NOT trusted: the server re-computes the signature and then fetches the
+ * payment from the gateway before anything is written. The formats are pinned so
+ * a nonsense value cannot reach the gateway as a path segment.
+ */
+export const paymentVerifySchema = z
+  .object({
+    razorpay_order_id: z
+      .string()
+      .trim()
+      .regex(/^order_[A-Za-z0-9]{6,64}$/, 'Invalid order reference'),
+    razorpay_payment_id: z
+      .string()
+      .trim()
+      .regex(/^pay_[A-Za-z0-9]{6,64}$/, 'Invalid payment reference'),
+    razorpay_signature: z
+      .string()
+      .trim()
+      .regex(/^[a-fA-F0-9]{64}$/, 'Invalid signature'),
+  })
+  .strict();
+
+/**
+ * Query parameters for the admin payment ledger.
+ *
+ * Same rules as the invoice ledger: `.strict()` rejects an unknown parameter,
+ * `status` is the canonical allowlist plus `ALL`, and paging is bounded.
+ */
+export const adminPaymentQuerySchema = z
+  .object({
+    q: z
+      .string()
+      .trim()
+      .max(80)
+      .transform((s) => s.replace(controlChars, ''))
+      .optional(),
+    status: z.enum(['ALL', ...PAYMENT_STATUSES]).default('ALL'),
+    page: z.coerce.number().int().min(1).max(10_000).default(1),
+    pageSize: z.coerce.number().int().min(1).max(100).default(20),
+  })
+  .strict();
 
 // ---------------------------------------------------------------------------
 // Shared query params

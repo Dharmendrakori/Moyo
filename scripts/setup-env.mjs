@@ -19,10 +19,11 @@ DATABASE_URL="file:./dev.db"
 SESSION_SECRET="${secret}"
 APP_URL="http://localhost:3000"
 
-# Payment provider is intentionally empty in development.
-# While empty, checkout endpoints return 503 instead of faking a payment.
-PAYMENT_PROVIDER=""
-PAYMENT_WEBHOOK_SECRET=""
+# Razorpay is intentionally empty in development.
+# While empty, the payment endpoints return 503 instead of faking a payment.
+RAZORPAY_KEY_ID=""
+RAZORPAY_KEY_SECRET=""
+RAZORPAY_WEBHOOK_SECRET=""
 
 RATE_LIMIT_STORE="memory"
 UPLOAD_DIR="./storage/uploads"

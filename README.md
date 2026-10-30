@@ -32,7 +32,8 @@ A technology services platform for booking, tracking and managing field services
 | Customer booking status tracking | **Implemented** - full lifecycle view with status progression, technician details, and ownership enforcement |
 | Technician dispatch UI (operator side) | **Not yet implemented** |
 | Invoicing (generation, ledger, PDF) | **Implemented** - issued only from a `COMPLETED` booking, integer-paise arithmetic, immutable snapshots, unique sequential numbers, admin ledger + PDF download, customer view/download for their own booking |
-| Payment capture, feedback capture | **Not yet implemented** (schema and state machine exist; no UI) |
+| **Online payment capture (Razorpay)** | **Implemented** - server-created gateway order, signature-verified checkout callback, signature-verified idempotent webhook, integer paise, one attempt per invoice, invoice paid only on authoritative capture |
+| Feedback capture | **Not yet implemented** (schema and state machine exist; no UI) |
 | Material ordering / cart | **Not yet implemented** |
 | Support messaging | **Not yet implemented** |
 | Account profile, password reset, email verification | **Not yet implemented** |
@@ -47,8 +48,10 @@ A technology services platform for booking, tracking and managing field services
 | **Admin console UI** | **Redesigned** - one shared design system across every admin route: responsive sidebar, breadcrumb header, KPI dashboard, premium tables and dialogs |
 | Admin bookings / dispatch / technicians / customers | **Implemented** - bookings list is live; confirm, assign, and state transitions are functional via the admin console |
 | Admin invoices | **Implemented** - `/admin/invoices` and `/admin/invoices/[id]`: ledger, search, status filter, pagination, itemised detail, PDF download |
-| Admin payments / reviews / audit log / settings | **Not yet implemented** - shown as disabled "Soon" |
-| Payment provider integration | **Requires production configuration** |
+| Admin payments | **Implemented** - `/admin/payments` and `/admin/payments/[id]`: ledger, search across payment/invoice/booking/customer, status filter, pagination, gateway references, failure and read-only refund state |
+| Admin reviews / audit log / settings | **Not yet implemented** - shown as disabled "Soon" |
+| Payment refunds (initiation) | **Not implemented by design** - no approved refund policy; refund state is mirrored read-only from the gateway (see "Payments - refunds") |
+| Payment provider integration | **Configured via `RAZORPAY_*` environment variables** - sandbox verification pending credentials; see "Payments - configuration" |
 | Deployment hardening (Redis rate limiting, PostgreSQL, native enums) | **Requires production configuration** - see [SECURITY.md](./SECURITY.md) §6 |
 
 ---
@@ -148,6 +151,8 @@ as the customer site. It is not a visual mockup and it runs on no mock data.
 | `/admin/bookings/[id]` | One booking in full: request details, location, customer, pricing vs invoice, technician, status history, and the confirm / assign / issue-invoice actions |
 | `/admin/invoices` | Every issued invoice, newest first: number / booking-reference / customer search, status filter, pagination |
 | `/admin/invoices/[id]` | One invoice as issued: line items, totals, seller and customer snapshots, PDF download |
+| `/admin/payments` | Payment ledger: payment reference, invoice, booking, customer, amount, gateway, status, dates; search, status filter, pagination |
+| `/admin/payments/[id]` | One payment attempt: transaction, gateway references, signature verification, failure and refund state (read-only) |
 
 Modules that are **not yet built** (Customers, Materials, Payments, Reviews, Audit log, Settings) appear in the sidebar as **disabled entries marked "Soon"**. They are deliberately not links: a navigation item that leads to a 404 advertises a capability the console does not have. No planned module is dressed up with fake functionality, sample rows or placeholder metrics.
 
@@ -755,6 +760,189 @@ server-side guards.
 
 ---
 
+## Payments — online capture, verification and reconciliation
+
+A customer can pay an issued invoice through the payment gateway. The guiding
+rule is blunt: **the browser never decides that a payment succeeded.** A payment
+becomes authoritative only through a signature-verified server check or a
+signature-verified webhook.
+
+### Gateway and architecture
+
+| Piece | File | Responsibility |
+| --- | --- | --- |
+| Provider interface | `src/lib/payments/provider.ts` | `createOrder`, `fetchPayment`, `verifyCheckoutSignature`, `verifyWebhookSignature` |
+| Razorpay implementation | `src/lib/payments/razorpay.ts` | The only place that knows Razorpay's URLs and signing rules |
+| Ledger | `src/lib/payments/ledger.ts` | Payability, initiation, settlement, refund mirroring, admin reads |
+| Customer UI | `src/components/customer/PaymentPanel.tsx` | "Pay now", checkout launch, server verification |
+| Admin UI | `app/admin/payments/**` | Read-only ledger and detail |
+| Env | `src/lib/env.ts` | `RAZORPAY_KEY_ID`, `RAZORPAY_KEY_SECRET`, `RAZORPAY_WEBHOOK_SECRET` |
+
+Razorpay is the **only** gateway in this milestone. The invoice domain, booking
+state machine, customer authentication and admin console talk to the interface,
+never to Razorpay. The integration uses Razorpay's documented REST API over
+`fetch` rather than an SDK: the entire surface is one order POST, one payment GET
+and two HMAC comparisons, so a dependency would add supply-chain cost for no
+benefit.
+
+### Data model
+
+`Payment` (one row per invoice attempt) and `PaymentWebhookEvent` (one row per
+processed delivery). Highlights:
+
+- `idempotencyKey` is `invoice:<invoiceId>` and **unique** — one attempt per
+  invoice, so repeated clicks cannot mint duplicate chargeable attempts.
+- `gatewayOrderId` and `gatewayPaymentId` are **unique** — one gateway order, and
+  one gateway payment, can settle at most one internal record.
+- `amountPaise` is an integer; no floating-point arithmetic touches money.
+- No card number, CVV, UPI PIN or credential is ever received or stored: the
+  customer enters those into the gateway's own checkout.
+- `signatureVerified` + `verifiedAt` record that a server-side check (not a
+  browser callback) confirmed the state.
+
+### Lifecycle
+
+| Status | Meaning | Set by |
+| --- | --- | --- |
+| `CREATED` | attempt row exists, no gateway order yet | initiation |
+| `PENDING` | gateway order created, checkout may be completed | initiation |
+| `AUTHORIZED` | bank approved, not yet captured | verified gateway status |
+| `CAPTURED` | money captured — the only state that marks the invoice paid | verified gateway status |
+| `FAILED` | attempt failed (safe code + description stored) | verified gateway status |
+| `REFUNDED` / `PARTIALLY_REFUNDED` | refund state mirrored from the gateway | signed `refund.*` webhook |
+
+The invoice moves `ISSUED → PAID` exactly once, in the same transaction as the
+payment's `→ CAPTURED` write, and the booking advances only along its legal
+`PAYMENT_PENDING → PAID` edge.
+
+
+### Server-side verification (the security core)
+
+`POST /api/bookings/[id]/payment/verify` requires, in order:
+
+1. a live session, same-origin request and the session's CSRF token;
+2. an invoice that belongs to the caller (ownership is in the query);
+3. an order this application issued for **that** invoice;
+4. `HMAC-SHA256(order_id|payment_id, key_secret)` matching `razorpay_signature`;
+5. a `GET /v1/payments/:id` fetch whose status is `captured`, with the same order
+   id, amount and currency as the persisted invoice.
+
+Any failure leaves the invoice unpaid, writes an audit entry, and returns a safe
+error. A replayed callback is a no-op (`changed: false`), and two callbacks
+arriving together produce a single invoice transition because every write is a
+conditional update.
+
+### Webhook
+
+`POST /api/webhooks/payment` is server-to-server, so **CSRF and same-origin
+checks are deliberately not applied** — they are meaningless without a session.
+The control is the gateway signature:
+
+- the body is read as **raw text** before parsing (a re-serialised body fails
+  verification by design);
+- `X-Razorpay-Signature` = `HMAC-SHA256(raw_body, webhook_secret)`, compared in
+  constant time;
+- `x-razorpay-event-id` is stored in a unique column, so a retry is answered with
+  `200 { duplicate: true }` and changes nothing;
+- a delivery without an event id is refused, because idempotency is impossible;
+- if processing throws, the claim row is released and a `500` asks the gateway to
+  retry — so a transient failure is not mistaken for a duplicate;
+- unknown event types and unknown payment references are acknowledged with `200`
+  and change nothing;
+- older events cannot overwrite newer authoritative states: `payment.failed` never
+  rewinds a capture.
+
+Handled events: `payment.authorized`, `payment.captured`, `payment.failed`,
+`refund.created`, `refund.processed`, `refund.failed`.
+
+### Reconciliation rules
+
+- The amount is always read from the **persisted invoice**; the gateway order is
+  created for exactly that integer paise amount, and the gateway's echo of the
+  amount is checked before use.
+- Partial payments are disabled (`partial_payment: false`): an invoice is paid in
+  full or not at all.
+- Line items, totals, seller and customer snapshots are never modified after
+  issuance — settlement writes only `status` and `paidAt`.
+- Refunds are recorded on the payment, **not** by rewriting the invoice: the
+  invoice remains a paid document with its original amount.
+
+### Customer experience
+
+On `/bookings/[id]` the invoice card is followed by a payment panel showing one
+honest state: not started, pending, processing, paid, failed, refund pending or
+refunded, plus the attempts so far. "Pay now" posts to the API, opens the
+gateway's own checkout, and afterwards the browser posts the gateway response to
+`/payment/verify` — the panel then reports what the **server** concluded and
+refreshes from the database. Closing checkout early says plainly that nothing was
+charged. A paid invoice never offers checkout again.
+
+### Admin payment management
+
+`/admin/payments` lists real payment records only (no sample rows, no invented
+metrics): payment reference, invoice, booking, customer, amount, gateway, status,
+created and verified dates, with search, a status filter and server-side
+pagination. `/admin/payments/[id]` shows the transaction, both gateway references,
+signature verification, failure code/description and refund state.
+
+There is **no administrative action that can mark a payment successful, change an
+amount or edit a gateway reference** — those endpoints do not exist, so that class
+of mistake is structurally impossible.
+
+
+### Payments — refunds (outstanding business decision)
+
+**No refunds are initiated by this application.** Razorpay supports full and
+partial refunds, but the business has not approved a refund policy (who may
+refund, in what window, full vs partial, how the invoice is legally adjusted), and
+inventing one in code would be inventing a financial rule. What is implemented is
+**read-only refund state**: the signed `refund.*` webhooks mirror `refundedPaise`
+and a gateway refund status onto the payment, and both the customer panel and the
+admin detail display it.
+
+To enable refund initiation later: define the policy, add `createRefund` to
+`PaymentProvider` (endpoint `POST /v1/payments/:id/refund`, documented at
+<https://razorpay.com/docs/api/refunds/>), gate it behind an explicit authorised
+action, bound amounts by `amountPaise - refundedPaise`, keep it idempotent, audit
+every request, and decide separately whether a credit note is required — an
+issued invoice is immutable and must never be silently rewritten.
+
+### Payments — configuration
+
+```bash
+# Sandbox (test mode) keys: Dashboard -> Test Mode -> Account & Settings -> API Keys
+RAZORPAY_KEY_ID=""          # publishable: the only value sent to the browser
+RAZORPAY_KEY_SECRET=""      # never leaves the server
+RAZORPAY_WEBHOOK_SECRET=""  # the secret configured on the webhook endpoint
+```
+
+Webhook URL to register: `{APP_URL}/api/webhooks/payment`, subscribed to the six
+events listed above. While any of the three values is empty the payment endpoints
+return `503 NOT_CONFIGURED` instead of pretending to charge.
+
+**Verification status: sandbox/browser testing is blocked in this environment.**
+No Razorpay test credentials were available, and Razorpay does not deliver
+webhooks to `localhost`, so no live checkout run has been performed. What *is*
+verified is automated and end-to-end at the HTTP boundary: 81 new tests drive the
+real routes with real HMAC signatures and the documented gateway payloads (see the
+changelog). Do not describe live payments as operational until a test-mode
+checkout and a real webhook delivery have both succeeded.
+
+### Payments — known limitations
+
+- Refund initiation is not implemented (policy not approved).
+- One payment attempt per invoice: a failed attempt is retried against the same
+  gateway order rather than a new one, which keeps reconciliation simple.
+- A lost initiation race can leave an unused order at the gateway; no money moves
+  and orders expire, but nothing cleans it up automatically.
+- The in-memory rate limiter is per process (see SECURITY.md §6).
+- Settlement relies on the gateway account capturing payments (auto-capture or the
+  dashboard). An uncaptured payment stays `AUTHORIZED`, which the UI reports
+  honestly as "processing", not paid.
+
+---
+
+
 ## API endpoints
 
 | Method | Path | Auth | Purpose |
@@ -775,7 +963,9 @@ server-side guards.
 | **`POST`** | **`/api/bookings/[id]/attachments`** | Session + CSRF | Upload one validated image |
 | **`GET`** | **`/api/bookings/[id]/invoice/pdf`** | Session + ownership | **Download the invoice for the caller's own booking** (404 for anyone else's) |
 | `POST` | `/api/bookings/[id]/transition` | Session + role | Advance a booking's state |
-| `POST` | `/api/webhooks/payment` | Signature | Mark a booking `PAID` |
+| **`POST`** | **`/api/bookings/[id]/payment`** | Session + ownership + CSRF | **Start (or resume) the online payment for the caller's own issued invoice.** Body must be `{}`; amount, currency and ownership come from the server |
+| **`POST`** | **`/api/bookings/[id]/payment/verify`** | Session + ownership + CSRF | **Verify the checkout result server-side** (signature + gateway fetch) and settle the invoice |
+| `POST` | `/api/webhooks/payment` | Gateway signature (`X-Razorpay-Signature`) | Razorpay notifications: settle, fail, and refund state. Idempotent on `x-razorpay-event-id` |
 | `GET` | `/api/geocode/reverse` | Public (same-origin only) | Reverse-geocoding proxy to Nominatim — see *GPS location detection* below |
 
 Errors always return `{ error: { code, message, fields? } }`. Stack traces, SQL
@@ -1124,6 +1314,85 @@ git checkout backup/pre-moyo-refactor
 The refactor work is on `feature/moyo-platform`. `main` was never modified.
 
 ---
+
+## Changelog - Milestone 4: payment processing and management
+
+Online payment for issued invoices, verified server-side, with a gateway
+abstraction and a read-only admin ledger.
+
+### Existing architecture, before this milestone
+
+Nothing was integrated. `PAYMENT_STATUSES` existed as an unused enum, the
+`Payment` model had no gateway identifiers, and `/api/webhooks/payment` was a
+first-draft endpoint that checked a *custom* HMAC header and never touched a real
+provider. That endpoint has been replaced rather than extended, because its
+signing scheme was invented rather than documented.
+
+### Gateway
+
+Razorpay, behind `PaymentProvider` (`src/lib/payments/provider.ts`). Chosen
+because it is the preferred Indian provider for this deployment, supports the
+exact flow required (server-created order → hosted checkout → signed callback →
+signed webhook), and documents both signature schemes explicitly. Implemented
+over the documented REST API with `node:crypto`, so no dependency was added.
+
+### Database changes (`prisma db push`, no `prisma/migrations`)
+
+| Change | Reason |
+| --- | --- |
+| `Payment.provider`, `status` lifecycle expanded | Explicit `CREATED → PENDING → AUTHORIZED → CAPTURED`, plus `FAILED`, `REFUNDED`, `PARTIALLY_REFUNDED` |
+| `Payment.gatewayOrderId` `@unique`, `gatewayPaymentId` `@unique` | One gateway order/payment can settle exactly one internal record |
+| `Payment.refundedPaise`, `refundStatus`, `failureCode`, `verifiedAt` | Safe failure text and read-only refund state |
+| `Payment.providerRef`, `cardLast4` removed | Replaced by explicit gateway ids; no card data is stored at all. The table held **0 rows**, so nothing was lost |
+| `PaymentWebhookEvent` (`eventId @unique`) | Database-backed webhook idempotency |
+| Indexes on `invoiceId` and `(status, createdAt)` | Ledger reads |
+
+### Verification (actual results)
+
+| Check | Command | Result |
+| --- | --- | --- |
+| Type safety | `npm run typecheck` | **PASS** (0 errors) |
+| Lint | `npm run lint` | **PASS** (0 problems) |
+| Tests | `npm test` | **PASS - 532 tests, 34 suites** (451 baseline + 81 new) |
+| Production build | `npm run build` | **PASS** - `prisma generate` ✔ then `next build` ✔ (30 static pages, `/admin/payments` + `/admin/payments/[id]` emitted) |
+| Runtime audit | `npm run audit:prod` | **0 vulnerabilities** |
+
+New suites: `payment-gateway.test.ts` (16), `payment-api.test.ts` (28),
+`payment-webhook.test.ts` (18), `admin-payments-page.test.ts` (10),
+`tests/stubs/payment-store.ts` (in-memory ledger that honors the conditional
+updates and unique constraints the safety properties depend on).
+
+Two real defects were found by the new tests and fixed:
+
+1. `describePaymentState()` passed `invoiceStatus` into `assessInvoicePayability()`
+   as `status`, so the payability check always saw `undefined` and the panel
+   offered no payment. It now maps the field explicitly.
+2. `getPaymentProvider()` cached the provider on `globalThis`; the class identity
+   then depended on when the module graph was last evaluated, which silently
+   defeated `instanceof ApiError` inside `apiHandler` (a gateway outage surfaced
+   as a generic 500). The cache was pointless for a stateless object and has been
+   removed.
+
+### Sandbox / browser verification: BLOCKED
+
+No Razorpay test credentials are available in this environment and Razorpay does
+not deliver webhooks to `localhost`, so **no checkout and no webhook delivery have
+been exercised against the real sandbox**. The blocking items, and what was
+verified instead, are recorded under "Payments — configuration". Manually editing
+the database to fake a success was deliberately not done.
+
+### Operational note
+
+`prisma generate` had to replace
+`node_modules/.prisma/client/query_engine-windows.dll.node` while a `next dev`
+server (PID 32332) held it, which Windows refuses (`EPERM`). The held file was
+renamed aside and generation succeeded — the same environmental workaround the
+earlier milestone documents. **The running dev server was not restarted**, so it
+still has the previous Prisma Client in memory and must be restarted before the
+payment screens are exercised in a browser.
+
+---
+
 
 ## Changelog - Admin invoice page runtime error
 

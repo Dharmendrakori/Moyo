@@ -13,8 +13,14 @@ const serverEnvSchema = z.object({
   DATABASE_URL: z.string().min(1, 'DATABASE_URL is required'),
   SESSION_SECRET: z.string().min(1, 'SESSION_SECRET is required'),
   APP_URL: z.string().url().default('http://localhost:3000'),
-  PAYMENT_PROVIDER: z.string().default(''),
-  PAYMENT_WEBHOOK_SECRET: z.string().default(''),
+  /**
+   * Razorpay credentials. Server-only: `RAZORPAY_KEY_ID` is the publishable half
+   * and is the ONLY one ever sent to the browser; the secret and webhook secret
+   * must never leave the server.
+   */
+  RAZORPAY_KEY_ID: z.string().default(''),
+  RAZORPAY_KEY_SECRET: z.string().default(''),
+  RAZORPAY_WEBHOOK_SECRET: z.string().default(''),
   RATE_LIMIT_STORE: z.string().default('memory'),
   UPLOAD_DIR: z.string().default('./storage/uploads'),
   MAX_UPLOAD_MB: z.coerce.number().int().min(1).max(25).default(5),
@@ -28,8 +34,9 @@ function load(): ServerEnv {
     DATABASE_URL: process.env.DATABASE_URL,
     SESSION_SECRET: process.env.SESSION_SECRET,
     APP_URL: process.env.APP_URL,
-    PAYMENT_PROVIDER: process.env.PAYMENT_PROVIDER,
-    PAYMENT_WEBHOOK_SECRET: process.env.PAYMENT_WEBHOOK_SECRET,
+    RAZORPAY_KEY_ID: process.env.RAZORPAY_KEY_ID,
+    RAZORPAY_KEY_SECRET: process.env.RAZORPAY_KEY_SECRET,
+    RAZORPAY_WEBHOOK_SECRET: process.env.RAZORPAY_WEBHOOK_SECRET,
     RATE_LIMIT_STORE: process.env.RATE_LIMIT_STORE,
     UPLOAD_DIR: process.env.UPLOAD_DIR,
     MAX_UPLOAD_MB: process.env.MAX_UPLOAD_MB,
@@ -59,10 +66,24 @@ export function env(): ServerEnv {
 export const isProd = () => env().NODE_ENV === 'production';
 
 /**
- * Payment provider readiness. When unconfigured, payment endpoints must return
- * 503 instead of simulating a successful charge.
+ * Payment provider readiness.
+ *
+ * When the gateway credentials are absent, every payment endpoint must fail
+ * safely (503) instead of simulating a charge. Nothing in this application ever
+ * pretends a payment happened.
  */
 export function isPaymentConfigured(): boolean {
   const e = env();
-  return Boolean(e.PAYMENT_PROVIDER && e.PAYMENT_WEBHOOK_SECRET);
+  return Boolean(e.RAZORPAY_KEY_ID && e.RAZORPAY_KEY_SECRET && e.RAZORPAY_WEBHOOK_SECRET);
+}
+
+/**
+ * The publishable key handed to the browser at checkout.
+ *
+ * Only `RAZORPAY_KEY_ID` is safe to expose - it identifies the account, it does
+ * not authorise anything. The secret and webhook secret are never returned by
+ * any function in this module outside the server-only gateway client.
+ */
+export function razorpayPublicKey(): string {
+  return env().RAZORPAY_KEY_ID;
 }
