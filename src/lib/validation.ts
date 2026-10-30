@@ -783,6 +783,16 @@ export const adminBookingQuerySchema = z
   })
   .strict();
 
+/** Body for confirming a booking. No fields - the server resolves the target state. */
+export const adminConfirmBookingSchema = z.object({}).strict();
+
+/** Body for assigning a technician. Only the technician id may be supplied. */
+export const adminAssignTechnicianSchema = z
+  .object({
+    technicianId: z.string().trim().min(1, 'Select a technician'),
+  })
+  .strict();
+
 // ---------------------------------------------------------------------------
 // Shared query params
 // ---------------------------------------------------------------------------

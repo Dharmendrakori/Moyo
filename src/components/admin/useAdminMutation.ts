@@ -28,12 +28,16 @@ export function useAdminMutation() {
   const [error, setError] = useState<string | null>(null);
 
   const run = useCallback(
-    async (url: string, body: unknown): Promise<AdminMutationResult> => {
+    async (
+      url: string,
+      body: unknown,
+      method: 'PATCH' | 'POST' = 'PATCH',
+    ): Promise<AdminMutationResult> => {
       setBusy(true);
       setError(null);
       try {
         const res = await fetch(url, {
-          method: 'PATCH',
+          method,
           credentials: 'same-origin',
           headers: {
             'Content-Type': 'application/json',

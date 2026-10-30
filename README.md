@@ -40,8 +40,8 @@ A technology services platform for booking, tracking and managing field services
 | **Admin service management** | **Implemented** - search, filter, paging, detail, activation |
 | **Admin charging-option management** | **Implemented** |
 | **Admin published-pricing management** | **Implemented** |
-| **Admin bookings list** | **Implemented** - search by reference, status filter, server-side pagination; read-only |
-| Admin bookings / dispatch / technicians / customers | **Partially implemented** - bookings list is live; confirm/assign/state transitions shown as disabled "Soon" |
+| **Admin bookings list** | **Implemented** - search by reference, status filter, server-side pagination; confirm and assign bookings; state transitions enforced server-side through the booking state machine |
+| Admin bookings / dispatch / technicians / customers | **Implemented** - bookings list is live; confirm, assign, and state transitions are functional via the admin console |
 | Admin invoices / payments / reviews / audit log / settings | **Not yet implemented** - shown as disabled "Soon" |
 | Payment provider integration | **Requires production configuration** |
 | Deployment hardening (Redis rate limiting, PostgreSQL, native enums) | **Requires production configuration** - see [SECURITY.md](./SECURITY.md) §6 |
@@ -141,12 +141,9 @@ as the customer site. It is not a visual mockup and it runs on no mock data.
 | `/admin/pricing` | Publish / withdraw published prices |
 | `/admin/bookings` | Every booking, newest first: reference search, status filter, pagination (read-only) |
 
-Modules that are **not yet built** (Dispatch actions, Technicians, Customers,
-Materials, Invoices, Payments, Reviews, Audit log, Settings) appear in the
-sidebar as **disabled entries marked "Soon"**. They are deliberately not links:
-a navigation item that leads to a 404 advertises a capability the console does
-not have. No planned module is dressed up with fake functionality, sample rows or
-placeholder metrics.
+Modules that are **not yet built** (Customers, Materials, Invoices, Payments, Reviews, Audit log, Settings) appear in the sidebar as **disabled entries marked "Soon"**. They are deliberately not links: a navigation item that leads to a 404 advertises a capability the console does not have. No planned module is dressed up with fake functionality, sample rows or placeholder metrics.
+
+**Booking confirmation and technician dispatch** are now implemented: administrators can confirm REQUESTED→CONFIRMED bookings and assign real technician records (active, provider-bound) to CONFIRMED bookings, advancing the state to TECHNICIAN_ASSIGNED. State transitions are enforced server-side through the booking state machine.
 
 ### Admin API
 
@@ -162,6 +159,9 @@ placeholder metrics.
 | `GET /api/admin/pricing` | Pricing table (filter by state, category, option) |
 | `PATCH /api/admin/pricing/[id]` | Publish or withdraw a published price |
 | `GET /api/admin/bookings` | Booking list: `q` (reference substring), `status` (allowlisted canonical status or `ALL`), bounded `page` / `pageSize` |
+| `GET /api/admin/bookings/[id]` | Booking detail: full record for dispatch view |
+| `POST /api/admin/bookings/[id]/confirm` | Confirm booking: REQUESTED → CONFIRMED (server-validated transition) |
+| `POST /api/admin/bookings/[id]/assign-technician` | Assign technician: CONFIRMED → TECHNICIAN_ASSIGNED (server-validated, provider-bound) |
 
 ### Admin authorization
 
@@ -292,7 +292,7 @@ ceiling.
 ### Audit logging
 
 Commercial and catalogue mutations write to the existing `AuditLog` model through
-`src/lib/audit.ts`. Five actions were added for this milestone:
+`src/lib/audit.ts`. Seven actions are now recorded:
 
 | Action | Recorded when |
 | --- | --- |
@@ -301,14 +301,15 @@ Commercial and catalogue mutations write to the existing `AuditLog` model throug
 | `CHARGING_OPTION_CHANGED` | Availability, budget bounds or duration change |
 | `PRICE_PUBLISHED` | A price becomes visible to customers |
 | `PRICE_UNPUBLISHED` | A price is withdrawn |
+| `BOOKING_CONFIRMED` | An administrator confirms a REQUESTED booking (REQUESTED → CONFIRMED) |
+| `TECHNICIAN_ASSIGNED` | An administrator assigns a technician to a CONFIRMED booking (CONFIRMED → TECHNICIAN_ASSIGNED) |
 
 Publication and withdrawal are deliberately **distinct** actions rather than one
 generic "price updated": they are different events with different risk, and
 collapsing them would make the log useless for reconstructing who changed what.
-Each row records the previous and the new value, plus
-`historicalBookingsUnchanged` for price events, so a disputed quote can be
-reconstructed. No secrets, passwords, session tokens or personal data are ever
-written.
+Each row records the previous and the new value, plus `historicalBookingsUnchanged`
+for price events, so a disputed quote can be reconstructed. No secrets, passwords,
+session tokens or personal data are ever written.
 
 ### Operator identity and the provider contact email
 
