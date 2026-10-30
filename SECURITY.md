@@ -11,15 +11,17 @@ code alone. What follows is an account of what was built and verified, plus an
 explicit list of what remains outstanding. Treat section 6 as a launch
 checklist, not optional reading.
 
-Verification performed for this release:
+Verification performed for this release (Milestone 2.5, measured on this
+working tree — 27 suites, 372 tests):
 
 | Check | Command | Result |
 | --- | --- | --- |
-| Type safety | `npm run typecheck` | PASS |
+| Type safety | `npm run typecheck` | PASS (0 errors) |
 | Lint | `npm run lint` | PASS (0 errors) |
-| Unit tests | `npm test` | PASS (140 tests, 9 suites) |
-| Production build | `npm run build` | PASS |
-| Dependency audit (runtime) | `npm audit --omit=dev` | 0 vulnerabilities |
+| Unit tests | `npm test` | PASS (372 tests, 27 suites) |
+| Production compile | `npx next build` | PASS |
+| Production build script | `npm run build` | Compile step PASS; the preceding `prisma generate` is blocked on this machine by a Windows file lock held by a process outside this shell (see README, "Build note") |
+| Dependency audit (runtime) | `npm run audit:prod` | 0 vulnerabilities |
 
 ---
 
@@ -291,7 +293,7 @@ changes, role changes and access denials.
 
 ## 3. Automated test coverage
 
-46 tests across three suites (`npm test`):
+372 tests across 27 suites (`npm test`). The security-relevant ones:
 
 - **`tests/booking-state.test.ts`** - legal/illegal transitions, terminal
   states, per-edge role permissions, and that **no role including `ADMIN` can
@@ -301,28 +303,89 @@ changes, role changes and access denials.
   password strength, and rejection of mass-assignment payloads.
 - **`tests/security.test.ts`** - open-redirect bypass patterns, and role/status
   narrowing of stored values.
+- **`tests/admin-auth.test.ts`**, **`tests/proxy-guard.test.ts`**,
+  **`tests/auth-url-security.test.ts`** - admin guard chain, middleware
+  boundaries and redirect safety.
+- **`tests/admin-booking-detail.test.ts`** - the admin booking read is 401/403
+  for non-admins, 404 for unknown and malformed ids (without touching the
+  database), and its projection selects **no customer account email or phone**.
+- **`tests/admin-booking-dispatch.test.ts`** - confirm and assign: success,
+  CSRF required, invalid transitions blocked (409), inactive technician refused
+  (422), repeated mutation refused, CUSTOMER driver refused, and a status event
+  written only on a real transition.
+- **`tests/admin-sidebar.test.ts`** - the collapsed sidebar can always be
+  expanded again, the mobile drawer stays independent, and the remembered
+  preference arrives from the server (no hydration-sensitive initialisation).
 
-These tests found and fixed a genuine authorization defect during development:
-`ADMIN` could previously mark a booking `PAID`.
+These tests found and fixed genuine defects during development: `ADMIN` could
+previously mark a booking `PAID`, and the desktop sidebar could previously be
+collapsed into a state from which the expand control had disappeared.
 
 ---
 
 ## 4. Dependency security posture
 
-`npm audit --omit=dev` reports **0 vulnerabilities** in the runtime tree.
+`npm run audit:prod` (`npm audit --omit=dev --audit-level=moderate`) reports
+**0 vulnerabilities** in the runtime tree.
 
-During the refactor the project was moved off **Next.js 14.2.18**, which carried
-critical advisories including *unauthenticated remote code execution on
-Windows-hosted servers* - directly relevant to this deployment. It now runs
-Next.js `16.3.8`.
+| Package | Version | Note |
+| --- | --- | --- |
+| `next` | `16.4.3` | Upgraded from `16.3.8` in Milestone 2.5 |
+| `zod` | `4.6.7` | Upgraded from `3.25.76` in Milestone 2.5 |
+| `react` / `react-dom` | `19.3.0` | Unchanged |
+| `@prisma/client` | `5.22.0` | Unchanged |
 
-**Known remaining advisories (development-only):** `npm audit` reports 5 high
-severity findings, all inside `eslint-config-next -> @next/eslint-plugin-next ->
-fast-glob -> micromatch -> braces`. These are build/lint-time only and are
-**absent from the production dependency tree**. The automated `fix` would
-downgrade `eslint-config-next` to 14.2.35, which would **reintroduce the
-critical Next.js RCE**. The trade-off was therefore taken deliberately in favour
-of the runtime risk; revisit when `eslint-config-next` ships a fixed chain.
+Advisories resolved in Milestone 2.5 (all were present at `16.3.8` / `3.25.76`, and
+none were introduced by this repository's own code):
+
+- `GHSA-2464-fhr4-w9xw` (critical) - unauthenticated RCE in the Image
+  Optimization API when SVG is used. Fixed by Next.js `16.4.1+`.
+- `GHSA-673q-mjm6-r5xr` (critical) - unauthenticated RCE in `use cache`
+  functions returning typed arrays. Fixed by Next.js `16.4.1+`.
+- `GHSA-p3m5-59mp-jv5r` (high) - denial of service in App Router Server
+  Actions. Fixed by Next.js `16.4.1+`.
+- `GHSA-mrhx-c7xc-m3w5` / CVE-2023-54404 (high) - zod could exhaust memory while
+  validating an oversized array against an unconstrained array schema. Patched
+  in zod `4.6.6`; this project moved to `4.6.7`.
+
+The zod change is a **major** version upgrade, so it was not taken on trust:
+`npm run typecheck` and the full suite were run against it and pass unchanged.
+Zod 4 deprecates `.strict()`, `.email()` and `.flatten()`-style helpers, and
+changes how `.default()` behaves inside optional fields; none of the removed
+behaviour is used here, and the validation suites (which assert defaults,
+allowlists and mass-assignment rejection) are the regression guard.
+
+**Development-only note:** `npm audit` *without* `--omit=dev` still reports one
+high finding - the zod advisory against a `zod@3.25.76` copy nested under
+`eslint-config-next → eslint-plugin-react-hooks → zod-validation-error`. That
+copy is lint-time only, is absent from the production tree, and cannot be
+replaced until that plugin widens its peer range. It is not suppressed and not
+excluded from the audit.
+
+---
+
+## 4a. Customer personal data — what the admin console may read
+
+Data minimisation is applied at the projection, not at the view, so an operator
+cannot obtain a field the screen does not need even by inspecting the response:
+
+| Field | Read by the admin booking detail? | Why |
+| --- | --- | --- |
+| Booking `contactName`, `contactPhone` | Yes | The customer supplied these for this visit; a technician needs them to arrive and call. |
+| Full service address | Yes | The work happens there. |
+| Customer account `name`, `id`, `createdAt` | Yes | Support reference and "customer since". The id is opaque. |
+| Customer account `email`, `phone` | **No** | Not needed to dispatch a booking; they are the same person's data under a different scope. Account-level contact belongs to a future Customers module with its own access policy. |
+| Password hash, sessions, IP hashes, payment provider refs | **No** | Never selected by any console or customer query. |
+
+`tests/admin-booking-detail.test.ts` asserts the absence of the account email and
+phone **on the Prisma `select`**, so a future edit that re-adds them fails the
+suite. The customer-facing endpoints never carried these fields at all.
+
+Why the remaining fields stay: removing the booking contact would break dispatch
+(hiding a phone number does not make the visit happen), and the requirement is
+proportionality, not zero exposure. Every one of these reads is behind
+`requireAdminPage` on the page and `adminReadGuard` on the API, so a customer
+session cannot reach any of it (covered by the 401/403 tests).
 
 ---
 

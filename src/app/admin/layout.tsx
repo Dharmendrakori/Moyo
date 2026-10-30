@@ -1,7 +1,8 @@
 import Link from 'next/link';
+import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { getCurrentUser } from '@/lib/auth';
-import { ADMIN_NAV } from '@/lib/admin-nav';
+import { ADMIN_NAV, SIDEBAR_COOKIE } from '@/lib/admin-nav';
 import { AdminShell } from '@/components/admin/Chrome';
 import { initials } from '@/lib/format';
 import { ROLE_LABEL } from '@/lib/domain';
@@ -43,12 +44,18 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   // Authenticated but not an administrator: refuse, and say why.
   if (user.role !== 'ADMIN') return <AdminAccessDenied role={user.role} />;
 
+  // The operator's desktop sidebar preference, read on the server so the first
+  // paint already matches it. Only the exact string 'collapsed' counts, so a
+  // tampered or stale cookie can never produce anything but the full sidebar.
+  const sidebarCollapsed = (await cookies()).get(SIDEBAR_COOKIE)?.value === 'collapsed';
+
   return (
     <AdminShell
       nav={ADMIN_NAV}
       userName={user.name}
       userInitials={initials(user.name)}
       userRole={user.role}
+      defaultSidebarCollapsed={sidebarCollapsed}
     >
       {children}
     </AdminShell>

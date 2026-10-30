@@ -31,6 +31,10 @@
   --color-brand-800: #1e3a8a;
   --color-brand-900: #1e2f63;
   --color-brand-950: #111c40;
+  /* Cyan accent sampled from the approved Seric logo pixels (~#07cdf8). Used
+     only by the branded loader's pixel motif; the base palette stays
+     restrained. Tailwind exposes it as `brand-cyan`. */
+  --color-brand-cyan: #07cdf8;
 
   /* Ink - neutral slate ramp -------------------------------------------- */
   --color-ink-50: #f8fafc;
@@ -486,4 +490,90 @@
 @keyframes skeleton-shimmer {
   from { background-position: 1000px 0; }
   to { background-position: 0 0; }
+
+/* ==========================================================================
+   SERIC LOADER
+   --------------------------------------------------------------------------
+   The branded loading indicators in `src/components/ui/SericLoader.tsx` rely on
+   these classes. They are declared here because a class that exists only in JSX
+   renders as a static — and, for the pixel motif, invisible — element: the
+   loader looked broken whenever it was actually shown.
+
+   Every animation is decorative, so each one is disabled under
+   `prefers-reduced-motion` while keeping the indicator fully visible.
+   ========================================================================== */
+
+.seric-loader-pixel {
+  opacity: 0.3;
+  transform: translateY(1px) scale(0.85);
+  animation: seric-pixel-wave 1.15s ease-in-out infinite;
+}
+
+@keyframes seric-pixel-wave {
+  0%,
+  100% {
+    opacity: 0.25;
+    transform: translateY(1.5px) scale(0.8);
+  }
+  40% {
+    opacity: 1;
+    transform: translateY(-1.5px) scale(1);
+  }
+}
+
+.seric-loader-brand {
+  animation: seric-brand-pulse 2.4s ease-in-out infinite;
+}
+
+@keyframes seric-brand-pulse {
+  0%,
+  100% {
+    transform: scale(1);
+    box-shadow: 0 0 0 0 rgb(37 99 235 / 0.3);
+  }
+  50% {
+    transform: scale(0.965);
+    box-shadow: 0 0 0 8px rgb(37 99 235 / 0);
+  }
+}
+
+/* Combines both animations: a later single `animation` declaration would
+   otherwise replace the pulse rather than add to it. */
+.seric-loader-glow {
+  animation:
+    seric-brand-pulse 2.4s ease-in-out infinite,
+    seric-glow-breathe 2.8s ease-in-out infinite;
+}
+
+@keyframes seric-glow-breathe {
+  0%,
+  100% {
+    filter: drop-shadow(0 0 0.35rem rgb(7 205 248 / 0.25));
+  }
+  50% {
+    filter: drop-shadow(0 0 1.1rem rgb(7 205 248 / 0.55));
+  }
+}
+
+.seric-inline-spinner {
+  animation: seric-spin 700ms linear infinite;
+}
+
+@keyframes seric-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Reduced motion: stop moving, keep every indicator visible. */
+@media (prefers-reduced-motion: reduce) {
+  .seric-loader-pixel,
+  .seric-loader-brand,
+  .seric-loader-glow,
+  .seric-inline-spinner {
+    animation: none !important;
+    opacity: 1 !important;
+  }
+}
+
 }

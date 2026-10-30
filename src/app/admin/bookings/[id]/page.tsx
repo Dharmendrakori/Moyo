@@ -444,19 +444,17 @@ export default async function AdminBookingDetailPage({
           <Panel title="Customer">
             <dl className="space-y-3">
               <Field label="Name">{booking.customer.name}</Field>
-              <Field label="Account email">{booking.customer.email}</Field>
-              <Field label="Account phone">
-                {telLink(booking.customer.phone) ? (
+              <Field label="Dispatch contact">
+                {booking.contactName}
+                {telLink(booking.contactPhone) ? (
                   <a
-                    href={telLink(booking.customer.phone) ?? '#'}
-                    className="inline-flex items-center gap-1.5 font-medium text-brand-700 hover:underline"
+                    href={telLink(booking.contactPhone) ?? '#'}
+                    className="ml-1.5 inline-flex items-center gap-1 font-medium text-brand-700 hover:underline"
                   >
                     <Icon name="phone" size={13} />
-                    {booking.customer.phone}
+                    {booking.contactPhone}
                   </a>
-                ) : (
-                  booking.customer.phone
-                )}
+                ) : null}
               </Field>
               <Field label="Customer since">{formatDate(booking.customer.createdAt)}</Field>
               <Field label="Account reference">
@@ -464,8 +462,8 @@ export default async function AdminBookingDetailPage({
               </Field>
             </dl>
             <p className="mt-3 border-t border-ink-100 pt-3 text-[11px] leading-relaxed text-ink-400">
-              Contact details are shown because dispatch needs them. They are served only to an
-              administrator session and are never returned to a customer.
+              Only what dispatch needs is shown: the contact the customer supplied for this visit.
+              The account&apos;s own email and phone are deliberately not read by this screen.
             </p>
           </Panel>
         </div>

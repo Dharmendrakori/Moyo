@@ -5,7 +5,7 @@ import { usePathname } from 'next/navigation';
 import { useEffect, useState, type ReactNode } from 'react';
 import { Icon } from '@/components/ui/Icon';
 import { LogoutButton } from '@/components/admin/LogoutButton';
-import { isNavItemActive, type AdminNavGroup } from '@/lib/admin-nav';
+import { isNavItemActive, SIDEBAR_COOKIE, type AdminNavGroup } from '@/lib/admin-nav';
 import { ROLE_LABEL } from '@/lib/domain';
 
 /**
@@ -33,12 +33,20 @@ export function AdminShell({
   userName,
   userInitials,
   userRole,
+  defaultSidebarCollapsed = false,
   children,
 }: {
   nav: AdminNavGroup[];
   userName: string;
   userInitials: string;
   userRole: string;
+  /**
+   * Initial desktop collapse state, read from a cookie on the server so the
+   * first paint is already correct. Initialising from the server value (instead
+   * of reading `localStorage` in an effect) avoids both a hydration mismatch and
+   * a visible expand-then-collapse flash on every hard load.
+   */
+  defaultSidebarCollapsed?: boolean;
   children: ReactNode;
 }) {
   const pathname = usePathname();
@@ -49,14 +57,24 @@ export function AdminShell({
   // lives in the sidebar's brand row and directly flips the single
   // `sidebarCollapsed` boolean; the header holds only a `lg:hidden` mobile
   // drawer opener (a separate control for the separate `drawerOpen` state).
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(defaultSidebarCollapsed);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const activeItem = findActive(nav, pathname);
   const roleLabel = ROLE_LABEL[userRole as keyof typeof ROLE_LABEL] ?? userRole;
 
   // Desktop collapse is a persistent layout state (no Escape handling); the
   // drawer below is a modal overlay closed by its button, backdrop, or Escape.
-  const toggleDesktopSidebar = () => setSidebarCollapsed((collapsed) => !collapsed);
+  // The preference is remembered in a display-only cookie so a refresh keeps
+  // the rail the operator chose. It carries no identity or authority.
+  const toggleDesktopSidebar = () => {
+    setSidebarCollapsed((collapsed) => {
+      const next = !collapsed;
+      if (typeof document !== 'undefined') {
+        document.cookie = `${SIDEBAR_COOKIE}=${next ? 'collapsed' : 'expanded'}; path=/; max-age=31536000; samesite=lax`;
+      }
+      return next;
+    });
+  };
 
   // Escape closes the mobile drawer. Desktop collapse needs no such handling.
   useEffect(() => {
@@ -94,12 +112,16 @@ export function AdminShell({
           }`}
         >
           <div
-            className={`flex h-16 shrink-0 items-center gap-2.5 border-b border-white/10 ${
-              sidebarCollapsed ? 'lg:justify-center lg:gap-1 lg:px-1' : 'px-4'
+            className={`flex h-16 shrink-0 items-center border-b border-white/10 ${
+              sidebarCollapsed ? 'lg:gap-1 lg:px-1' : 'gap-2.5 px-4'
             }`}
           >
             {/* Brand mark. The wordmark hides in the collapsed rail; the mark stays. */}
-            <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-white/10 text-white ring-1 ring-inset ring-white/15">
+            <span
+              className={`grid shrink-0 place-items-center rounded-xl bg-white/10 text-white ring-1 ring-inset ring-white/15 ${
+                sidebarCollapsed ? 'h-8 w-8' : 'h-9 w-9'
+              }`}
+            >
               <Icon name="bolt" size={18} />
             </span>
             <div className={`min-w-0 flex-1 ${sidebarCollapsed ? 'lg:hidden' : ''}`}>
@@ -107,15 +129,19 @@ export function AdminShell({
                 Seric Tech
               </p>
               <p className="truncate text-[10px] font-semibold uppercase tracking-[0.12em] text-ink-400">
-                Operations console
+                Operations
               </p>
             </div>
             {/*
-              Desktop collapse toggle: switches the lg+ sidebar between the
-              full w-64 column and the w-20 icon rail. The sidebar itself is
-              lg-only (`hidden ... lg:flex`), so this button never renders as
-              a stray top bar below lg — small screens use the header's
-              mobile-only drawer opener instead.
+              Desktop collapse/expand toggle. It must stay MAPPED IN BOTH STATES:
+              a toggle that hides itself when collapsed leaves the rail with no
+              way back except a reload. It sizes to fit the w-20 rail beside the
+              mark, uses a directional chevron so the action is unambiguous, and
+              is a real <button>, so keyboard activation is native.
+
+              This button is lg-only by construction (its parent <aside> is
+              `hidden ... lg:flex`), so it never appears below lg, where the
+              header's mobile opener drives the separate drawer state instead.
             */}
             <button
               type="button"
@@ -125,11 +151,9 @@ export function AdminShell({
               aria-expanded={!sidebarCollapsed}
               aria-label={sidebarCollapsed ? 'Expand admin sidebar' : 'Collapse admin sidebar'}
               title={sidebarCollapsed ? 'Expand admin sidebar' : 'Collapse admin sidebar'}
-              className={`shrink-0 rounded-lg p-1.5 text-ink-400 transition hover:bg-white/10 hover:text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-400 ${
-                sidebarCollapsed ? 'lg:hidden' : ''
-              }`}
+              className="grid h-8 w-8 shrink-0 place-items-center rounded-lg text-ink-400 transition hover:bg-white/10 hover:text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-400 active:bg-white/15"
             >
-              <Icon name="menu" size={18} />
+              <Icon name={sidebarCollapsed ? 'chevron-right' : 'chevron-left'} size={16} />
             </button>
           </div>
 
@@ -212,7 +236,7 @@ export function AdminShell({
                 <div className="min-w-0">
                   <p className="truncate text-sm font-bold leading-tight text-white">Seric Tech</p>
                   <p className="truncate text-[10px] font-semibold uppercase tracking-[0.12em] text-ink-400">
-                    Operations console
+                    Operations
                   </p>
                 </div>
               </div>

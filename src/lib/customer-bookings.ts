@@ -234,11 +234,15 @@ export async function listAllBookings(opts: {
  * One booking with everything an administrator needs to dispatch it, for
  * `/admin/bookings/[id]`.
  *
- * Reachable only from an admin-guarded page. The projection is still explicit:
- * it carries the contact details the job actually needs (the booking's own
- * contact name and phone, plus the account email and phone so an operator can
- * reach the customer), and deliberately excludes password hashes, session
- * tokens, IP hashes, payment provider references and every other table.
+ * Reachable only from an admin-guarded page. The projection is explicit and
+ * minimised: it carries the contact details the JOB needs - the booking's own
+ * `contactName` / `contactPhone`, which the customer supplied for this visit -
+ * plus the account id and name as a support reference. It deliberately does NOT
+ * project the customer account's email or phone: dispatch does not need them,
+ * they are the same person's data under a different scope, and account-level
+ * contact belongs to a future Customers module with its own access policy.
+ * Password hashes, sessions, IP hashes and payment provider references are
+ * never selected.
  *
  * The status history is the real append-only `BookingStatusEvent` log - there is
  * no second source of truth and no reconstructed timeline.
@@ -270,7 +274,7 @@ export async function getAdminBookingDetail(bookingId: string) {
       isEmergency: true,
       createdAt: true,
       updatedAt: true,
-      customer: { select: { id: true, name: true, email: true, phone: true, createdAt: true } },
+      customer: { select: { id: true, name: true, createdAt: true } },
       service: {
         select: {
           id: true,

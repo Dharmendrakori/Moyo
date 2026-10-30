@@ -74,13 +74,13 @@ says so plainly.
 
 | Layer | Choice |
 | --- | --- |
-| Framework | Next.js 16 (App Router) + React 19 |
+| Framework | Next.js **16.4.3** (App Router) + React 19 |
 | Language | TypeScript, `strict` + `noUncheckedIndexedAccess` |
-| Database | Prisma ORM (SQLite for development, PostgreSQL for production) |
+| Database | Prisma ORM 5.22 (SQLite for development, PostgreSQL for production) |
 | Auth | Opaque database-backed sessions, bcrypt (cost 12), server-side RBAC |
-| Validation | Zod, `.strict()` on request bodies |
+| Validation | Zod **4.6.7**, `.strict()` on request bodies |
 | Styling | Tailwind CSS v4 (CSS-first `@theme`) |
-| Tests | Vitest |
+| Tests | Vitest (372 tests, 27 suites) |
 | Lint | ESLint 9 flat config |
 
 **No third-party JavaScript or CSS runs on any page.** Icons are inline SVG and
@@ -147,7 +147,29 @@ as the customer site. It is not a visual mockup and it runs on no mock data.
 
 Modules that are **not yet built** (Customers, Materials, Invoices, Payments, Reviews, Audit log, Settings) appear in the sidebar as **disabled entries marked "Soon"**. They are deliberately not links: a navigation item that leads to a 404 advertises a capability the console does not have. No planned module is dressed up with fake functionality, sample rows or placeholder metrics.
 
-### Console design system
+### Admin sidebar
+
+The sidebar has two **independent** navigation states, and both are testable:
+
+| State | Desktop (≥ `lg`) | Below `lg` |
+| --- | --- | --- |
+| Sidebar | `w-64` expanded / `w-20` icon rail, sticky and full height | Hidden; the header's opener drives an overlay drawer |
+| Control | One toggle in the sidebar's brand row | Header opener (`lg:hidden`) + drawer close/backdrop/Escape |
+| Remembered | `moyo_admin_nav` cookie (`collapsed` / `expanded`) | Not persisted; the drawer always starts closed |
+
+The toggle is present in **both** desktop states - a toggle that hides when
+collapsed leaves the rail with no way back except a reload, which was a real
+defect fixed in Milestone 2.5. It is a real `<button>` with `aria-expanded`,
+`aria-controls="admin-sidebar"`, a state-dependent `aria-label`/`title`, a
+directional chevron (`chevron-left` to collapse, `chevron-right` to expand) and a
+32×32 hit area that fits inside the 80px rail beside the logo mark. Collapsed nav
+items keep their icon, `aria-label` and `title` tooltip.
+
+The remembered preference is read **on the server** (`app/admin/layout.tsx`) and
+passed in as the initial state, so the first paint already matches the operator's
+choice: no hydration mismatch and no expand-then-collapse flash. Only the exact
+string `collapsed` is honoured, so a tampered cookie cannot hide navigation.
+
 
 The console has one visual language, declared once and shared by every admin
 route. There is no new UI framework and no new dependency: the design is built
@@ -970,6 +992,171 @@ The refactor work is on `feature/moyo-platform`. `main` was never modified.
 
 ---
 
+## Changelog - Milestone 2.5: production readiness and admin stabilisation
+
+No new features. This milestone made the existing build secure, green and
+browser-verified before financial work starts.
+
+### Dependency hardening
+
+| Package | Before | After | Why |
+| --- | --- | --- | --- |
+| `next` | 16.3.8 | **16.4.3** | Three advisories affect `>=16.0.0 <=16.4.0` |
+| `zod` | 3.25.76 | **4.6.7** | `GHSA-mrhx-c7xc-m3w5` is patched only in `>=4.6.6` |
+| `eslint-config-next` | 16.3.8 | **16.4.3** | Kept in step with the framework |
+| `react` / `react-dom` | 19.3.0 | 19.3.0 | Unchanged |
+| `@prisma/client` / `prisma` | 5.22.0 | 5.22.0 | Unchanged |
+
+Resolved: `GHSA-2464-fhr4-w9xw` (critical, Image Optimization RCE with SVG),
+`GHSA-673q-mjm6-r5xr` (critical, `use cache` + typed arrays), `GHSA-p3m5-59mp-jv5r`
+(high, Server Actions DoS), and `GHSA-mrhx-c7xc-m3w5` / CVE-2023-54404 (high, zod
+array-validation memory exhaustion).
+
+`npm run audit --omit=dev` now reports **0 vulnerabilities**. Nothing was
+suppressed, no audit exclusions were added, and `npm audit fix --force` was not
+used.
+
+The zod change is a **major** upgrade, so it was proven rather than assumed: the
+type check and the entire suite were run against it unchanged (same 372 passing).
+The vulnerable code path (`$ZodArray` accumulating issues for an unconstrained
+array) is in any case unreachable here - this project defines **no `z.array` or
+`z.record` schema at all** - and every body is size-capped at 64 KB before
+parsing. `npm audit` *without* `--omit=dev` still lists one high finding against a
+`zod@3` copy nested inside `eslint-config-next`; that copy is lint-time only and
+cannot be replaced until the plugin widens its peer range. See SECURITY.md §4.
+
+### TypeScript and the test suite
+
+| | Before | After |
+| --- | --- | --- |
+| `npm run typecheck` | 3 × `TS7006` errors (untracked loader test) | **0 errors** |
+| `npm test` | 355 passed / 4 failed (359) | **372 passed / 0 failed** |
+
+Root causes, not re-classification:
+
+1. **`TS7006` in `tests/seric-loader.test.ts`** - the `next/image` stubs took an
+   untyped `props`. They now take an explicit
+   `Pick<ImgHTMLAttributes<HTMLImageElement>, …>` type. No `any`, and the test
+   file stays inside `tsc` (it was never excluded).
+2. **`provider-identity.test.ts` - "exposes no retired identity"** - two live
+   source files still carried the old brand as *text*: the outbound
+   Nominatim `User-Agent` string (`Moyo/1.0`) and a code comment in
+   `SericLoader.tsx`. The header now identifies the service as
+   `SericTechSolutions/1.0` and the comment was reworded. This was a genuine
+   rebrand miss in shipped code, not a stale assertion.
+3. **`seric-loader.test.ts` - three CSS assertions** - these were **real bugs**.
+   `SericLoader.tsx` applied `seric-loader-pixel`, `seric-loader-brand`,
+   `seric-loader-glow` and `seric-inline-spinner`, plus `bg-brand-cyan`, but
+   `globals.css` defined **none** of them and had no `--color-brand-cyan` token.
+   The result: the branded loader rendered static, and half of each pixel motif
+   was transparent (an unstyled Tailwind class). The classes, four keyframes,
+   the logo-cyan token and a reduced-motion block that keeps the indicator fully
+   visible are now defined.
+
+New regression coverage: `tests/admin-sidebar.test.ts` (12 assertions on the
+collapse/expand invariant) and a data-minimisation assertion in
+`tests/admin-booking-detail.test.ts`. Nothing was deleted or skipped.
+
+### Admin sidebar collapse/expand
+
+**Root cause:** the desktop toggle carried `sidebarCollapsed ? 'lg:hidden' : ''`.
+Collapsing hid the very control that expands again, so the rail could only be
+recovered by a reload (or a viewport change). It also used a non-directional
+hamburger icon for both actions.
+
+**Fix:** the toggle is now always rendered inside the rail (32×32, fits beside
+the mark in the 80px width), with a directional chevron, `aria-expanded`,
+`aria-controls`, a state-dependent label and title, hover/focus/active states,
+and native keyboard activation. The preference is remembered in a display-only
+`moyo_admin_nav` cookie that the **server** reads in the admin layout, so the
+first paint is already correct - no hydration mismatch, no flash, and a tampered
+cookie value cannot hide navigation. The mobile drawer keeps its own state,
+backdrop, Escape handling and opener; the two states still never drive each other.
+
+### Browser verification (actually performed)
+
+Performed against a production build (`npx next build` + `next start`) with the
+locally seeded administrator, using Chrome via Playwright. **39 of 39 checks
+passed**, twice, on two consecutive builds:
+
+- Login → `/admin`; breadcrumb, role chip, identity and logout present.
+- Sidebar: 256px expanded → 80px collapsed, toggle visible and clickable in
+  **both** states (`aria-expanded` flips, 32×32 hit area inside the rail), three
+  collapse/expand cycles, collapse preserved across a client-side navigation to
+  `/admin/bookings`, and expand works again afterwards.
+- Bookings: 8 rows, reference search narrows to 2, `status=REQUESTED` returns
+  only Requested rows, and a row click opens the detail page.
+- Detail: reference, lifecycle section, estimate vs "Final invoice" block, and no
+  customer account email on the page. **Confirm** was executed for real and the
+  booking moved to Confirmed, with the transition recorded in the status log.
+- Catalog pages (categories, services, charging options, pricing) and the
+  dashboard render with live figures.
+- Customer pages `/`, `/categories`, `/login`, `/register`, `/search?q=AC` all
+  return 200 and render (smoke regression only - no customer account was used).
+- Mobile (390×844): desktop rail hidden, 36×36 opener visible, drawer opens over
+  the backdrop, Escape closes it, and neither the dashboard nor the bookings page
+  overflows horizontally (0px measured).
+
+Screenshots were captured for both desktop sidebar states, the bookings list, the
+detail page, the confirmed booking, the dashboard, the customer home page and the
+mobile drawer. They are verification artefacts and are **not** committed.
+
+Honest notes from that run (pre-existing or environmental, none a regression from
+this milestone):
+
+- `/terms` and `/privacy` return 404. The footer links to them and SECURITY.md
+  §6.6 already lists both as not yet implemented.
+- Next.js RSC prefetch requests appear as `ERR_ABORTED`; that is normal prefetch
+  cancellation, not a failed page load.
+- One prefetch to `https://localhost:3010/login?next=%2Fbookings` failed with
+  `ERR_SSL_PROTOCOL_ERROR` because this local run serves plain HTTP and the
+  browser upgraded the scheme. No absolute `https://` URL is constructed anywhere
+  in the source (grepped), so this is a local-environment artefact.
+- The dev database has **no technician records**, so the assignment dialog was
+  verified in its honest empty state ("No active technicians are available to
+  assign"). The successful assignment path is covered by route tests, not the
+  browser.
+- Verifying **Confirm** performs real transitions. Four dev bookings
+  (`SERIC-2026-000002`, `SERIC-2026-000001`, `MOYO-2026-000006`,
+  `MOYO-2026-000005`) are now `CONFIRMED` in `prisma/dev.db`, each with a matching
+  status event and audit entry. No production data was touched.
+
+### Customer personal-data review
+
+The admin booking detail previously read the customer account `email` and `phone`.
+Both are now **removed from the Prisma projection** (not merely hidden): dispatch
+needs the booking's own `contactName` / `contactPhone`, which the customer
+supplied for that visit, plus the account name, opaque id and "customer since" as
+a support reference. Account-level contact belongs to a future Customers module
+with its own access policy. The removal is asserted on the `select`, so a future
+edit that re-adds it fails the suite. Customer-facing endpoints never carried
+these fields; SECURITY.md §4a records the field-by-field decision.
+
+### Build note
+
+`npm run build` runs `prisma generate && next build`. On this machine
+`prisma generate` fails its last step with
+`EPERM: operation not permitted, rename '…query_engine-windows.dll.node.tmpNNNN' -> '…query_engine-windows.dll.node'`
+because an elevated process outside this shell holds that DLL, so Prisma cannot
+replace it. Evidence that this is environmental, not a source problem: the schema
+is unchanged, `next build` compiles and finishes normally against the same
+engine, `prisma validate` passes, and 14 stale `.tmp` copies had accumulated from
+previous failed renames. The generated client is already current. Stop the process
+holding the DLL (or restart) and `npm run build` completes.
+
+### Known limitations
+
+- The verification server had to run on port 3010 with
+  `APP_URL=http://localhost:3010` because port 3000 was occupied by a dev server
+  that predates the upgrade. **Any already-running dev server must be restarted
+  after this milestone** - a `next dev` started on 16.3.8 / zod 3 serves stale
+  modules and returns 500.
+- Technicians still cannot be created from the UI (no roster screen).
+- The sidebar preference is per-browser (cookie), not per-account.
+- `/terms`, `/privacy`, and the review / audit / settings modules remain unbuilt.
+
+---
+
 ## Changelog - Admin console redesign and booking details
 
 ### Booking details (`/admin/bookings/[id]`)
@@ -982,6 +1169,9 @@ modal, because the record is extensive and carries the two dispatch actions.
   dispatcher needs (booking fields, service + category, provider, technician,
   customer account contact, status events, invoice summary) and nothing else -
   no password hash, session, IP hash or payment provider reference.
+  > Milestone 2.5 update: the customer **account** email and phone were removed
+  > from this projection (data minimisation). The booking's own
+  > `contactName`/`contactPhone` remain, because dispatch needs them.
 - **Sections**: booking information, service location and contact, customer,
   technician and dispatch, pricing with a separately labelled final-invoice
   block, and the lifecycle.

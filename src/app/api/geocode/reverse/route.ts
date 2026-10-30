@@ -44,7 +44,7 @@ export async function GET(request: Request) {
           // Nominatim requests a descriptive User-Agent; browsers set their own,
           // but server-side we must provide one explicitly. A simple identifier
           // is sufficient; the URL/email format is not strictly required.
-          'User-Agent': 'Moyo/1.0',
+          'User-Agent': 'SericTechSolutions/1.0',
         },
       },
     );

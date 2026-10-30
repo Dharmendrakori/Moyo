@@ -97,7 +97,7 @@ export function SericLoader({
           )}
         >
           {/* Approved Seric mark (500x500 transparent) - the square tile keeps
-              the logo's aspect ratio exactly. Never the legacy MOYO bolt. */}
+              the logo's aspect ratio exactly. Never the retired bolt glyph. */}
           <Image
             src="/brand/seric-tech-solutions-logo.png"
             alt=""

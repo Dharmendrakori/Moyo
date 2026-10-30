@@ -160,3 +160,16 @@ export function isNavItemActive(item: AdminNavItem, pathname: string): boolean {
 
 /** The admin root. */
 export const ADMIN_HOME = '/admin';
+
+/**
+ * Cookie that remembers the desktop sidebar's collapsed state (`collapsed` or
+ * `expanded`).
+ *
+ * It lives in this plain, isomorphic module rather than beside the client
+ * component on purpose: a value imported from a `'use client'` module into a
+ * server component is a client reference, not the string itself. It is a
+ * display preference only - no identity, no authority and no secret - so it is
+ * readable by design and excluded from every authorization decision.
+ */
+export const SIDEBAR_COOKIE = 'moyo_admin_nav';
+

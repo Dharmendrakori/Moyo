@@ -105,7 +105,8 @@ export function makePrismaMock() {
         if (typeof customerId === 'string' && row.customerId !== customerId) return null;
         return detailOf(row);
       },
-      findUnique: async ({ where }: { where: { id: string } }) => {
+      findUnique: async ({ where, select }: { where: { id: string }; select?: Record<string, unknown> }) => {
+        probe.lastSelect = select ?? null;
         const row = bookingRows.find((b) => b.id === where.id);
         return row ? detailOf(row) : null;
       },

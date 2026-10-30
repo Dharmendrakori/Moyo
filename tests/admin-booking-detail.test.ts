@@ -85,12 +85,31 @@ describe('GET /api/admin/bookings/:id', () => {
     expect(body.booking.reference).toBe('SERIC-2026-000001');
     expect(body.booking.status).toBe('CONFIRMED');
     expect(body.booking.contactName).toBe('Asha Verma');
-    expect(body.booking.customer.email).toBe('asha@example.com');
     expect(body.booking.statusEvents).toHaveLength(1);
     expect(body.booking.statusEvents[0]).toMatchObject({ from: 'REQUESTED', to: 'CONFIRMED' });
     // No credential material is projected at all.
     expect(body.booking.passwordHash).toBeUndefined();
-    expect(body.booking.customer.passwordHash).toBeUndefined();
+  });
+
+  it('projects no customer account email or phone for the admin detail page', async () => {
+    // Data minimisation, asserted on the query the page actually issues: the
+    // booking's own contactName/contactPhone cover dispatch, so the customer
+    // account's email and phone must never be read for this screen.
+    seedBooking({ id: BOOKING_ID, reference: 'SERIC-2026-000001', status: 'REQUESTED' });
+    const { getAdminBookingDetail } = await import('../src/lib/customer-bookings');
+    await getAdminBookingDetail(BOOKING_ID);
+
+    const selected = probe.lastSelect ?? {};
+    const customer = selected.customer as { select?: Record<string, unknown> } | undefined;
+    expect(customer?.select).toBeDefined();
+    expect(customer?.select).not.toHaveProperty('email');
+    expect(customer?.select).not.toHaveProperty('phone');
+    expect(customer?.select).toHaveProperty('name');
+    // Dispatch contact comes from the booking itself, not the account.
+    expect(selected).toHaveProperty('contactName');
+    expect(selected).toHaveProperty('contactPhone');
+    // Credentials are never selected, in either shape.
+    expect(selected).not.toHaveProperty('passwordHash');
   });
 
   it('returns 404 for an unknown booking id', async () => {
