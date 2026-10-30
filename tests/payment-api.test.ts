@@ -170,7 +170,8 @@ function seedAttempt(overrides: Record<string, unknown> = {}) {
 }
 
 const invoiceRow = () => store.invoiceRows().find((row) => row.id === INVOICE_ID)!;
-const paymentRow = () => store.rows()[0];
+// The store is seeded with exactly one attempt per case in this suite.
+const paymentRow = () => store.rows()[0]!;
 
 beforeEach(() => {
   resetSessions();

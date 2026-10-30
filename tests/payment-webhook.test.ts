@@ -112,8 +112,9 @@ function seedPendingPayment() {
   });
 }
 
-const invoiceRow = () => store.invoiceRows()[0];
-const paymentRow = () => store.rows()[0];
+// Every case in this suite seeds one invoice and at most one attempt.
+const invoiceRow = () => store.invoiceRows()[0]!;
+const paymentRow = () => store.rows()[0]!;
 
 beforeEach(() => {
   resetRateLimit();

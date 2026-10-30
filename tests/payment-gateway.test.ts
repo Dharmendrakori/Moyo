@@ -129,7 +129,7 @@ describe('order creation', () => {
 
     expect(order).toEqual({ orderId: ORDER_ID, amountPaise: 149_900, currency: 'INR' });
 
-    const [call] = calls;
+    const call = calls[0]!;
     expect(call.url).toBe('https://api.razorpay.com/v1/orders');
     expect(call.init.method).toBe('POST');
     expect((call.init.headers as Record<string, string>).Authorization).toBe(
@@ -157,13 +157,16 @@ describe('order creation', () => {
   it('reports a gateway rejection as a safe, secret-free error', async () => {
     stubGateway({ error: { description: 'internal detail that must not leak' } }, 400);
 
-    const error = await new RazorpayProvider()
-      .createOrder({ amountPaise: 100, currency: 'INR', receipt: 'x' })
-      .catch((err: unknown) => err as Error & { code?: string; status?: number });
+    let error: (Error & { code?: string; status?: number }) | null = null;
+    try {
+      await new RazorpayProvider().createOrder({ amountPaise: 100, currency: 'INR', receipt: 'x' });
+    } catch (err) {
+      error = err as Error & { code?: string; status?: number };
+    }
 
     expect(error).toMatchObject({ code: 'GATEWAY_ERROR', status: 502 });
-    expect(error.message).not.toContain('internal detail');
-    expect(error.message).not.toContain(KEY_SECRET);
+    expect(error?.message).not.toContain('internal detail');
+    expect(error?.message).not.toContain(KEY_SECRET);
   });
 });
 

@@ -1357,7 +1357,7 @@ over the documented REST API with `node:crypto`, so no dependency was added.
 | Production build | `npm run build` | **PASS** - `prisma generate` ✔ then `next build` ✔ (30 static pages, `/admin/payments` + `/admin/payments/[id]` emitted) |
 | Runtime audit | `npm run audit:prod` | **0 vulnerabilities** |
 
-New suites: `payment-gateway.test.ts` (16), `payment-api.test.ts` (28),
+New suites: `payment-gateway.test.ts` (25), `payment-api.test.ts` (28),
 `payment-webhook.test.ts` (18), `admin-payments-page.test.ts` (10),
 `tests/stubs/payment-store.ts` (in-memory ledger that honors the conditional
 updates and unique constraints the safety properties depend on).
