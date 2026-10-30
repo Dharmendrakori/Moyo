@@ -20,7 +20,7 @@ working tree — 27 suites, 372 tests):
 | Lint | `npm run lint` | PASS (0 errors) |
 | Unit tests | `npm test` | PASS (372 tests, 27 suites) |
 | Production compile | `npx next build` | PASS |
-| Production build script | `npm run build` | Compile step PASS; the preceding `prisma generate` is blocked on this machine by a Windows file lock held by a process outside this shell (see README, "Build note") |
+| Production build script | `npm run build` | **PASS** — `prisma generate` ✔ (Prisma Client 5.22.0) then `next build` ✔ (29 routes). See the README changelog for the Windows file-lock cause that previously blocked it |
 | Dependency audit (runtime) | `npm run audit:prod` | 0 vulnerabilities |
 
 ---
@@ -350,10 +350,20 @@ none were introduced by this repository's own code):
 
 The zod change is a **major** version upgrade, so it was not taken on trust:
 `npm run typecheck` and the full suite were run against it and pass unchanged.
-Zod 4 deprecates `.strict()`, `.email()` and `.flatten()`-style helpers, and
-changes how `.default()` behaves inside optional fields; none of the removed
-behaviour is used here, and the validation suites (which assert defaults,
-allowlists and mass-assignment rejection) are the regression guard.
+Zod 4 deprecates some v3 APIs; two are used here and both still work in 4.6.7
+with identical behaviour:
+
+| Deprecated in zod 4 | Recommended replacement | Used at | Migration status |
+| --- | --- | --- | --- |
+| `z.object({...}).strict()` | `z.strictObject({...})` | 41 call sites in `src/lib/validation.ts` | **Not migrated** — a mechanical but wide change inside the primary validation boundary; scheduled as its own task |
+| `z.string().email()` | `z.email()` | `emailSchema` (chained after `.trim().toLowerCase().max(254)`) | **Not migrated** — v4 string formats do not carry the same `.trim()`/`.toLowerCase()` chain, so a naive swap would change normalisation |
+
+Neither deprecation is a vulnerability: the v3 aliases remain functional and are
+not scheduled for removal before zod 5. A future migration has a safety net
+already in place — `tests/validation.test.ts` pins unknown-key rejection
+(mass-assignment defence) and email normalisation
+(`Rahul@Example.COM` → `rahul@example.com`), which are exactly the behaviours a
+careless migration would break.
 
 **Development-only note:** `npm audit` *without* `--omit=dev` still reports one
 high finding - the zod advisory against a `zod@3.25.76` copy nested under

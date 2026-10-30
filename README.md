@@ -992,6 +992,113 @@ The refactor work is on `feature/moyo-platform`. `main` was never modified.
 
 ---
 
+## Changelog - Production readiness verification completed
+
+Closes the three items Milestone 2.5 left open. **No application source changed**
+in this task — it records verification results and two environment facts, plus
+one clarification of the zod migration note.
+
+### `npm run build` now completes
+
+**Root cause of the `EPERM` on rename:** an *elevated* `next dev` server
+(`node.exe` PID 11180, started 17:16, listening on :3000) holds
+`node_modules/.prisma/client/query_engine-windows.dll.node`. Windows lets a handle
+opened with `FILE_SHARE_DELETE` be **renamed** (which is why an earlier rename
+test succeeded) but does not grant **delete/replace**, so Prisma's
+"write a temp copy, then rename it over the target" step failed while
+`del` and `taskkill /F` were refused by the elevation boundary — not by the file.
+
+**Resolution, without weakening Windows protections or deleting locked files:**
+the still-open engine file was moved aside (`qe-held-by-11180.bak`), leaving the
+target path free, and then:
+
+```
+> npm run build
+✔ Generated Prisma Client (v5.22.0) … in 581ms
+▲ Next.js 16.4.3 (Turbopack)
+✓ Compiled successfully in 3.3s
+✓ Generating static pages (29/29)
+```
+
+`npx prisma validate` also passes, and the regenerated client matches the
+unchanged schema. The `.bak` file remains until the process holding it exits; it
+lives inside `node_modules` and is never committed. To remove the lock properly
+(and for the next dependency upgrade), stop that server: Task Manager → end
+`node.exe` PID 11180, or from an **elevated** shell `taskkill /F /PID 11180`.
+
+### Development server verification
+
+The stale pre-upgrade server was already replaced by the operator with a fresh
+`next dev` (started 17:16), which serves the upgraded dependencies correctly:
+
+| Check | Result |
+| --- | --- |
+| `http://localhost:3000/` | 200 |
+| `/login` (signed out) | 200 — sign-in form renders (692 chars) |
+| `/register` (signed out) | 200 — registration form renders (869 chars) |
+| `/login`, `/register` (signed in) | redirect to `/` by design |
+| `/admin` (authenticated) | 200 — console loads |
+| `/admin/bookings` | 200 — 8 rows, search and status filter work |
+| `/admin/bookings/[id]` | 200 — full record with technician and lifecycle |
+| `/bookings/[id]` (owner) | 200 — customer tracking shows the technician |
+| Server 5xx during the run | **0** |
+| Browser console errors | **0** |
+
+Two consecutive full runs of 17 checks each passed. That server's stdout is not
+readable from a non-elevated shell, so startup/hydration health was assessed from
+the browser console and the absence of 5xx responses instead.
+
+**One intermittent hydration warning** ("A tree hydrated but some attributes …
+didn't match") appeared once across five dev-server runs — during a run that
+navigated while a route was still streaming — and did not reproduce in two
+subsequent full runs, the production-build runs (2 × 39 checks), or the targeted
+debug runs. It is recorded here rather than claimed as fixed: if it recurs, the
+likely cause is dev-only HMR/streaming timing, not a server/client branch, since
+the admin shell's only client state is server-seeded.
+
+### Technician assignment verified end to end
+
+`prisma/seed.ts` seeds **no** technicians, so a local fixture was provisioned by a
+throwaway script (not committed, and deliberately **not** added to the seed — a
+seeded technician would ship as fabricated operational data):
+
+- user `verification.technician@local.invalid` (reserved `.invalid` TLD, so it can
+  never be a real mailbox; unusable random password),
+- technician **"Verification Technician"** — active and available, bound to the
+  Seric Tech Solutions provider, skills "AC servicing", `phone` **null**, and no
+  invented rating or job counters.
+
+Performed through the real admin UI on `SERIC-2026-000002`:
+
+| Step | Result |
+| --- | --- |
+| Assign dialog lists the real technician | ✔ (`Verification Technician · AC servicing`) |
+| Assignment persisted in the database | ✔ `status=TECHNICIAN_ASSIGNED`, `technicianId` set |
+| Status event written | ✔ `CONFIRMED → TECHNICIAN_ASSIGNED`, actor `ADMIN` |
+| Admin detail page shows the technician | ✔ (technician panel + lifecycle entry) |
+| Customer view `/bookings/[id]` (as the booking owner) | ✔ shows the technician, and **no** admin-only fields |
+| Unauthenticated `POST …/assign-technician` | ✔ **401** |
+| Unauthenticated `/admin/bookings/[id]` | ✔ redirected to `/login?next=…` |
+
+The status machine was not bypassed: assignment only happened from `CONFIRMED`,
+through the existing endpoint. Two notes for the record: the fixture is still in
+`prisma/dev.db` — deleting it would set the booking's `technicianId` to `null`
+(`onDelete: SetNull`), which would silently alter a booking, so it was left in
+place; and confirming during this verification moved `MOYO-2026-000004` to
+`CONFIRMED`. No production data was touched.
+
+### Zod 4 deprecations — reviewed, not migrated
+
+`.strict()` (41 call sites in `src/lib/validation.ts`) is deprecated in favour of
+`z.strictObject()`, and `.email()` in favour of `z.email()`; both still work in
+4.6.7 with identical behaviour. Migrating 41 call sites in the primary trust
+boundary is a refactor, not a verification fix, so it is left as its own task.
+`tests/validation.test.ts` already pins the two behaviours a careless migration
+would break (unknown-key rejection, email trim/lowercase normalisation). Details
+and the replacement table are in SECURITY.md §4.
+
+---
+
 ## Changelog - Milestone 2.5: production readiness and admin stabilisation
 
 No new features. This milestone made the existing build secure, green and
@@ -1134,6 +1241,10 @@ these fields; SECURITY.md §4a records the field-by-field decision.
 
 ### Build note
 
+> **Superseded:** `npm run build` now completes — see the newer
+> "Production readiness verification completed" entry for the cause and fix.
+> The text below records the state at the time of Milestone 2.5.
+
 `npm run build` runs `prisma generate && next build`. On this machine
 `prisma generate` fails its last step with
 `EPERM: operation not permitted, rename '…query_engine-windows.dll.node.tmpNNNN' -> '…query_engine-windows.dll.node'`
@@ -1145,6 +1256,11 @@ previous failed renames. The generated client is already current. Stop the proce
 holding the DLL (or restart) and `npm run build` completes.
 
 ### Known limitations
+
+> **Partly superseded:** the dev-server restart and the technician-assignment gap
+> were closed in the newer "Production readiness verification completed" entry.
+> Still current: no technician roster UI, per-browser sidebar preference, and the
+> unbuilt `/terms`, `/privacy`, review, audit and settings modules.
 
 - The verification server had to run on port 3010 with
   `APP_URL=http://localhost:3010` because port 3000 was occupied by a dev server
