@@ -45,6 +45,12 @@ model User {
   lastLoginAt     DateTime?
   passwordChangedAt DateTime @default(now())
 
+  /// Single-use technician account activation. Only the SHA-256 hash of the
+  /// token is stored, so a database disclosure yields no usable invitation.
+  /// Null once the technician has set their own password.
+  activationTokenHash String?   @unique
+  activationExpiresAt DateTime?
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -145,14 +151,19 @@ model Provider {
 
 model Technician {
   id           String  @id @default(cuid())
-  userId       String  @unique
-  user         User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  /// OPTIONAL: a technician profile is a roster record first and a login second.
+  /// The portal feature decides whether a linked TECHNICIAN account is
+  /// provisioned; a profile without one is still assignable to bookings.
+  userId       String? @unique
+  user         User?   @relation(fields: [userId], references: [id], onDelete: SetNull)
   providerId   String
   provider     Provider @relation(fields: [providerId], references: [id], onDelete: Cascade)
   displayName  String
   headline     String?
   /// Verified skill tags only. Never fabricated.
   skills       String?
+  /// Free-form coverage notes (cities / localities) supplied by the operator.
+  serviceAreas String?
   phone        String?
   isActive     Boolean @default(false)
   /// Set by admin only; drives "available" claims in the UI.
@@ -168,6 +179,24 @@ model Technician {
   bookings Booking[]
 
   @@index([providerId, isActive])
+}
+
+/// DEDICATED, TYPED FEATURE CONFIGURATION FOR TECHNICIAN OPERATIONS.
+///
+/// Exactly one row, keyed by the literal id "singleton". It is a typed model
+/// rather than a row in the generic `Setting` key/value table on purpose:
+/// - the values are real booleans, so a stored value cannot be "truthy text";
+/// - the set of knobs is closed, so no unknown key can be introduced at runtime;
+/// - an absent row means the documented defaults (admin management ON, portal
+///   OFF), and a failed read is treated the same way, which can never enable
+///   technician authentication.
+model TechnicianFeatureConfig {
+  id                     String   @id @default("singleton")
+  /// Operator-facing roster/administration screens and their APIs.
+  adminManagementEnabled Boolean  @default(true)
+  /// Technician sign-in and the /technician portal.
+  portalEnabled          Boolean  @default(false)
+  updatedAt              DateTime @updatedAt
 }
 
 // ---------------------------------------------------------------------------

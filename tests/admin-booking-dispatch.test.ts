@@ -145,7 +145,12 @@ describe('POST /api/admin/bookings/:id/confirm', () => {
 describe('POST /api/admin/bookings/:id/assign-technician', () => {
   it('assigns an active technician to a CONFIRMED booking', async () => {
     seedBooking({ id: BOOKING_ID, reference: 'SERIC-2026-000001', status: 'CONFIRMED' });
-    technicianRows.push({ id: TECHNICIAN_ID, displayName: 'Ravi Kumar', isActive: true });
+    technicianRows.push({
+      id: TECHNICIAN_ID,
+      displayName: 'Ravi Kumar',
+      isActive: true,
+      isAvailable: true,
+    });
     signIn(ADMIN_ID);
     const assign = await loadAssign();
     const res = await assign(
@@ -184,9 +189,39 @@ describe('POST /api/admin/bookings/:id/assign-technician', () => {
     expect(eventRows).toHaveLength(0);
   });
 
+  it('rejects an UNAVAILABLE technician instead of treating availability as decorative', async () => {
+    seedBooking({ id: BOOKING_ID, reference: 'SERIC-2026-000001', status: 'CONFIRMED' });
+    technicianRows.push({
+      id: TECHNICIAN_ID,
+      displayName: 'Ravi Kumar',
+      isActive: true,
+      isAvailable: false,
+    });
+    signIn(ADMIN_ID);
+    const assign = await loadAssign();
+    const res = await assign(
+      post(
+        `/api/admin/bookings/${BOOKING_ID}/assign-technician`,
+        { technicianId: TECHNICIAN_ID },
+        { 'x-csrf-token': CSRF },
+      ),
+      ctx(BOOKING_ID),
+    );
+    expect(res.status).toBe(422);
+    const body = (await res.json()) as { error?: { code?: string } };
+    expect(body.error?.code).toBe('TECHNICIAN_UNAVAILABLE');
+    expect(bookingRows[0]?.technicianId).toBeNull();
+    expect(eventRows).toHaveLength(0);
+  });
+
   it('blocks assignment on a booking that is still REQUESTED', async () => {
     seedBooking({ id: BOOKING_ID, reference: 'SERIC-2026-000001', status: 'REQUESTED' });
-    technicianRows.push({ id: TECHNICIAN_ID, displayName: 'Ravi Kumar', isActive: true });
+    technicianRows.push({
+      id: TECHNICIAN_ID,
+      displayName: 'Ravi Kumar',
+      isActive: true,
+      isAvailable: true,
+    });
     signIn(ADMIN_ID);
     const assign = await loadAssign();
     const res = await assign(
@@ -204,7 +239,12 @@ describe('POST /api/admin/bookings/:id/assign-technician', () => {
 
   it('reports a repeated assignment as a conflict rather than overwriting it', async () => {
     seedBooking({ id: BOOKING_ID, reference: 'SERIC-2026-000001', status: 'CONFIRMED' });
-    technicianRows.push({ id: TECHNICIAN_ID, displayName: 'Ravi Kumar', isActive: true });
+    technicianRows.push({
+      id: TECHNICIAN_ID,
+      displayName: 'Ravi Kumar',
+      isActive: true,
+      isAvailable: true,
+    });
     signIn(ADMIN_ID);
     const assign = await loadAssign();
     const first = await assign(
@@ -232,7 +272,12 @@ describe('POST /api/admin/bookings/:id/assign-technician', () => {
 
   it('refuses a CUSTOMER driver', async () => {
     seedBooking({ id: BOOKING_ID, reference: 'SERIC-2026-000001', status: 'CONFIRMED' });
-    technicianRows.push({ id: TECHNICIAN_ID, displayName: 'Ravi Kumar', isActive: true });
+    technicianRows.push({
+      id: TECHNICIAN_ID,
+      displayName: 'Ravi Kumar',
+      isActive: true,
+      isAvailable: true,
+    });
     signIn(CUSTOMER_ID);
     const assign = await loadAssign();
     const res = await assign(

@@ -20,7 +20,9 @@ import { readCsrfToken } from '@/components/admin/LogoutButton';
  *  - On success the router is refreshed so the table re-renders from the
  *    database. The client never optimistically invents the new state.
  */
-export type AdminMutationResult = { ok: true } | { ok: false; message: string };
+export type AdminMutationResult =
+  | { ok: true; data: unknown }
+  | { ok: false; message: string };
 
 export function useAdminMutation() {
   const router = useRouter();
@@ -47,8 +49,12 @@ export function useAdminMutation() {
         });
 
         if (res.ok) {
+          // The body is returned so a caller can show something the server only
+          // reveals once (an activation link). It is never trusted for state:
+          // the table is still re-rendered from the database.
+          const payload: unknown = await res.json().catch(() => null);
           router.refresh();
-          return { ok: true };
+          return { ok: true, data: payload };
         }
 
         const payload = (await res.json().catch(() => null)) as {

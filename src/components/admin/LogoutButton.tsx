@@ -11,7 +11,7 @@ import { Icon } from '@/components/ui/Icon';
  * (non-HttpOnly) CSRF cookie. The server revokes the session row and clears
  * the cookies; the client then hard-navigates so no cached admin view lingers.
  */
-export function LogoutButton() {
+export function LogoutButton({ redirectTo = '/login' }: { redirectTo?: string } = {}) {
   const router = useRouter();
   const [busy, setBusy] = useState(false);
 
@@ -27,7 +27,7 @@ export function LogoutButton() {
     } catch {
       // Even if the network fails, the local cookie is cleared on next load.
     } finally {
-      router.replace('/login');
+      router.replace(redirectTo);
       router.refresh();
     }
   }

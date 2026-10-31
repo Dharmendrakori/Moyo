@@ -46,10 +46,14 @@ A technology services platform for booking, tracking and managing field services
 | **Admin bookings list** | **Implemented** - search by reference, status filter, server-side pagination; confirm and assign bookings; state transitions enforced server-side through the booking state machine |
 | **Admin booking details** | **Implemented** - `/admin/bookings/[id]`: full persisted record, status history from the append-only log, confirm and assign-technician actions |
 | **Admin console UI** | **Redesigned** - one shared design system across every admin route: responsive sidebar, breadcrumb header, KPI dashboard, premium tables and dialogs |
-| Admin bookings / dispatch / technicians / customers | **Implemented** - bookings list is live; confirm, assign, and state transitions are functional via the admin console |
+| Admin bookings / dispatch | **Implemented** - bookings list is live; confirm and assign are functional via the admin console. The remaining dispatch transitions (on the way → arrived → in progress → completed) are **not built yet** |
+| **Admin technician management** | **Implemented** - `/admin/technicians`: roster directory with search, status and availability filters, paging; create, edit, activate/deactivate, availability and portal-account provisioning. Switchable at runtime (default **ON**) |
+| **Technician portal** | **Implemented** - `/technician`: sign-in, assigned jobs, job detail with dispatch-minimal contact and status history. Switchable at runtime (default **OFF**) |
+| Technician account provisioning | **Implemented** - one-time activation link delivered out of band; the technician sets their own password. No password-reset flow exists (see Limitations) |
 | Admin invoices | **Implemented** - `/admin/invoices` and `/admin/invoices/[id]`: ledger, search, status filter, pagination, itemised detail, PDF download |
 | Admin payments | **Implemented** - `/admin/payments` and `/admin/payments/[id]`: ledger, search across payment/invoice/booking/customer, status filter, pagination, gateway references, failure and read-only refund state |
 | Admin reviews / audit log / settings | **Not yet implemented** - shown as disabled "Soon" |
+| Admin customer management | **Not yet implemented** - shown as disabled "Soon" |
 | Payment refunds (initiation) | **Not implemented by design** - no approved refund policy; refund state is mirrored read-only from the gateway (see "Payments - refunds") |
 | Payment provider integration | **Configured via `RAZORPAY_*` environment variables** - sandbox verification pending credentials; see "Payments - configuration" |
 | Deployment hardening (Redis rate limiting, PostgreSQL, native enums) | **Requires production configuration** - see [SECURITY.md](./SECURITY.md) §6 |
@@ -149,12 +153,16 @@ as the customer site. It is not a visual mockup and it runs on no mock data.
 | `/admin/pricing` | Publish / withdraw published prices |
 | `/admin/bookings` | Every booking, newest first: reference search, status filter, pagination; rows open the booking detail |
 | `/admin/bookings/[id]` | One booking in full: request details, location, customer, pricing vs invoice, technician, status history, and the confirm / assign / issue-invoice actions |
+| `/admin/technicians` | Technician roster: search, status and availability filters, paging; create, edit, activate/deactivate, availability, portal-login provisioning, and the two technician feature switches |
 | `/admin/invoices` | Every issued invoice, newest first: number / booking-reference / customer search, status filter, pagination |
 | `/admin/invoices/[id]` | One invoice as issued: line items, totals, seller and customer snapshots, PDF download |
 | `/admin/payments` | Payment ledger: payment reference, invoice, booking, customer, amount, gateway, status, dates; search, status filter, pagination |
 | `/admin/payments/[id]` | One payment attempt: transaction, gateway references, signature verification, failure and refund state (read-only) |
 
-Modules that are **not yet built** (Customers, Materials, Payments, Reviews, Audit log, Settings) appear in the sidebar as **disabled entries marked "Soon"**. They are deliberately not links: a navigation item that leads to a 404 advertises a capability the console does not have. No planned module is dressed up with fake functionality, sample rows or placeholder metrics.
+Modules that are **not yet built** (Customers, Materials, Reviews, Audit log, Settings) appear in the sidebar as **disabled entries marked "Soon"**. They are deliberately not links: a navigation item that leads to a 404 advertises a capability the console does not have. No planned module is dressed up with fake functionality, sample rows or placeholder metrics.
+
+`Technicians` is now a live entry. It is the one module whose two capabilities can be
+switched off at runtime — see "Technicians — roster, accounts and the portal".
 
 ### Admin sidebar
 
@@ -230,6 +238,12 @@ material orders - are shown as plain numbers with a note, never as links.
 | `POST /api/admin/bookings/[id]/invoice` | Issue an invoice for a `COMPLETED` booking (no financial input accepted; every figure comes from the booking) |
 | `GET /api/admin/invoices` | Invoice ledger: `q` (number / booking reference / customer), `status` (allowlisted or `ALL`), bounded `page` / `pageSize` |
 | `GET /api/admin/invoices/[id]/pdf` | Download one invoice as a PDF, rendered from its stored snapshots |
+| `GET /api/admin/technicians` | Dispatch roster: every technician record (unpaged, for the assignment dialog). Stays available when technician *management* is switched off |
+| `POST /api/admin/technicians` | Create a roster profile, plus a linked portal login when the portal feature is on (returns a one-time activation path) |
+| `PATCH /api/admin/technicians/[id]` | Roster details, activation state, availability |
+| `POST /api/admin/technicians/[id]/account` | Provision a login for an existing profile, or re-issue an invitation that was never activated |
+| `GET` / `PATCH /api/admin/technician-features` | Read or change the two technician capabilities (typed model, closed key set, audited) |
+| `POST /api/technician/activate` | Public, token-authenticated: the technician sets their own password. Refused while the portal is off |
 
 ### Admin authorization
 
@@ -584,6 +598,92 @@ progress bar that would imply forward progress.
 
 ---
 
+## Technicians — roster, accounts and the portal
+
+Technician operations are **two independent capabilities**, not one switch:
+
+| `adminManagementEnabled` | `portalEnabled` | Result |
+| --- | --- | --- |
+| ON (default) | OFF (default) | Admin-managed technicians: roster, assignment, no technician sign-in |
+| OFF | ON | Roster frozen; technicians sign in and work from the portal |
+| ON | ON | Combined operation |
+| OFF | OFF | Technician operations disabled; dispatch still works |
+
+Both live in a **dedicated typed model** (`TechnicianFeatureConfig`: one row, two
+boolean columns), not in the generic `Setting` key/value table. A key/value store
+lets any caller invent a key and stores every value as text, so `"false"` becomes
+a truthiness question at the exact point an authentication decision is made. Here
+the key set is closed and an unreadable or absent row falls back to the documented
+defaults — which can never enable technician sign-in.
+
+They are changed in `/admin/technicians` → **Technician features**, and take effect
+on the next request; no redeploy. Every change is audited with the previous and new
+values.
+
+### What each capability actually controls
+
+- **Management OFF** hides the write actions **and every management API refuses the
+  call** (`403 ADMIN_MANAGEMENT_DISABLED`). It does **not** delete technicians,
+  disable their logins, cancel bookings or remove assignments. The roster becomes
+  read-only, and `GET /api/admin/technicians` still answers so dispatch can assign.
+- **Portal OFF** stops technician sign-in (`403 PORTAL_DISABLED`), 404s the portal
+  pages, refuses activation, and **revokes every live technician session** at the
+  moment it is switched off. Existing accounts, profiles and assignments are kept.
+- **Both OFF** leaves every historical booking, assignment, account and audit row
+  untouched; only the technician surfaces are closed.
+
+### Roster rules
+
+- A technician profile is a **roster record first**: `Technician.userId` is optional,
+  so a profile can exist (and be assigned work) with no login at all.
+- Profiles are created under the single active provider; if the platform ever has
+  zero or several active providers, creation is refused rather than guessed.
+- **Assignment requires `isActive` AND `isAvailable`.** Availability is enforced by
+  the assignment endpoint and by the generic transition endpoint, in one shared
+  helper, with distinct errors (`TECHNICIAN_INACTIVE`, `TECHNICIAN_UNAVAILABLE`).
+- **Deactivating a profile also disables its login and revokes its sessions**, so
+  "active profile, unusable account" cannot exist. Reactivating re-enables both.
+- Duplicate profiles (same name or mobile for the provider) and duplicate login
+  identities are refused.
+
+### Account provisioning (no email, no password reset)
+
+This application has **no mail delivery and no password-reset flow**, so an
+invitation email would be a fiction. Instead:
+
+1. Creating a technician while the portal is ON — or **Create login** on a profile
+   that has none — provisions a `TECHNICIAN` account with an **unusable password**
+   and a single-use activation token (only its SHA-256 hash is stored).
+2. The response shows a one-time activation path
+   (`/technician/activate/<token>`) **once**, as text plus a copy button. It is never
+   emailed, never stored in plaintext, and cannot be retrieved later.
+3. The operator hands it over privately. The technician opens it, chooses their own
+   password (the platform's 12-character policy) and signs in. No administrator ever
+   knows that password.
+4. The link expires after 7 days. **Re-issue invite** mints a new token and
+   invalidates the old one while the account is still unactivated.
+5. An **already activated** account cannot be reset here, and the API says so
+   (`409 ACCOUNT_EXISTS`) instead of pretending.
+
+### The technician portal
+
+`/technician` is a separate surface with its own shell and its own guard
+(`requireTechnicianPage` / `requireTechnicianApi`): portal feature ON, live session,
+role exactly `TECHNICIAN`, linked profile active. Each page re-checks it, and every
+job query carries the session's `technicianId` in the `WHERE` clause — a colleague's
+booking is indistinguishable from one that does not exist.
+
+A technician sees their own jobs, the visit address, the dispatch contact the
+customer supplied for that visit, and the append-only status history. They do **not**
+see invoices, payments, refunds, the customer's account email/phone or any
+administrative note, and there is no technician endpoint that can alter them.
+
+**Status progression is read-only in this release.** The four dispatch transitions
+(`TECHNICIAN_ASSIGNED → … → COMPLETED`) are the next milestone; the portal states
+that plainly rather than showing buttons that would fail.
+
+---
+
 ## Invoices
 
 Invoices are generated from persisted bookings. Nothing about an invoice is
@@ -720,6 +820,10 @@ The customer id comes from the session and is part of the query
 | **`/account`** | Required (every role, incl. ADMIN) | **Personal account: profile, address editing, password change, recent activity** |
 | `/login`, `/register` | Public | Authentication |
 | `/admin` | `ADMIN` | Admin console |
+| **`/technician/login`** | Public (refused while the portal is off) | Technician sign-in; the same login endpoint, role-gated destination |
+| **`/technician/activate/[token]`** | Public + one-time token | Technician chooses their own password from an invitation |
+| **`/technician`** | `TECHNICIAN` + active profile + portal ON | Portal overview: open work counts, recent jobs |
+| **`/technician/jobs`**, **`/technician/jobs/[id]`** | `TECHNICIAN` + ownership | Own assigned jobs, one job with dispatch-minimal contact and status history |
 | `/privacy`, `/terms` | Public | **Not yet implemented** (linked in the footer) |
 
 Mobile navigation: `Home · Menu · Booking · Bookings · Account`.
@@ -1124,14 +1228,14 @@ It documents what is implemented, what was verified, and - importantly - **what
 remains outstanding**. This project makes no claim of being vulnerability-free.
 Security is a property of a deployed system, not of source code.
 
-Current state (verified for the invoice milestone - Milestone 3):
+Current state (verified for the technician milestone - Milestone 5):
 
 | Check | Result |
 | --- | --- |
 | `npm run typecheck` | PASS (0 errors) |
-| `npm run lint` | PASS (0 errors, 0 warnings) |
-| `npm test` | PASS (451 tests, 30 suites) |
-| `npm run build` | PASS (44 routes) |
+| `npm run lint` | PASS (0 problems) |
+| `npm test` | PASS (**589 tests, 37 suites**) |
+| `npm run build` | PASS (58 routes, including `/admin/technicians`, the technician APIs and the `/technician` portal). `prisma generate` inside the script can fail with `EPERM` on the query-engine DLL while a stale node process holds it - `npx next build` after a generated client compiles clean |
 | `npm run audit:prod` | 0 vulnerabilities |
 
 ### Security regression check for this milestone
@@ -1208,8 +1312,9 @@ Renaming or reordering them is a data change.
    administrator publishes prices. This is intentional, not a defect. Real prices
    are a commercial decision and have not been invented.
 2. **Technician records are not seeded.** The platform does not know a technician's
-   real availability, so none are invented. The tracking UI is built for them and
-   shows the honest placeholder until one is assigned.
+   real availability, so none are invented. Create them in `/admin/technicians`
+   (Technician management is ON by default; the portal is OFF by default). The
+   tracking UI shows the honest placeholder until one is assigned.
 3. **Rate limiting is per-process.** See `SECURITY.md` §5.
 4. **Invoices have three deliberate gaps** (see *Invoices* above): no tax is
    calculated because no tax registration is configured; `CUSTOMER_BUDGET`
@@ -1218,9 +1323,9 @@ Renaming or reordering them is a data change.
    immutable rather than correctable.
 5. **Most admin modules are not built.** The console covers the dashboard,
    catalogue, charging options, pricing, the bookings list with its dispatch
-   actions, and the invoice ledger. Technicians, customers, materials, payments,
-   reviews, the audit-log viewer and settings are shown as disabled "Soon"
-   entries. They have no screens and no fake behaviour. The audit events *are*
+   actions, the technician roster, and the invoice and payment ledgers. Customers,
+   materials, reviews, the audit-log viewer and settings are shown as disabled
+   "Soon" entries. They have no screens and no fake behaviour. The audit events *are*
    written to the database for every mutation - only the screen to browse them is
    missing.
 6. **Payment and feedback have no customer UI.** The schema, state machine and
@@ -1237,6 +1342,20 @@ Renaming or reordering them is a data change.
    not changed, because rewriting a live account's login address is an identity
    decision, not a cosmetic one. Rotate it deliberately before launch.
 10. SQLite and string-backed "enums" are development-only - see `SECURITY.md` §6.3.
+11. **Technician accounts have no password reset.** An invitation link is delivered
+    out of band by the operator (there is no mail delivery), expires in 7 days and
+    can be re-issued while the account is still unactivated. Once a technician has
+    set their password there is no self-service or admin reset, so a lost credential
+    currently needs an identity decision rather than a button. Do not enable the
+    technician portal for real work until that is accepted.
+12. **Technician status progression is read-only.** The portal shows the assigned
+    jobs and their history; the four dispatch transitions are the next milestone, so
+    no technician action can move a booking forward in this release.
+13. **Dispatch still ends at `INVOICE_GENERATED` in the UI.** Issuing an invoice and
+    capturing a payment both work, but the admin step that moves a booking to
+    `PAYMENT_PENDING` (and the later `FEEDBACK_PENDING`/`CLOSED` steps) has no screen
+    yet. This is the pre-existing gap recorded in the audit, unchanged by this
+    milestone.
 
 ---
 
@@ -1312,6 +1431,81 @@ git checkout backup/pre-moyo-refactor
 ```
 
 The refactor work is on `feature/moyo-platform`. `main` was never modified.
+
+---
+
+## Changelog - Milestone 5: technician management and the technician portal
+
+**Scope:** technician operations as two independently configurable capabilities, plus
+the roster and portal they control. **No dispatch transition was added** — the four
+middle lifecycle edges remain the next milestone, and the portal says so instead of
+offering buttons that would fail.
+
+### What was built
+
+| Area | Detail |
+| --- | --- |
+| Feature configuration | New typed model `TechnicianFeatureConfig` (one row, two booleans). Read through one module with per-request memoisation; absent/unreadable configuration falls back to the defaults (management ON, portal OFF). `GET`/`PATCH /api/admin/technician-features`, admin-guarded, CSRF-checked, rate-limited, audited with previous and new values. |
+| Roster | `/admin/technicians`: directory with search, status filter, availability filter, server-side paging; create, edit, activate/deactivate, availability, and portal-login provisioning. `GET`/`POST /api/admin/technicians`, `PATCH /api/admin/technicians/[id]`, `POST /api/admin/technicians/[id]/account`. |
+| Provisioning | A technician profile no longer requires a login (`Technician.userId` is optional). When the portal feature is on, an account is provisioned in the same transaction with an unusable password and a single-use activation token; the activation path is returned once. |
+| Activation | `/technician/activate/<token>` and `POST /api/technician/activate`: the technician sets their own password. Token hashed at rest, 7-day expiry, single use, portal-gated, refused for an inactive profile. |
+| Portal | `/technician` (overview), `/technician/jobs` (own jobs, status filter, paging), `/technician/jobs/[id]` (visit details, dispatch contact, status history). Separate shell; `/technician/login` reuses the platform login with a role-gated destination. |
+| Assignment integrity | `isAvailable` is now enforced, not decorative. One shared helper decides existence, provider membership, activation and availability for both the assign endpoint and the generic transition endpoint, with distinct errors. A transition to `TECHNICIAN_ASSIGNED` without a technician is refused. |
+
+### Schema change (`prisma db push`, no `prisma/migrations`)
+
+```sql
+ALTER TABLE "User" ADD COLUMN "activationExpiresAt" DATETIME;
+ALTER TABLE "User" ADD COLUMN "activationTokenHash" TEXT;
+CREATE TABLE "TechnicianFeatureConfig" (...);   -- two booleans + updatedAt
+-- Technician rebuilt: userId becomes NULLABLE (FK ON DELETE SET NULL),
+-- serviceAreas added, every existing row copied by INSERT ... SELECT
+CREATE UNIQUE INDEX "User_activationTokenHash_key" ON "User"("activationTokenHash");
+```
+
+The generated script was inspected before it was applied, the development database
+was copied to `%TEMP%` first, and the row counts were compared before and after:
+**users 6, technicians 1, bookings 8, invoices 0, payments 0, audit logs 185 — all
+identical**, with the existing technician keeping its `id`, `userId` and flags and its
+two assigned bookings intact.
+
+### Security notes
+
+- Four gates before any technician data (feature, session, role, active profile), and
+  every job query scoped by the session's `technicianId`.
+- Disabling the portal revokes every live technician session immediately; deactivating
+  a technician disables their login and revokes its sessions.
+- No technician endpoint can assign work, issue an invoice or touch a payment; the
+  admin routes refuse a TECHNICIAN session by role.
+- Switching either capability off deletes nothing: no booking, assignment, invoice,
+  payment, technician, account or audit row is touched.
+
+### Verification (actual results on this working tree)
+
+| Check | Result |
+| --- | --- |
+| `npx tsc --noEmit` | PASS (0 errors) |
+| `npm run lint` | PASS (0 problems) |
+| `npm test` | PASS (589 tests, 37 suites, 14.7 s) |
+| `npm run audit:prod` | 0 vulnerabilities |
+| New suites | `technician-features` 15, `admin-technicians` 23, `technician-portal` 18 - all passing |
+| Existing suites | unchanged and passing, including the extended dispatch suite (now 11 tests) |
+
+**A note on the test budget.** Each suite lazily imports its route graph *inside* the
+first test of the file, so that first test also pays the transform cost. While a
+`next dev` server was recompiling in the background during this milestone, that cost
+rose past Vitest's default 5 s budget and first tests failed on time; with the machine
+quiet the whole suite runs in ~15 s against the unmodified configuration. Nothing was
+changed to work around it, because raising a global timeout would also hide a genuine
+hang.
+
+### Operational note
+
+`prisma generate` cannot replace the query-engine DLL while a `next dev` server is
+running (documented in "Getting started"). The development server that was running
+during this milestone exited when its terminal was recycled; restart it with
+`npm run dev`. The generated client itself was refreshed — only the engine-binary
+rename was blocked, and the engine version is unchanged.
 
 ---
 

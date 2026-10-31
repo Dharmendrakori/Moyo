@@ -4,6 +4,7 @@ import { ApiError, apiHandler, jsonOk, parseJson } from '@/lib/api';
 import { ADMIN_MUTATION_POLICY, rateLimitByUser } from '@/lib/rate-limit';
 import { bookingTransitionSchema } from '@/lib/validation';
 import { assertCanManageBooking } from '@/lib/access';
+import { assertAssignableTechnician } from '@/lib/technicians';
 import { evaluateTransition } from '@/lib/booking-state';
 import { prisma } from '@/lib/prisma';
 import { isBookingStatus, type BookingStatus } from '@/lib/domain';
@@ -66,25 +67,21 @@ export const POST = apiHandler(
       throw new ApiError('INVALID_TRANSITION', decision.reason, 409);
     }
 
-    // Technician assignment is a separate, admin/provider-only action and
-    // requires a technician that belongs to THIS booking's provider.
+    // Technician assignment is a separate, admin/provider-only action. The FULL
+    // eligibility rule lives in one place: existence, provider membership,
+    // activation and availability. Assigning an edge without naming a technician
+    // is refused, because a TECHNICIAN_ASSIGNED booking with no technician is a
+    // booking nobody can service.
     let technicianId = booking.technicianId;
-    if (desired === 'TECHNICIAN_ASSIGNED' && body.technicianId) {
-      const technician = await prisma.technician.findFirst({
-        where: {
-          id: body.technicianId,
-          providerId: booking.providerId ?? undefined,
-          isActive: true,
-        },
-        select: { id: true },
-      });
-      if (!technician) {
+    if (desired === 'TECHNICIAN_ASSIGNED') {
+      if (!body.technicianId) {
         throw new ApiError(
-          'INVALID_TECHNICIAN',
-          'That technician is not available for this provider',
+          'TECHNICIAN_REQUIRED',
+          'Select the technician who will carry out this booking.',
           422,
         );
       }
+      const technician = await assertAssignableTechnician(body.technicianId, booking.providerId);
       technicianId = technician.id;
     }
 

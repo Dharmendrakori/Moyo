@@ -27,7 +27,17 @@ import { stripCredentialParams } from '@/lib/redirect';
 const SESSION_COOKIE = 'moyo_session';
 
 /** Path prefixes that require an authenticated session. */
-const PROTECTED_PREFIXES = ['/admin', '/account', '/bookings', '/orders'];
+const PROTECTED_PREFIXES = ['/admin', '/account', '/bookings', '/orders', '/technician'];
+
+/**
+ * Technician authentication surfaces must stay reachable while signed out -
+ * otherwise an anonymous `/technician/login` visit would be redirected to the
+ * CUSTOMER login page instead.
+ */
+const PUBLIC_PATHS = new Set(['/technician/login']);
+
+/** `/technician/activate/<one-time-token>` is public too. */
+const PUBLIC_PREFIXES = ['/technician/activate'];
 
 function buildCsp(nonce: string): string {
   const isDev = process.env.NODE_ENV !== 'production';
@@ -77,7 +87,10 @@ export function proxy(request: NextRequest) {
   const requestHeaders = new Headers(request.headers);
   requestHeaders.set('x-nonce', nonce);
 
-  const needsAuth = PROTECTED_PREFIXES.some((p) => pathname === p || pathname.startsWith(`${p}/`));
+  const needsAuth =
+    PROTECTED_PREFIXES.some((p) => pathname === p || pathname.startsWith(`${p}/`)) &&
+    !PUBLIC_PATHS.has(pathname) &&
+    !PUBLIC_PREFIXES.some((p) => pathname === p || pathname.startsWith(`${p}/`));
   const hasSessionCookie = Boolean(request.cookies.get(SESSION_COOKIE)?.value);
 
   if (needsAuth && !hasSessionCookie) {

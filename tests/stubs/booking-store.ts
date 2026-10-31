@@ -35,7 +35,14 @@ export type BookingRow = {
 };
 
 export const bookingRows: BookingRow[] = [];
-export const technicianRows: Array<{ id: string; displayName: string; isActive: boolean }> = [];
+export const technicianRows: Array<{
+  id: string;
+  displayName: string;
+  isActive: boolean;
+  /** Assignment now requires an explicitly available technician. */
+  isAvailable?: boolean;
+  providerId?: string;
+}> = [];
 export const eventRows: Array<{
   bookingId: string;
   from: string | null;
@@ -138,11 +145,26 @@ export function makePrismaMock() {
       },
     },
     technician: {
-      findFirst: async ({ where }: { where: { id: string; isActive?: boolean } }) => {
+      /**
+       * Mirrors `assertAssignableTechnician`: the query filters by id and (when
+       * present) provider only. Activation and availability are returned as data
+       * so the SHARED HELPER decides, exactly as it does in production.
+       */
+      findFirst: async ({
+        where,
+      }: {
+        where: { id: string; isActive?: boolean; providerId?: string };
+      }) => {
         const row = technicianRows.find((t) => t.id === where.id);
         if (!row) return null;
+        if (where.providerId && row.providerId && row.providerId !== where.providerId) return null;
         if (where.isActive && !row.isActive) return null;
-        return { id: row.id, displayName: row.displayName };
+        return {
+          id: row.id,
+          displayName: row.displayName,
+          isActive: row.isActive,
+          isAvailable: row.isAvailable ?? false,
+        };
       },
     },
     auditLog: {

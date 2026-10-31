@@ -14,6 +14,7 @@ import { apiHandler, jsonError, jsonOk, parseJson, tooManyRequests } from '@/lib
 import { LOGIN_POLICY, rateLimitByIp } from '@/lib/rate-limit';
 import { loginSchema } from '@/lib/validation';
 import { resolvePostLoginRedirect } from '@/lib/redirect';
+import { getTechnicianFeatures } from '@/lib/technician-features';
 
 /**
  * POST /api/auth/login
@@ -49,6 +50,7 @@ export const POST = apiHandler(async (request: Request) => {
       passwordHash: true,
       failedLoginCount: true,
       lockedUntil: true,
+      technician: { select: { id: true, isActive: true } },
     },
   });
 
@@ -106,6 +108,45 @@ export const POST = apiHandler(async (request: Request) => {
       metadata: { reason: 'inactive_account' },
     });
     return jsonError('ACCOUNT_DISABLED', 'This account has been disabled. Contact support.', 403);
+  }
+
+  /**
+   * TECHNICIAN ACCOUNTS are only usable while the technician portal feature is
+   * enabled AND the linked profile is active. Both facts come from the database
+   * on every attempt, so switching the portal off takes effect immediately -
+   * a credential that was valid yesterday does not become a way in.
+   *
+   * This check runs AFTER the password has been verified: a caller who cannot
+   * produce the right password never learns anything from it, so it adds no
+   * account-enumeration surface.
+   */
+  if (user.role === 'TECHNICIAN') {
+    const features = await getTechnicianFeatures();
+
+    if (!features.portalEnabled) {
+      await audit({
+        action: 'LOGIN_FAILED',
+        entityType: 'User',
+        entityId: user.id,
+        metadata: { reason: 'technician_portal_disabled' },
+      });
+      return jsonError(
+        'PORTAL_DISABLED',
+        'The technician portal is not currently available. Contact your administrator.',
+        403,
+      );
+    }
+
+    if (!user.technician || !user.technician.isActive) {
+      await audit({
+        action: 'ACCESS_DENIED',
+        entityType: 'User',
+        entityId: user.id,
+        actorId: user.id,
+        metadata: { reason: 'technician_inactive' },
+      });
+      return jsonError('ACCOUNT_DISABLED', 'This account has been disabled. Contact support.', 403);
+    }
   }
 
   // Success: reset counters and mint a brand-new session (fixation defence).

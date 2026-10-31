@@ -6,6 +6,7 @@ import { adminAssignTechnicianSchema } from '@/lib/validation';
 import { evaluateTransition } from '@/lib/booking-state';
 import { isBookingStatus } from '@/lib/domain';
 import { assertCanManageBooking } from '@/lib/access';
+import { assertAssignableTechnician } from '@/lib/technicians';
 import { prisma } from '@/lib/prisma';
 
 /**
@@ -53,19 +54,10 @@ export const POST = apiHandler(
       throw new ApiError('INVALID_TRANSITION', decision.reason, 409);
     }
 
-    const technicianWhere: { id: string; isActive: boolean; providerId?: string } = {
-      id: body.technicianId,
-      isActive: true,
-    };
-    if (booking.providerId) technicianWhere.providerId = booking.providerId;
-
-    const technician = await prisma.technician.findFirst({
-      where: technicianWhere,
-      select: { id: true, displayName: true },
-    });
-    if (!technician) {
-      throw new ApiError('INVALID_TECHNICIAN', 'That technician is not active or not available for this booking', 422);
-    }
+    // Existence, provider membership, activation AND availability, decided once
+    // in `assertAssignableTechnician` so this endpoint and the generic transition
+    // endpoint cannot disagree about what "assignable" means.
+    const technician = await assertAssignableTechnician(body.technicianId, booking.providerId);
 
     const updated = await prisma.$transaction(async (tx) => {
       const result = await tx.booking.update({

@@ -410,15 +410,122 @@ export const adminProviderUpdateSchema = z
   })
   .strict();
 
+/**
+ * Technician CREATION.
+ *
+ * Nothing privileged is accepted: there is deliberately no `role`, `userId`,
+ * `providerId`, `passwordHash`, `providerUserId` or rating field, and `.strict()`
+ * rejects the whole request if one is supplied rather than dropping it. The
+ * provider is resolved server-side and the login account (when the portal is
+ * enabled) is provisioned by the server too.
+ *
+ * `accountEmail` / `accountPhone` are the LOGIN identity. They are optional in
+ * the schema because whether an account is created depends on the technician
+ * portal feature flag, which a Zod schema cannot see - the route enforces the
+ * requirement when the portal is on.
+ */
+export const adminTechnicianCreateSchema = z
+  .object({
+    displayName: nameSchema,
+    headline: safeString(160).optional().or(z.literal('')),
+    skills: safeString(300).optional().or(z.literal('')),
+    serviceAreas: safeString(200).optional().or(z.literal('')),
+    phone: phoneSchema.optional().or(z.literal('')),
+    isActive: z.boolean().default(true),
+    isAvailable: z.boolean().default(false),
+    accountEmail: emailSchema.optional().or(z.literal('')),
+    accountPhone: phoneSchema.optional().or(z.literal('')),
+  })
+  .strict();
+
 export const adminTechnicianUpdateSchema = z
   .object({
     displayName: safeString(120).optional(),
     headline: safeString(160).optional().or(z.literal('')),
     skills: safeString(300).optional().or(z.literal('')),
+    serviceAreas: safeString(200).optional().or(z.literal('')),
+    phone: phoneSchema.optional().or(z.literal('')),
     isActive: z.boolean().optional(),
     isAvailable: z.boolean().optional(),
   })
   .strict();
+
+/**
+ * Portal login details for a technician profile.
+ *
+ * Optional because the same endpoint RE-ISSUES an invitation for an account that
+ * has never been activated, where the identity already exists. The server
+ * requires both fields when it has to create a new account.
+ */
+export const adminTechnicianAccountSchema = z
+  .object({
+    email: emailSchema.optional().or(z.literal('')),
+    phone: phoneSchema.optional().or(z.literal('')),
+  })
+  .strict();
+
+/** Roster table query. An unknown parameter is rejected, never forwarded. */
+export const adminTechnicianQuerySchema = z
+  .object({
+    q: z
+      .string()
+      .trim()
+      .max(80)
+      .transform((s) => s.replace(controlChars, ''))
+      .optional(),
+    status: z.enum(['ALL', 'ACTIVE', 'INACTIVE']).default('ALL'),
+    availability: z.enum(['ALL', 'AVAILABLE', 'UNAVAILABLE']).default('ALL'),
+    page: z.coerce.number().int().min(1).max(10_000).default(1),
+    pageSize: z.coerce.number().int().min(1).max(100).default(20),
+  })
+  .strict();
+
+/**
+ * Technician feature configuration.
+ *
+ * Both flags are optional so a caller changes one without restating the other,
+ * but an empty body is rejected: a no-op mutation must not write an audit entry
+ * claiming a change. There is no way to introduce a new setting here - the keys
+ * are closed and the storage is a typed model, not a key/value table.
+ */
+export const technicianFeaturesSchema = z
+  .object({
+    adminManagementEnabled: z.boolean().optional(),
+    portalEnabled: z.boolean().optional(),
+  })
+  .strict()
+  .refine(
+    (value) => value.adminManagementEnabled !== undefined || value.portalEnabled !== undefined,
+    { message: 'Supply at least one setting' },
+  );
+
+/**
+ * Technician portal job list query. `status` is an allowlisted booking status
+ * (or `ALL`); anything else never reaches a database filter.
+ */
+export const technicianJobQuerySchema = z
+  .object({
+    status: z.enum(['ALL', ...BOOKING_STATUSES]).default('ALL'),
+    page: z.coerce.number().int().min(1).max(10_000).default(1),
+  })
+  .strict();
+
+/**
+ * Account activation: the technician proves possession of the one-time token
+ * and chooses their OWN password, so no administrator ever knows it.
+ * `.strict()` keeps the payload to exactly these three fields.
+ */
+export const technicianActivateSchema = z
+  .object({
+    token: z.string().trim().min(20, 'Invalid activation reference').max(200),
+    password: passwordSchema,
+    confirmPassword: z.string().min(1, 'Confirm your new password').max(200),
+  })
+  .strict()
+  .refine((data) => data.password === data.confirmPassword, {
+    message: 'Passwords do not match',
+    path: ['confirmPassword'],
+  });
 
 export const adminOrderUpdateSchema = z
   .object({

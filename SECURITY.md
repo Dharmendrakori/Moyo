@@ -11,17 +11,24 @@ code alone. What follows is an account of what was built and verified, plus an
 explicit list of what remains outstanding. Treat section 6 as a launch
 checklist, not optional reading.
 
-Verification performed for this release (Milestone 4 - payments, measured on this
-working tree - 34 suites, 532 tests):
+Verification performed for this release (Milestone 5 - technician management and the
+technician portal, measured on this working tree - 37 suites, 589 tests):
 
 | Check | Command | Result |
 | --- | --- | --- |
 | Type safety | `npm run typecheck` | PASS (0 errors) |
 | Lint | `npm run lint` | PASS (0 problems) |
-| Unit tests | `npm test` | PASS (532 tests, 34 suites) |
-| Production compile | `npx next build` | PASS (via `npm run build`) |
-| Production build script | `npm run build` | **PASS** - `prisma generate` ✔ (Prisma Client 5.22.0) then `next build` ✔ (30 static pages, `/admin/payments` emitted). See the README for the Windows file-lock cause that can block generation while a `next dev` server runs |
+| Unit tests | `npm test` | PASS (589 tests, 37 suites) |
+| Production compile | `npx next build` | PASS (58 routes, including `/admin/technicians`, `/technician`, `/technician/jobs`, `/technician/login`, `/technician/activate/[token]`) |
+| Production build script | `npm run build` | **BLOCKED on this machine**: `prisma generate` failed with `EPERM` renaming `query_engine-windows.dll.node` while a stale node process held it (the cause documented in the README). The generated client itself was refreshed; only the engine-binary rename failed, and the engine version is unchanged |
 | Dependency audit (runtime) | `npm run audit:prod` | 0 vulnerabilities |
+
+**Test budget note.** Each suite lazily imports its route graph inside the first test
+of the file, so that test also pays the transform cost. While a `next dev` server was
+recompiling in the background, that cost exceeded Vitest's default 5 s budget and
+first tests failed on time; the same suite passes unchanged (589/589, ~15 s) on a quiet
+machine. The committed configuration was deliberately **not** relaxed, because raising
+a global timeout would also hide a genuine hang.
 
 **Not verified in this environment:** any interaction with the real Razorpay
 sandbox. No test credentials were available and webhooks cannot be delivered to
@@ -71,6 +78,10 @@ Roles: `CUSTOMER`, `PROVIDER`, `TECHNICIAN`, `ADMIN`.
 - **Route guards are defence in depth**: `/admin` is gated in the layout *and*
   re-checked in every admin page and API route. Hiding a nav link is never the
   control.
+- **Technician boundary**: a TECHNICIAN session holds no elevated rights. Every
+  `/api/admin/**` route re-checks for the ADMIN role, so a technician cannot assign
+  work, issue an invoice or read a ledger by role. Their own surface is defined by a
+  dedicated guard — see §1.2c.
 
 ### 1.2a Admin authorization and the operations console
 
@@ -132,6 +143,65 @@ boundary at every layer.
 - **Generic errors.** Unexpected failures are logged server-side and returned as a
   fixed `500`. No stack trace, SQL fragment or Prisma message is serialized to a
   client, and the admin UI renders API messages as text, never as HTML.
+
+### 1.2c Technician accounts, the portal and feature enforcement
+
+`src/lib/technician-features.ts`, `src/lib/technicians.ts`,
+`src/lib/technician-access.ts`.
+
+**Two capabilities, stored in a dedicated typed model.** `TechnicianFeatureConfig`
+is one row with two boolean columns (`adminManagementEnabled`, `portalEnabled`). It is
+deliberately *not* the generic `Setting` key/value table: that stores text and lets a
+caller invent keys, so "false" becomes a truthiness question exactly where an
+authentication decision is made. Here the key set is closed, and **an absent row, an
+unreadable row or a database error falls back to the defaults** (management ON,
+portal OFF) — a configuration failure can never enable technician sign-in.
+
+**Four independent gates before a technician sees anything**
+(`requireTechnicianPage` / `requireTechnicianApi`):
+
+1. the portal feature is enabled;
+2. a live, unrevoked, unexpired session exists;
+3. the role read from the database is exactly `TECHNICIAN`;
+4. a linked `Technician` profile exists **and is active**.
+
+`ADMIN`, `PROVIDER` and `CUSTOMER` sessions fail gate 3, and the technician id is
+taken from the session — never from a parameter — so no request can widen scope. The
+portal pages `404` when the feature is off, because a page that does not exist must
+not advertise itself.
+
+**Ownership is in the query.** `getTechnicianJob(technicianId, id)` and
+`listTechnicianJobs(technicianId)` put the session's technician id in the `WHERE`
+clause, so a colleague's booking is indistinguishable from a nonexistent one.
+
+**PII minimisation in the portal.** The job projection selects the visit address,
+the dispatch contact the customer supplied for that visit, and the status history. It
+does **not** select the customer's account email or phone, the invoice, the payments,
+or any administrative note. A test pins that projection.
+
+**No technician-side mutation exists in this release.** The four dispatch transitions
+are the next milestone; until then a technician session cannot move a booking, and
+every `/api/admin/**` route refuses it by role (asserted by test).
+
+**Account provisioning without an email system.** A technician login is created with
+an **unusable password hash** plus a single-use activation token; only the token's
+SHA-256 hash is stored. The activation path is returned to the administrator
+**exactly once**, delivered out of band, expires in 7 days, is cleared on first use,
+and is consumed under a conditional update so two concurrent activations cannot both
+succeed. The technician chooses their own password — no administrator ever learns it,
+and no default or shared password exists in the codebase. The token travels as a path
+segment rather than a query parameter because the edge proxy strips
+credential-bearing query parameters from every GET URL.
+
+**Session revocation.** Sessions are database rows, so both a portal disable and a
+technician deactivation revoke live sessions **immediately** (`Session.revokedAt`),
+and the very next request fails. Deactivating a profile also disables its linked
+login, so "active profile, unusable account" cannot arise.
+
+**Nothing is deleted when a capability is switched off.** No booking, assignment,
+invoice, payment, technician, account or audit row is removed or rewritten; only the
+surfaces close and the writes refuse (`403 ADMIN_MANAGEMENT_DISABLED` /
+`403 PORTAL_DISABLED`).
 
 ### 1.3 Booking state machine
 
@@ -630,6 +700,23 @@ verification and operations:
 16. Implement password reset and email verification flows (routes not yet
     built). Note that the provider account is provisioned with an unusable random
     password, so it is currently only reachable via reset.
+17. **Technician credentials have no reset path.** A technician account is created
+    with an unusable password plus a single-use activation link that the operator
+    hands over out of band (there is no mail delivery). The link expires in 7 days
+    and can be re-issued only while the account is still unactivated. Once a
+    technician has set their own password, neither they nor an administrator can
+    reset it. Decide the reset mechanism (emailed token, operator-assisted reset
+    with audit, or directory integration) **before** enabling
+    `portalEnabled` for real work.
+18. **Choose how activation links are delivered.** They are one-time credentials.
+    Today the operator copies the link from a dialog and sends it privately; there
+    is no delivery history, no revocation list beyond the 7-day expiry, and no way
+    to see whether a link was used except through the audit log. A production
+    process (or a real mail channel) is required.
+19. **Technician portal acceptance.** Confirm that the dispatch-minimal contact
+    shown to a technician (the visit contact name and phone supplied by the
+    customer) matches the business's privacy expectations, and that the absence of
+    invoice and payment data in the portal is acceptable to operations.
 16. Define audit-log retention and ship logs to an append-only store. The
     commercial audit events added in this milestone
     (`PRICE_PUBLISHED`, `PRICE_UNPUBLISHED`, `CHARGING_OPTION_CHANGED`,

@@ -123,6 +123,24 @@ export const AUDIT_ACTIONS = [
   'PROVIDER_UPDATED',
   'TECHNICIAN_ASSIGNED',
   /**
+   * Technician operations. Creation, profile edits, activation state and
+   * availability are distinct events: an operator asking "who took this
+   * technician off the roster, and when?" must not have to reconstruct it from
+   * one generic update row.
+   *
+   * `TECHNICIAN_JOB_STATUS_CHANGED` is reserved for the dispatch-transition
+   * milestone; nothing emits it yet.
+   */
+  'TECHNICIAN_CREATED',
+  'TECHNICIAN_UPDATED',
+  'TECHNICIAN_STATUS_CHANGED',
+  'TECHNICIAN_AVAILABILITY_CHANGED',
+  'TECHNICIAN_ACCOUNT_PROVISIONED',
+  'TECHNICIAN_ACCOUNT_ACTIVATED',
+  'TECHNICIAN_ACCOUNT_DISABLED',
+  'TECHNICIAN_FEATURES_CHANGED',
+  'TECHNICIAN_JOB_STATUS_CHANGED',
+  /**
    * Catalog and commercial administration. These are deliberately distinct
    * actions rather than a generic "admin updated row": a price publication and
    * a price withdrawal are different events with different risk, and collapsing

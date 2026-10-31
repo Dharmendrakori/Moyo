@@ -156,6 +156,12 @@ export function isAdminPath(path: string): boolean {
   return path === '/admin' || path.startsWith('/admin/');
 }
 
+/** The technician portal and its authentication surfaces. */
+export function isTechnicianPath(path: string): boolean {
+  return path === '/technician' || path.startsWith('/technician/');
+}
+
+
 /**
  * Default landing page for a server-resolved role.
  *
@@ -175,6 +181,9 @@ export function defaultLandingForRole(_role: string | null | undefined): string 
  * - A validated, safe `next` is honoured when the role may use it.
  * - `/admin` destinations are only honoured for ADMIN callers; everyone else
  *   falls back to their own landing page (never to an admin surface).
+ * - `/technician` destinations are only honoured for TECHNICIAN callers, so a
+ *   customer cannot be bounced at the portal door and an administrator cannot be
+ *   dropped into a technician view.
  * - Missing / unsafe `next` falls back to the role's default landing page.
  * - The return value is always a safe local path (via `safeRedirectPath`).
  */
@@ -187,5 +196,6 @@ export function resolvePostLoginRedirect(
   const validated = safeRedirectPath(first, '');
   if (!validated) return fallback;
   if (isAdminPath(validated) && role !== 'ADMIN') return fallback;
+  if (isTechnicianPath(validated) && role !== 'TECHNICIAN') return fallback;
   return validated;
 }
