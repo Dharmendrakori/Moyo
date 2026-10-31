@@ -8,6 +8,11 @@ node_modules/
 /out/
 next-env.d.ts
 
+# Playwright (browser test artefacts)
+/test-results/
+/playwright-report/
+/blob-report/
+
 # Production
 /build
 

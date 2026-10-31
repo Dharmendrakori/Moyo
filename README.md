@@ -486,7 +486,8 @@ remains the only place the official list is defined.
 | `npm start` | Run the production build |
 | `npm run typecheck` | `tsc --noEmit` |
 | `npm run lint` | ESLint |
-| `npm test` | Vitest suite |
+| `npm test` | Vitest suite (unit + route tests) |
+| `npm run test:e2e` | Playwright browser suite (real Chrome, headless) |
 | `npm run setup` | Generate client, push schema, seed |
 | `npm run db:reset` | Drop, recreate and re-seed |
 
@@ -1494,6 +1495,66 @@ git checkout backup/pre-moyo-refactor
 ```
 
 The refactor work is on `feature/moyo-platform`. `main` was never modified.
+
+---
+
+## Changelog - Milestone 5.2: technician dialog focus defect, actually fixed
+
+**The Milestone 5.1 diagnosis was incomplete and its fix did not resolve the
+reported defect.** That entry is kept unchanged below for the record; this one
+supersedes its root cause.
+
+### What was really happening
+
+`CreateTechnicianDialog` was missing its closing brace, so **`CreateFormFields` was
+declared inside it**. A component declared inside another component's body is a *new
+component type on every render*, and a controlled input re-renders its parent on every
+keystroke. React therefore saw a different type at the same position after each
+character, **unmounted the whole form and mounted a fresh one** — destroying the
+focused `<input>` node. Focus fell back to `<body>`; the next keystroke went nowhere,
+and the value/caret appeared to jump.
+
+The 5.1 change (mount-only focus effect, refs, container focus) was a genuine
+improvement, but it could never fix this: the remount happened above it.
+
+### Browser evidence (Chrome, real DOM)
+
+Recorded from the same spec that now guards the fix, **before** the change:
+
+```
+activeElement after each keystroke in "Name": body, body, body, body, body
+```
+
+with an Edit-dialog value of `AC and refrigerSENIORation` — the caret was reset to its
+original offset on every character, the signature of a replaced input node. Toggling a
+checkbox also left focus on `<body>`.
+
+### The fix
+
+`src/components/admin/technicians/TechnicianDialogs.tsx`: closed
+`CreateTechnicianDialog` so `CreateFormFields` is a **module-scope component**
+(and removed the now-stray brace). Nothing else was needed — inputs stay mounted,
+focus stays in the active field, values and carets survive state updates, and the
+form no longer remounts when the dialog re-renders.
+
+### Browser regression test (mandatory, and now part of the repo)
+
+- `npm run test:e2e` runs `e2e/technician-dialog-focus.spec.ts` with Playwright.
+- It drives the **real components in real Chrome** (installed Chrome via
+  `channel: 'chrome'` — no browser download, one dev dependency: `@playwright/test`).
+- The dialogs are mounted by `/dev/technician-dialogs`, a development-only harness
+  (`notFound()` in production, reads no data), so no account, session or database
+  record is involved. The spec intercepts `/api/admin/technicians**`.
+- Six tests cover: typing character-by-character in Name / Mobile / Headline / Skills
+  (asserting the **active element and the same DOM node** after every keystroke),
+  checkbox toggling then typing, validation failure, API failure, successful create,
+  and the Edit dialog. Each failure message lists which element had focus and after
+  which keystroke.
+
+**This test failed 5 of 6 cases against the defective code and passes 6 of 6 after the
+fix.** The unit test `tests/technician-dialog.test.ts` additionally asserts the form
+component is declared at module scope, as a cheap secondary guard — it is not treated
+as proof of browser behaviour.
 
 ---
 

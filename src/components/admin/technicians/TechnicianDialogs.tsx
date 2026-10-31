@@ -357,6 +357,7 @@ export function CreateTechnicianDialog({ portalEnabled }: { portalEnabled: boole
       )}
     </>
   );
+}
 
 function CreateFormFields({
   form,
@@ -484,9 +485,6 @@ function CreateFormFields({
     </div>
   );
 }
-
-}
-
 
 export type EditableTechnician = {
   id: string;

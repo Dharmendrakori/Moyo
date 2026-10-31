@@ -528,7 +528,8 @@ changes, role changes and access denials.
 
 ## 3. Automated test coverage
 
-451 tests across 30 suites (`npm test`). The security-relevant ones:
+629 tests across 40 suites (`npm test`), plus 6 browser tests in real Chrome
+(`npm run test:e2e`). The security-relevant ones:
 
 - **`tests/admin-invoices-page.test.ts`** - the invoice query schema is actually
   exported and has a working `safeParse`, invalid statuses / unknown parameters /
@@ -575,6 +576,29 @@ changes, role changes and access denials.
 These tests found and fixed genuine defects during development: `ADMIN` could
 previously mark a booking `PAID`, and the desktop sidebar could previously be
 collapsed into a state from which the expand control had disappeared.
+
+### 3a. Browser test harness (Playwright) — exposure and boundaries
+
+`npm run test:e2e` drives the real technician dialogs in real Chrome via
+`e2e/technician-dialog-focus.spec.ts`. It is intentionally narrow, and adds these
+boundaries:
+
+- **`/dev/technician-dialogs`** mounts the dialogs so a credentialed admin account is
+  not needed. It calls `notFound()` whenever `NODE_ENV === 'production'` (verified: the
+  route 404s in a production build), reads no database records, renders no customer or
+  technician data from the server, and accepts no input that is persisted.
+- The spec **intercepts** `/api/admin/technicians**`; it never authenticates, never
+  mints a session, and never creates, modifies or deletes a database record.
+- The dependency is a single dev dependency, `@playwright/test`, using the locally
+  installed Chrome (`channel: 'chrome'`) — no Playwright browser download.
+- No credentials, tokens or personal data appear in test output; the only recorded
+  values are field names, focus owners and the fixture strings typed by the test.
+
+Why it exists: the focus defect was a **rendering** defect (a form component declared
+inside its parent, so inputs were remounted on every keystroke). Unit tests and source
+inspection both reported success while the real browser lost focus after every
+character, so a browser-level assertion on `document.activeElement` is now required to
+accept changes in this area.
 
 ---
 
