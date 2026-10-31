@@ -153,7 +153,7 @@ as the customer site. It is not a visual mockup and it runs on no mock data.
 | `/admin/pricing` | Publish / withdraw published prices |
 | `/admin/bookings` | Every booking, newest first: reference search, status filter, pagination; rows open the booking detail |
 | `/admin/bookings/[id]` | One booking in full: request details, location, customer, pricing vs invoice, technician, status history, and the confirm / assign / issue-invoice actions |
-| `/admin/technicians` | Technician roster: search, status and availability filters, paging; create, edit, activate/deactivate, availability, portal-login provisioning, and the two technician feature switches |
+| `/admin/technicians` | Technician roster: search, status/availability/expertise/service-area/portal filters, paging; create, edit, activate/deactivate, availability, portal-login provisioning, selection-based bulk actions (activate, availability, skills, areas, re-issue invitations, CSV export) and the two technician feature switches |
 | `/admin/invoices` | Every issued invoice, newest first: number / booking-reference / customer search, status filter, pagination |
 | `/admin/invoices/[id]` | One invoice as issued: line items, totals, seller and customer snapshots, PDF download |
 | `/admin/payments` | Payment ledger: payment reference, invoice, booking, customer, amount, gateway, status, dates; search, status filter, pagination |
@@ -242,6 +242,8 @@ material orders - are shown as plain numbers with a note, never as links.
 | `POST /api/admin/technicians` | Create a roster profile, plus a linked portal login when the portal feature is on (returns a one-time activation path) |
 | `PATCH /api/admin/technicians/[id]` | Roster details, activation state, availability |
 | `POST /api/admin/technicians/[id]/account` | Provision a login for an existing profile, or re-issue an invitation that was never activated |
+| `POST /api/admin/technicians/bulk` | Activate/deactivate, availability, skills, service areas and invitation re-issue for up to 50 selected technicians; per-record outcomes, one summary audit event |
+| `GET /api/admin/technicians/export` | CSV of the explicitly selected profiles (roster fields only, formula-injection safe) |
 | `GET` / `PATCH /api/admin/technician-features` | Read or change the two technician capabilities (typed model, closed key set, audited) |
 | `POST /api/technician/activate` | Public, token-authenticated: the technician sets their own password. Refused while the portal is off |
 
@@ -646,6 +648,48 @@ values.
 - Duplicate profiles (same name or mobile for the provider) and duplicate login
   identities are refused.
 
+### Bulk management
+
+The roster supports multi-record operations for larger teams. Selection is
+**page-scoped and explicit**: a header checkbox selects the rows the operator can
+see, the toolbar states the count and scope, and there is no "silently select
+everything behind this filter" mode. Changing page or filter keeps only the ids
+still visible.
+
+| Operation | What the server does |
+| --- | --- |
+| Activate / deactivate | Writes `isActive`; a linked login follows its profile, and deactivation revokes that account's live sessions. **Refused outright** (`409 ACTIVE_ASSIGNMENTS`) if any selected technician still has open work — the batch changes nothing and names the offending bookings. |
+| Mark available / unavailable | Only ever applied to ACTIVE profiles; deactivated technicians are skipped and reported. Availability is what dispatch eligibility uses. |
+| Add / remove skills, add / remove service areas | Read-merge-write on the stored comma-separated tags: existing values are preserved, additions are de-duplicated case-insensitively, removals drop only the named values. An edit whose merged list would exceed the column limit is skipped, and a value that is already present is reported as "already present" rather than counted. Writes are conditional on the value that was read, so a concurrent edit is reported instead of overwritten. |
+| Re-issue invitations | Rotates the one-time activation token for accounts that have not activated yet. Already-activated accounts and profiles with no login are skipped with a reason. The links are returned **once**, in the result panel, and are never logged, audited or cached. |
+
+Limits: 50 ids per batch, 10 values per skill/area call, 20 ids per invitation
+re-issue. Duplicate ids are rejected rather than quietly collapsed. Every batch
+writes exactly one `TECHNICIAN_BULK_CHANGED` audit event naming the actor, the
+operation, the counts and the affected ids.
+
+**Bulk account creation is not offered.** Provisioning needs a login email, and an
+account-less profile has no verified identity stored — inventing one (or reusing a
+phone number as an email) would be unsafe. Those profiles are identified by the
+"Portal account: No login" filter and provisioned one at a time from their row.
+
+### CSV export (and why import is deferred)
+
+**Export** is available for the selected rows: `/api/admin/technicians/export`
+returns the roster fields only (name, mobile, headline, skills, service areas,
+active, available, portal state). It cannot see credentials — no password hash, no
+activation token, no session data is selected — and every cell is quoted with a
+leading apostrophe stripped-in for `= + - @`, so a spreadsheet cannot execute
+imported text as a formula.
+
+**Import is deliberately deferred to its own milestone.** A safe import needs a
+preview-and-confirm flow (parse, validate, detect duplicates, show exactly which
+rows would be created or updated), per-row error reporting, its own batch limits
+and a CSV-injection-safe parser. Bolting that onto this milestone would either
+ship a half-verified write path for bulk identity creation, or quietly overwrite
+existing profiles. The bulk API and export cover the operational need today;
+import will be specified and tested on its own.
+
 ### Account provisioning (no email, no password reset)
 
 This application has **no mail delivery and no password-reset flow**, so an
@@ -681,6 +725,25 @@ administrative note, and there is no technician endpoint that can alter them.
 **Status progression is read-only in this release.** The four dispatch transitions
 (`TECHNICIAN_ASSIGNED → … → COMPLETED`) are the next milestone; the portal states
 that plainly rather than showing buttons that would fail.
+
+### What the customer sees
+
+The assigned technician is shown **inside the Current status card** on
+`/bookings/[id]`, directly under the status description and badge — one fact, one
+place, no separate technician card further down the page. The block shows the
+technician's name, professional headline and recorded skills, plus Call and
+WhatsApp when a usable number exists.
+
+- Before assignment: a neutral line saying no technician has been assigned yet.
+- After reassignment: only the currently assigned technician is shown.
+- If the technician is deactivated: the name stays visible (the customer still needs
+  to know who holds the job) but **contact actions are withheld**, because offering
+  a number for someone off the roster is a dead end.
+- No number on record: both actions are omitted instead of producing a broken link.
+
+The card reads from the same customer-owned booking query as the rest of the page,
+so ownership and IDOR protection are unchanged, and it exposes only the coordination
+fields — never an account identifier, credential, activation token or admin note.
 
 ---
 
@@ -1234,7 +1297,7 @@ Current state (verified for the technician milestone - Milestone 5):
 | --- | --- |
 | `npm run typecheck` | PASS (0 errors) |
 | `npm run lint` | PASS (0 problems) |
-| `npm test` | PASS (**589 tests, 37 suites**) |
+| `npm test` | PASS (**628 tests, 40 suites**) |
 | `npm run build` | PASS (58 routes, including `/admin/technicians`, the technician APIs and the `/technician` portal). `prisma generate` inside the script can fail with `EPERM` on the query-engine DLL while a stale node process holds it - `npx next build` after a generated client compiles clean |
 | `npm run audit:prod` | 0 vulnerabilities |
 
@@ -1431,6 +1494,88 @@ git checkout backup/pre-moyo-refactor
 ```
 
 The refactor work is on `feature/moyo-platform`. `main` was never modified.
+
+---
+
+## Changelog - Milestone 5.1: technician UX fixes, customer technician placement and bulk management
+
+### 1. The Add Technician dialog lost focus (root cause and fix)
+
+**Symptom:** typing a single character into Name moved the caret away, and the next
+Space/Enter closed the dialog with a half-filled form.
+
+**Root cause:** `ModalShell` ran its focus/Escape effect with `[onClose]` as the
+dependency. `onClose` is `close`, declared inside `CreateTechnicianDialog`, so it is
+a **new function on every render** — and a controlled input re-renders its parent on
+every keystroke. React therefore re-ran the effect after each character, and the
+effect began with `closeRef.current?.focus()`, which moved focus onto the ✕ button.
+The following Space/Enter activated that button and dismissed the dialog. The same
+effect also re-registered the keydown listener on every keystroke.
+
+The dialog was never unmounted, no state was reset and no component was recreated —
+the defect was the effect's dependency, not the parent's rendering.
+
+**Fix (`src/components/admin/technicians/TechnicianDialogs.tsx`):**
+- the effect now runs **once on mount** (`[]`), with the latest `onClose`/`busy`
+  reached through refs, so a parent render cannot re-focus, reset or close it;
+- initial focus goes to the **dialog container** (`tabIndex={-1}`), not the ✕;
+- Escape is ignored while a request is in flight, and the backdrop cannot dismiss a
+  submitting form;
+- Tab is trapped inside the dialog, and focus returns to whatever opened it on close;
+- all three dialogs (create, edit, provision) pass `busy` into the shell.
+
+Unchanged by design: controlled inputs stay controlled, no Strict Mode change, no
+timers or delays, the form stays mounted on a failed request, and the dialog closes
+only after the server confirms success.
+
+### 2. Customer tracking: technician inside Current status
+
+`TechnicianCard` was removed and its content now renders inside `StatusHeadline`,
+directly under the status description and badge. The stale copy ("their details
+appear here once assigned") is gone from both the status hint and the next-action
+line. The customer query now also selects `isActive`, so a deactivated technician's
+contact actions are withheld while the name stays visible. Call/WhatsApp are omitted
+entirely when no usable number exists.
+
+### 3. Bulk technician management
+
+- Roster row selection (page-scoped), a bulk toolbar with the count and scope, and
+  new **expertise / service-area / portal-account** filters alongside the existing
+  search, status and availability filters.
+- `POST /api/admin/technicians/bulk`: activate, deactivate, mark available,
+  unavailable, add/remove skills, add/remove service areas, re-issue invitations.
+  Strict discriminated schema, cuids only, duplicates rejected, 50-id cap, 20-id cap
+  for invitations, feature-flag and CSRF/Origin/rate-limit enforcement, per-record
+  outcomes, one `TECHNICIAN_BULK_CHANGED` audit event per batch.
+- Deactivation is **refused** with `409 ACTIVE_ASSIGNMENTS` when any selected
+  technician still has open work; nothing is written and the response names the
+  bookings. Availability is applied only to active profiles. Skill/area edits are
+  read-merge-write with a conditional predicate, so concurrent edits are reported
+  rather than overwritten.
+- Re-issued invitations return one-time activation paths **once**, in the result
+  panel; they are never logged, audited or cached.
+- `GET /api/admin/technicians/export`: CSV for the selected profiles, roster fields
+  only, formula-injection safe.
+- **CSV import is deferred**, with the reasoning documented in the Technicians
+  section: a safe import needs its own preview/confirm flow and is not worth
+  bolting onto this milestone.
+
+### Verification (actual results)
+
+| Check | Result |
+| --- | --- |
+| `npx tsc --noEmit` | PASS (0 errors) |
+| `npm run lint` | PASS (0 problems) |
+| `npm test` | PASS (**628 tests, 40 suites**, 11.1 s) |
+| `npx next build` | PASS (34/34 static pages; `/api/admin/technicians/bulk` and `/api/admin/technicians/export` emitted) |
+| `npm run build` | **BLOCKED on this machine**: `prisma generate` fails with `EPERM` renaming the query-engine DLL, which lingering node processes from earlier builds hold (access denied to terminate them). No schema changed in this milestone, so the generated client is already current and `next build` compiles clean |
+| `npm run audit:prod` | 0 vulnerabilities |
+| New suites | `technician-bulk` 24, `technician-tracking` 7, `technician-dialog` 8 |
+
+**Browser verification was not performed.** This repository has no browser test
+tooling (no jsdom, Testing Library or Playwright), so the dialog fix is pinned by a
+structural regression test plus a code-path review, not by simulated keystrokes. The
+customer tracking layout IS render-tested against the real server component.
 
 ---
 

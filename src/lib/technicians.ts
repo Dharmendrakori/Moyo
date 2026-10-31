@@ -125,6 +125,14 @@ export async function listTechnicians(query: TechnicianQuery): Promise<{
   }
   if (query.status !== 'ALL') where.isActive = query.status === 'ACTIVE';
   if (query.availability !== 'ALL') where.isAvailable = query.availability === 'AVAILABLE';
+  // Expertise and coverage filters are substring matches on the stored tags, so a
+  // partially typed value still narrows the roster.
+  if (query.skill) where.skills = { contains: query.skill };
+  if (query.area) where.serviceAreas = { contains: query.area };
+  // Portal state is a LOGIN question, not a roster-activation question.
+  if (query.portal === 'MISSING') where.user = { is: null };
+  if (query.portal === 'LINKED') where.user = { isNot: null };
+  if (query.portal === 'INVITED') where.user = { is: { activationExpiresAt: { not: null } } };
 
   const [rows, total] = await Promise.all([
     prisma.technician.findMany({
@@ -666,3 +674,307 @@ export async function updateTechnicianProfile(
 
   return technician;
 }
+
+// ---------------------------------------------------------------------------
+// Bulk roster operations
+// ---------------------------------------------------------------------------
+
+/**
+ * Tag normalisation for the free-text `skills` / `serviceAreas` columns.
+ *
+ * The stored form is a comma-separated list. Bulk edits must never rewrite the
+ * whole value: they merge (preserving every existing tag, de-duplicated
+ * case-insensitively) or drop only the tags the operator named.
+ */
+function splitTags(value: string | null): string[] {
+  return (value ?? '')
+    .split(',')
+    .map((tag) => tag.trim().replace(/\s+/g, ' '))
+    .filter(Boolean);
+}
+
+function mergeTags(existing: string[], incoming: string[]): string[] {
+  const seen = new Set(existing.map((tag) => tag.toLowerCase()));
+  const merged = [...existing];
+  for (const candidate of incoming) {
+    const tag = candidate.trim().replace(/\s+/g, ' ');
+    const key = tag.toLowerCase();
+    if (!tag || seen.has(key)) continue;
+    seen.add(key);
+    merged.push(tag);
+  }
+  return merged;
+}
+
+function dropTags(existing: string[], incoming: string[]): string[] {
+  const drop = new Set(incoming.map((tag) => tag.trim().replace(/\s+/g, ' ').toLowerCase()));
+  return existing.filter((tag) => !drop.has(tag.toLowerCase()));
+}
+
+/** Column limits, mirroring the create/update schema bounds. */
+const TAG_LIMITS = { skills: 300, serviceAreas: 200 } as const;
+
+/** Statuses that mean a technician is still expected somewhere. */
+const OPEN_ASSIGNMENT_STATUSES = [
+  'REQUESTED',
+  'CONFIRMED',
+  'TECHNICIAN_ASSIGNED',
+  'TECHNICIAN_ON_THE_WAY',
+  'ARRIVED',
+  'SERVICE_IN_PROGRESS',
+];
+
+export type TechnicianBulkResult = {
+  requested: number;
+  affected: number;
+  notFound: string[];
+  /** Per-record reasons for records that were deliberately left untouched. */
+  skipped: Array<{ id: string; name: string; reason: string }>;
+  /**
+   * One-time activation paths, returned ONLY by REISSUE_INVITATIONS. They are
+   * never audited, logged or persisted, and the response that carries them is
+   * never cached.
+   */
+  activationLinks?: Array<{ id: string; displayName: string; path: string }>;
+};
+
+export type TechnicianBulkInput = {
+  action: string;
+  ids: string[];
+  values?: string[] | undefined;
+};
+
+/**
+ * Applies one bulk roster operation.
+ *
+ * INVARIANTS THIS FUNCTION PRESERVES:
+ * - Deactivation is refused outright while any selected technician still has open
+ *   work. Silently deactivating them would strand a customer's booking, so the
+ *   batch is rejected with the offending references and nothing is written.
+ * - Availability is only ever set on ACTIVE profiles: an inactive technician can
+ *   never become assignment-eligible through a bulk call.
+ * - Skill/area edits are read-merge-write with an optimistic predicate, so a
+ *   concurrent change is reported per record instead of being overwritten.
+ * - Nothing here touches a booking, an invoice, a payment or an assignment.
+ * - One summary audit event records the actor, the operation and the blast radius.
+ */
+export async function bulkUpdateTechnicians(
+  input: TechnicianBulkInput,
+  actor: { id: string; role: 'ADMIN' },
+): Promise<TechnicianBulkResult> {
+  const { action, ids } = input;
+  const values = input.values ?? [];
+
+  const rows = await prisma.technician.findMany({
+    where: { id: { in: ids } },
+    select: {
+      id: true,
+      displayName: true,
+      isActive: true,
+      isAvailable: true,
+      skills: true,
+      serviceAreas: true,
+      userId: true,
+      user: { select: { activationExpiresAt: true } },
+    },
+  });
+
+  const found = new Set(rows.map((row) => row.id));
+  const notFound = ids.filter((id) => !found.has(id));
+  const skipped: TechnicianBulkResult['skipped'] = [];
+  let affected = 0;
+  let activationLinks: TechnicianBulkResult['activationLinks'];
+
+  if (action === 'ACTIVATE' || action === 'DEACTIVATE') {
+    const isActive = action === 'ACTIVATE';
+
+    if (!isActive) {
+      const openWork = await prisma.booking.findMany({
+        where: { technicianId: { in: ids }, status: { in: OPEN_ASSIGNMENT_STATUSES } },
+        select: { technicianId: true, reference: true },
+      });
+      if (openWork.length > 0) {
+        const names = new Map(rows.map((row) => [row.id, row.displayName]));
+        const held = Array.from(new Set(openWork.map((b) => b.technicianId)))
+          .map((id) => names.get(id ?? '') ?? 'Unknown technician')
+          .slice(0, 3);
+        const refs = openWork.map((b) => b.reference).slice(0, 3);
+        throw new ApiError(
+          'ACTIVE_ASSIGNMENTS',
+          `Nothing was changed: ${openWork.length} open booking(s) are still assigned to these technicians (${held.join(
+            ', ',
+          )}; e.g. ${refs.join(', ')}). Reassign or complete that work first.`,
+          409,
+        );
+      }
+    }
+
+    affected = await prisma.$transaction(async (tx) => {
+      const result = await tx.technician.updateMany({
+        where: { id: { in: ids } },
+        data: { isActive },
+      });
+
+      const userIds = rows
+        .map((row) => row.userId)
+        .filter((value): value is string => typeof value === 'string');
+
+      if (userIds.length > 0) {
+        // The account invariant: a technician's login follows the roster state.
+        await tx.user.updateMany({ where: { id: { in: userIds } }, data: { isActive } });
+        if (!isActive) {
+          await tx.session.updateMany({
+            where: { userId: { in: userIds }, revokedAt: null },
+            data: { revokedAt: new Date() },
+          });
+        }
+      }
+
+      return result.count;
+    });
+  } else if (action === 'SET_AVAILABLE' || action === 'SET_UNAVAILABLE') {
+    const isAvailable = action === 'SET_AVAILABLE';
+    const eligibleIds: string[] = [];
+
+    for (const row of rows) {
+      if (!row.isActive) {
+        skipped.push({
+          id: row.id,
+          name: row.displayName,
+          reason: 'Deactivated technicians cannot be marked available',
+        });
+        continue;
+      }
+      eligibleIds.push(row.id);
+    }
+
+    if (eligibleIds.length > 0) {
+      const result = await prisma.technician.updateMany({
+        where: { id: { in: eligibleIds }, isActive: true },
+        data: { isAvailable },
+      });
+      affected = result.count;
+    }
+  } else if (
+    action === 'ADD_SKILLS' ||
+    action === 'REMOVE_SKILLS' ||
+    action === 'ADD_SERVICE_AREAS' ||
+    action === 'REMOVE_SERVICE_AREAS'
+  ) {
+    const isSkills = action.endsWith('SKILLS');
+    const isRemove = action.startsWith('REMOVE_');
+    const limit = isSkills ? TAG_LIMITS.skills : TAG_LIMITS.serviceAreas;
+
+    const planned: Array<{ id: string; name: string; next: string; previous: string | null }> = [];
+
+    for (const row of rows) {
+      const previous = isSkills ? row.skills : row.serviceAreas;
+      const current = splitTags(previous);
+      const next = (isRemove ? dropTags(current, values) : mergeTags(current, values)).join(', ');
+
+      if (next.length > limit) {
+        skipped.push({
+          id: row.id,
+          name: row.displayName,
+          reason: `The merged list would exceed ${limit} characters`,
+        });
+        continue;
+      }
+      if (next === (previous ?? '')) {
+        // Nothing to change: reported, never counted as affected.
+        skipped.push({
+          id: row.id,
+          name: row.displayName,
+          reason: isRemove ? 'None of these values were present' : 'Already present',
+        });
+        continue;
+      }
+      planned.push({ id: row.id, name: row.displayName, next, previous });
+    }
+
+    if (planned.length > 0) {
+      affected = await prisma.$transaction(async (tx) => {
+        let count = 0;
+        for (const item of planned) {
+          // Optimistic predicate: only write if the value we merged from is still
+          // the stored one, so a concurrent edit is never silently discarded.
+          const result = await tx.technician.updateMany({
+            where: isSkills
+              ? { id: item.id, skills: item.previous }
+              : { id: item.id, serviceAreas: item.previous },
+            data: isSkills ? { skills: item.next } : { serviceAreas: item.next },
+          });
+          if (result.count === 1) count += 1;
+          else
+            skipped.push({
+              id: item.id,
+              name: item.name,
+              reason: 'Changed by someone else meanwhile — reload and retry',
+            });
+        }
+        return count;
+      });
+    }
+  } else if (action === 'REISSUE_INVITATIONS') {
+    const eligible = rows.filter((row) => {
+      if (!row.userId) {
+        skipped.push({
+          id: row.id,
+          name: row.displayName,
+          reason: 'No portal login exists to invite',
+        });
+        return false;
+      }
+      if (row.user?.activationExpiresAt === null) {
+        skipped.push({
+          id: row.id,
+          name: row.displayName,
+          reason: 'Login already activated — there is no reset flow in this release',
+        });
+        return false;
+      }
+      return true;
+    });
+
+    if (eligible.length > 0) {
+      const links: NonNullable<TechnicianBulkResult['activationLinks']> = [];
+      await prisma.$transaction(async (tx) => {
+        for (const row of eligible) {
+          if (!row.userId) continue;
+          const token = generateToken(24);
+          await tx.user.update({
+            where: { id: row.userId },
+            data: {
+              activationTokenHash: sha256(token),
+              activationExpiresAt: new Date(Date.now() + ACTIVATION_TTL_MS),
+            },
+            select: { id: true },
+          });
+          links.push({ id: row.id, displayName: row.displayName, path: activationPathFor(token) });
+        }
+      });
+      activationLinks = links;
+      affected = links.length;
+    }
+  }
+
+  await audit({
+    action: 'TECHNICIAN_BULK_CHANGED',
+    entityType: 'Technician',
+    actorId: actor.id,
+    actorRole: actor.role,
+    metadata: {
+      operation: action,
+      requested: ids.length,
+      affected,
+      notFound: notFound.length,
+      skipped: skipped.length,
+      // Operator-entered expertise text only; never credentials.
+      values: values.length > 0 ? values.join(', ').slice(0, 500) : null,
+      ids: ids.join(',').slice(0, 1500),
+    },
+  });
+
+  return { requested: ids.length, affected, notFound, skipped, activationLinks };
+}
+

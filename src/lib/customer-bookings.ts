@@ -132,7 +132,16 @@ export async function getCustomerBooking(customerId: string, bookingId: string) 
         select: { displayName: true, contactPhone: true, whatsappNumber: true },
       },
       technician: {
-        select: { id: true, displayName: true, headline: true, phone: true, skills: true },
+        // Roster state is included so the customer view can withhold contact
+        // actions from a deactivated technician instead of offering a dead line.
+        select: {
+          id: true,
+          displayName: true,
+          headline: true,
+          phone: true,
+          skills: true,
+          isActive: true,
+        },
       },
       invoice: {
         select: {

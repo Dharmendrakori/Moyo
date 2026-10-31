@@ -46,39 +46,109 @@ export function Field({
   );
 }
 
-/** Accessible modal shell shared by every technician dialog. */
+/**
+ * Accessible modal shell shared by every technician dialog.
+ *
+ * THE FOCUS EFFECT RUNS ONCE, ON MOUNT, AND MUST STAY THAT WAY.
+ *
+ * An earlier version depended on `[onClose]`. Every keystroke in a controlled
+ * field re-renders the parent, which creates a new `close` function, so the effect
+ * re-ran and called `focus()` on the ✕ button after each character: the caret left
+ * the field, and the next Space/Enter activated the close button and dismissed a
+ * half-filled form. The latest callbacks are therefore held in refs and the effect
+ * has an empty dependency list, so a parent render can never steal focus, reset
+ * the form or close the dialog.
+ *
+ * Also handled here: Escape is ignored while a request is in flight, Tab is trapped
+ * inside the dialog, the backdrop cannot dismiss a submitting form, and focus
+ * returns to whatever opened the dialog when it closes.
+ */
 export function ModalShell({
   title,
   description,
   onClose,
   footer,
   children,
+  busy = false,
 }: {
   title: string;
   description: string;
   onClose: () => void;
   footer: ReactNode;
   children: ReactNode;
+  /** While a request is in flight the dialog cannot be dismissed. */
+  busy?: boolean;
 }) {
-  const closeRef = useRef<HTMLButtonElement>(null);
+  const dialogRef = useRef<HTMLDivElement>(null);
+  const onCloseRef = useRef(onClose);
+  const busyRef = useRef(busy);
+
+  // Refreshed after every render without touching the mount effect below.
+  useEffect(() => {
+    onCloseRef.current = onClose;
+    busyRef.current = busy;
+  });
 
   useEffect(() => {
+    const previouslyFocused = typeof document === 'undefined' ? null : document.activeElement;
+
     const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') onClose();
+      if (event.key === 'Escape') {
+        if (!busyRef.current) {
+          event.preventDefault();
+          onCloseRef.current();
+        }
+        return;
+      }
+      if (event.key !== 'Tab') return;
+
+      const root = dialogRef.current;
+      if (!root) return;
+      const focusable = Array.from(
+        root.querySelectorAll<HTMLElement>(
+          'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])',
+        ),
+      ).filter((element) => element.offsetParent !== null || element === document.activeElement);
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+      if (!first || !last) return;
+
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault();
+        first.focus();
+      }
     };
-    window.addEventListener('keydown', onKeyDown);
-    closeRef.current?.focus();
-    return () => window.removeEventListener('keydown', onKeyDown);
-  }, [onClose]);
+
+    document.addEventListener('keydown', onKeyDown);
+    // The dialog container, not a control inside it: focusing the ✕ first made a
+    // stray Enter dismiss the form.
+    dialogRef.current?.focus();
+
+    return () => {
+      document.removeEventListener('keydown', onKeyDown);
+      if (previouslyFocused instanceof HTMLElement) previouslyFocused.focus();
+    };
+  }, []);
 
   return (
     <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto p-4 sm:items-center">
-      <div className="fixed inset-0 bg-night-950/60" aria-hidden onClick={onClose} />
       <div
+        className="fixed inset-0 bg-night-950/60"
+        aria-hidden
+        onClick={() => {
+          if (!busyRef.current) onCloseRef.current();
+        }}
+      />
+      <div
+        ref={dialogRef}
         role="dialog"
         aria-modal="true"
         aria-labelledby="technician-dialog-title"
-        className="relative z-10 w-full max-w-lg rounded-card border border-ink-200 bg-white shadow-overlay"
+        tabIndex={-1}
+        className="relative z-10 w-full max-w-lg rounded-card border border-ink-200 bg-white shadow-overlay focus:outline-none"
       >
         <div className="flex items-start gap-3 border-b border-ink-100 px-5 py-4">
           <span className="shrink-0 rounded-full bg-brand-50 p-2 text-brand-600">
@@ -91,11 +161,11 @@ export function ModalShell({
             <p className="mt-1 text-sm leading-relaxed text-ink-600">{description}</p>
           </div>
           <button
-            ref={closeRef}
             type="button"
             onClick={onClose}
+            disabled={busy}
             aria-label="Close"
-            className="ml-auto rounded-lg p-1.5 text-ink-400 transition hover:bg-ink-100 hover:text-ink-700"
+            className="ml-auto rounded-lg p-1.5 text-ink-400 transition hover:bg-ink-100 hover:text-ink-700 disabled:opacity-50"
           >
             <Icon name="close" size={18} />
           </button>
@@ -246,6 +316,7 @@ export function CreateTechnicianDialog({ portalEnabled }: { portalEnabled: boole
               : 'Creates a roster profile. The technician portal is off, so no login is created - you can provision one later.'
           }
           onClose={close}
+          busy={busy}
           footer={
             activationPath ? (
               <button
@@ -483,6 +554,7 @@ export function EditTechnicianDialog({ technician }: { technician: EditableTechn
           title={`Edit ${technician.displayName}`}
           description="Roster details only. Activation, availability and the portal login are managed with their own controls."
           onClose={() => setOpen(false)}
+          busy={busy}
           footer={
             <>
               <button

@@ -72,6 +72,7 @@ export function ProvisionAccountDialog({
               : 'Creates a TECHNICIAN login with no usable password. The technician sets their own password from a one-time activation link.'
           }
           onClose={close}
+          busy={busy}
           footer={
             activationPath ? (
               <button

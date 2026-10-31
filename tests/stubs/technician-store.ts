@@ -205,6 +205,39 @@ function matchesTechnicianRow(
   if (where.isActive !== undefined && row.isActive !== where.isActive) return false;
   if (where.isAvailable !== undefined && row.isAvailable !== where.isAvailable) return false;
 
+  const idIn = (where.id as { in?: string[] } | undefined)?.in;
+  if (idIn && !idIn.includes(row.id)) return false;
+
+  const skills = where.skills as string | Contains | undefined;
+  if (typeof skills === 'string') {
+    // Optimistic-concurrency predicate: equality on the current value.
+    if (row.skills !== skills) return false;
+  } else if (skills && 'contains' in skills) {
+    if (!(row.skills ?? '').toLowerCase().includes(skills.contains.toLowerCase())) return false;
+  }
+  const areas = where.serviceAreas as string | Contains | undefined;
+  if (typeof areas === 'string') {
+    if (row.serviceAreas !== areas) return false;
+  } else if (areas && 'contains' in areas) {
+    if (!(row.serviceAreas ?? '').toLowerCase().includes(areas.contains.toLowerCase())) return false;
+  }
+
+  // Portal filters mirror `listTechnicians`: a login exists, does not exist, or
+  // exists with an outstanding invitation.
+  const portal = where.user as
+    | { is?: { activationExpiresAt?: { not?: null } } | null; isNot?: null }
+    | undefined;
+  if (portal) {
+    const linked = Boolean(row.userId);
+    if (portal.isNot === null && !linked) return false;
+    if (portal.is === null && linked) return false;
+    if (portal.is && typeof portal.is === 'object') {
+      if (!linked) return false;
+      const expires = userRows.find((u) => u.id === row.userId)?.activationExpiresAt ?? null;
+      if (portal.is.activationExpiresAt?.not === null && expires === null) return false;
+    }
+  }
+
   const or = where.OR as Array<Record<string, unknown>> | undefined;
   if (or) {
     const matched = or.some((clause) => {
@@ -250,8 +283,10 @@ function withUser(row: TechnicianRow) {
 function matchesJobRow(row: JobRow, where: Record<string, unknown> | undefined): boolean {
   if (!where) return true;
   if (typeof where.id === 'string' && row.id !== where.id) return false;
-  if (typeof where.technicianId === 'string' && row.technicianId !== where.technicianId) {
-    return false;
+  const technicianId = where.technicianId as string | { in?: string[] } | undefined;
+  if (typeof technicianId === 'string' && row.technicianId !== technicianId) return false;
+  if (technicianId && typeof technicianId === 'object' && Array.isArray(technicianId.in)) {
+    if (!row.technicianId || !technicianId.in.includes(row.technicianId)) return false;
   }
   if (typeof where.status === 'string' && row.status !== where.status) return false;
   const inStatuses = (where.status as { in?: string[] } | undefined)?.in;
@@ -345,13 +380,22 @@ export function makePrismaMock() {
         where,
         data,
       }: {
-        where: { id: string };
+        where: { id: string | { in: string[] } };
         data: Record<string, unknown>;
       }) => {
-        const row = userRows.find((u) => u.id === where.id);
-        if (!row) return { count: 0 };
-        Object.assign(row, data);
-        return { count: 1 };
+        const ids =
+          typeof where.id === 'string'
+            ? [where.id]
+            : Array.isArray((where.id as { in?: string[] }).in)
+              ? ((where.id as { in: string[] }).in ?? [])
+              : [];
+        let count = 0;
+        for (const row of userRows) {
+          if (!ids.includes(row.id)) continue;
+          Object.assign(row, data);
+          count += 1;
+        }
+        return { count };
       },
     },
     technician: {
@@ -394,6 +438,20 @@ export function makePrismaMock() {
         if (!row) throw Object.assign(new Error('not found'), { code: 'P2025' });
         Object.assign(row, data, { updatedAt: new Date() });
         return withUser(row);
+      },
+      // Bulk path: applies to every row matching the (bulk-shaped) where clause.
+      updateMany: async ({
+        where,
+        data,
+      }: {
+        where: Record<string, unknown>;
+        data: Record<string, unknown>;
+      }) => {
+        const targets = technicianRows.filter((t) => matchesTechnicianRow(t, where));
+        for (const row of targets) {
+          Object.assign(row, data, { updatedAt: new Date() });
+        }
+        return { count: targets.length };
       },
     },
     technicianFeatureConfig: {

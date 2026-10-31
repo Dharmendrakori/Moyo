@@ -11,16 +11,16 @@ code alone. What follows is an account of what was built and verified, plus an
 explicit list of what remains outstanding. Treat section 6 as a launch
 checklist, not optional reading.
 
-Verification performed for this release (Milestone 5 - technician management and the
-technician portal, measured on this working tree - 37 suites, 589 tests):
+Verification performed for this release (Milestone 5.1 - technician UX fixes and bulk
+management, measured on this working tree - 40 suites, 628 tests):
 
 | Check | Command | Result |
 | --- | --- | --- |
 | Type safety | `npm run typecheck` | PASS (0 errors) |
 | Lint | `npm run lint` | PASS (0 problems) |
-| Unit tests | `npm test` | PASS (589 tests, 37 suites) |
-| Production compile | `npx next build` | PASS (58 routes, including `/admin/technicians`, `/technician`, `/technician/jobs`, `/technician/login`, `/technician/activate/[token]`) |
-| Production build script | `npm run build` | **BLOCKED on this machine**: `prisma generate` failed with `EPERM` renaming `query_engine-windows.dll.node` while a stale node process held it (the cause documented in the README). The generated client itself was refreshed; only the engine-binary rename failed, and the engine version is unchanged |
+| Unit tests | `npm test` | PASS (628 tests, 40 suites) |
+| Production compile | `npx next build` | PASS (34/34 static pages, including `/api/admin/technicians/bulk` and `/api/admin/technicians/export`) |
+| Production build script | `npm run build` | **BLOCKED on this machine**: `prisma generate` failed with `EPERM` renaming `query_engine-windows.dll.node`, held by lingering node processes from earlier builds that this session cannot terminate (access denied). No schema changed in this milestone, so the generated client is already current |
 | Dependency audit (runtime) | `npm run audit:prod` | 0 vulnerabilities |
 
 **Test budget note.** Each suite lazily imports its route graph inside the first test
@@ -202,6 +202,49 @@ login, so "active profile, unusable account" cannot arise.
 invoice, payment, technician, account or audit row is removed or rewritten; only the
 surfaces close and the writes refuse (`403 ADMIN_MANAGEMENT_DISABLED` /
 `403 PORTAL_DISABLED`).
+
+### 1.2d Bulk technician operations
+
+`POST /api/admin/technicians/bulk`, `GET /api/admin/technicians/export`.
+
+**One guarded boundary.** Bulk writes reuse the full admin chain
+(`assertSameOrigin → requireAdmin → assertCsrf → rate limit`) and then the same
+management feature switch as the single-record endpoints, so a disabled capability
+cannot be driven through the bulk route. The body is a strict discriminated schema:
+ids must be cuids, **duplicates are rejected** rather than collapsed, the batch is
+capped at 50 (20 for invitation re-issue), and only the value-bearing actions may
+carry values.
+
+**Server-side decisions, never client-supplied attributes.** The route accepts ids
+and an action; every attribute (current skills, current areas, active state, linked
+account) is re-read from the database. The client cannot name a technician field.
+
+**Deactivation is refused while work is open.** If any selected technician has a
+booking in `REQUESTED/CONFIRMED/TECHNICIAN_ASSIGNED/…/SERVICE_IN_PROGRESS`, the whole
+batch is rejected with `409 ACTIVE_ASSIGNMENTS`, nothing is written, and the response
+names the bookings. Deactivating a technician therefore can never strand a customer:
+there is no silent deactivation and no invented reassignment workflow.
+
+**Availability cannot be used to bypass activation.** `isAvailable` is only written
+for ACTIVE profiles; deactivated technicians are skipped with a per-record reason.
+
+**Concurrency.** Skill/area edits are read-merge-write with the previous value in the
+`WHERE` clause, so a concurrent change is reported per record instead of being
+overwritten. Status and availability writes are single conditional statements.
+
+**Credentials.** Bulk invitation re-issue returns one-time activation paths **once**
+in the response body (`Cache-Control: private, no-store`). They are never written to
+the audit log, never logged, and never exported. Already-activated accounts are
+skipped — this release has no reset, and the API says so.
+
+**Export.** Only explicitly selected ids, capped, roster fields only. The projection
+is fixed in the route (no `passwordHash`, `activationTokenHash` or session data), and
+every CSV cell is quoted with formula triggers (`= + - @`, tab, CR) neutralised by a
+leading apostrophe, so a spreadsheet cannot execute imported text.
+
+**Audit.** Each batch writes exactly one `TECHNICIAN_BULK_CHANGED` event with the
+actor, the operation, requested/affected/skipped counts, the affected ids and the
+operator-entered values — no personal data beyond what the roster already holds.
 
 ### 1.3 Booking state machine
 

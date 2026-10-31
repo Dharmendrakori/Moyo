@@ -61,7 +61,8 @@ export default async function TechnicianLoginPage({
   }
 
   const user = await getCurrentUser();
-  if (user?.role === 'TECHNICIAN') redirect('/technician');
+  const signedInTechnician = user?.role === 'TECHNICIAN';
+  if (signedInTechnician) redirect('/technician');
 
   return (
     <div className={card}>
@@ -80,7 +81,7 @@ export default async function TechnicianLoginPage({
         </div>
       )}
 
-      {user && user.role !== 'TECHNICIAN' && (
+      {user && !signedInTechnician && (
         <div
           role="status"
           className="mt-4 flex items-start gap-2 rounded-lg bg-warning-bg p-3 text-sm text-warning"

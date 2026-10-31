@@ -118,7 +118,9 @@ export default async function BookingDetailPage({
                 ? {
                     displayName: booking.technician.displayName,
                     headline: booking.technician.headline,
+                    skills: booking.technician.skills,
                     phone: booking.technician.phone,
+                    isActive: booking.technician.isActive,
                   }
                 : null
             }

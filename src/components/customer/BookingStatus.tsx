@@ -18,7 +18,14 @@ import { hasAssignedTechnician, projectLifecycle } from '@/lib/booking-tracking'
 export type TechnicianSummary = {
   displayName: string;
   headline?: string | null;
+  /** Skills are shown as recorded; never embellished. */
+  skills?: string | null;
   phone?: string | null;
+  /**
+   * False once the profile is deactivated. The name stays visible (the customer
+   * still needs to know who holds the job) but contact actions are withheld.
+   */
+  isActive?: boolean;
 } | null;
 
 export type BookingStatusPanelProps = {
@@ -37,7 +44,13 @@ export function DetailRow({ label, children }: { label: string; children: React.
   );
 }
 
-export function StatusHeadline({ status }: { status: string }) {
+export function StatusHeadline({
+  status,
+  technician,
+}: {
+  status: string;
+  technician: TechnicianSummary;
+}) {
   const lifecycle = projectLifecycle(status);
   return (
     <div className="rounded-card border border-ink-200 bg-white p-5">
@@ -62,6 +75,81 @@ export function StatusHeadline({ status }: { status: string }) {
           <Icon name="info" size={16} className="mt-0.5 shrink-0" />
           <span>{lifecycle.nextAction}</span>
         </p>
+      )}
+
+      {/* The assigned technician belongs with the status it explains, not in a
+          separate card further down the page. */}
+      <AssignedTechnician technician={technician} />
+    </div>
+  );
+}
+
+/**
+ * Assigned technician, inside the Current Status card.
+ *
+ * Renders the honest placeholder until the backend assigns someone, and then only
+ * the fields the booking record actually holds - no fallback name, no rating, no
+ * availability claim. Contact actions appear only when there is a usable number
+ * AND the technician is still on the roster, so a deactivated technician's details
+ * are never offered as a live contact route.
+ */
+function AssignedTechnician({ technician }: { technician: TechnicianSummary }) {
+  const assigned = hasAssignedTechnician(technician);
+  const contactable = technician?.isActive !== false;
+  const tel = assigned && contactable ? telLink(technician?.phone) : null;
+  const wa =
+    assigned && contactable
+      ? whatsappLink(technician?.phone, 'Hello, regarding my Seric Tech Solutions booking.')
+      : null;
+
+  return (
+    <div className="mt-4 border-t border-ink-100 pt-4">
+      <h3 className="text-[11px] font-semibold uppercase tracking-wider text-ink-400">
+        Your assigned technician
+      </h3>
+
+      {!assigned ? (
+        <p className="mt-2 flex items-start gap-2 text-sm text-ink-500">
+          <Icon name="clock" size={16} className="mt-0.5 shrink-0 text-ink-400" />
+          No technician has been assigned yet. Their details will appear here.
+        </p>
+      ) : (
+        <div className="mt-2">
+          <p className="text-sm font-semibold text-ink-900">{technician?.displayName}</p>
+          {technician?.headline && <p className="mt-0.5 text-xs text-ink-500">{technician.headline}</p>}
+          {technician?.skills && (
+            <p className="mt-1 text-xs leading-relaxed text-ink-500">{technician.skills}</p>
+          )}
+          {!contactable && (
+            <p className="mt-1 text-xs text-ink-500">
+              Contact actions are unavailable while this technician is off the roster.
+            </p>
+          )}
+          {(tel || wa) && (
+            <div className="mt-3 flex flex-wrap gap-2">
+              {tel && (
+                <a
+                  href={tel}
+                  className="inline-flex items-center gap-1.5 rounded-xl bg-brand-600 px-3 py-2 text-xs font-semibold text-white shadow-card transition-all duration-300 hover:bg-brand-700 hover:shadow-elevated"
+                >
+                  <Icon name="phone" size={14} />
+                  Call
+                </a>
+              )}
+              {wa && (
+                <a
+                  href={wa}
+                  target="_blank"
+                  rel="noopener noreferrer nofollow"
+                  className="inline-flex items-center gap-1.5 rounded-lg bg-success px-3 py-2 text-xs font-semibold text-white transition hover:bg-success/90"
+                >
+                  <Icon name="whatsapp" size={14} />
+                  WhatsApp
+                </a>
+              )}
+            </div>
+          )}
+        </div>
       )}
     </div>
   );
@@ -141,65 +229,15 @@ export function BookingLifecycle({ status }: { status: string }) {
 }
 
 /**
- * Technician card.
- *
- * Renders the honest placeholder until the backend assigns someone. There is no
- * fallback name, no "top-rated technician" and no availability claim, because
- * the booking record does not contain those facts.
+ * Composed tracking panel: the status card (which now carries the assigned
+ * technician) followed by the lifecycle. The technician is deliberately NOT
+ * rendered in a second card - one fact, one place.
  */
-export function TechnicianCard({ technician }: { technician: TechnicianSummary }) {
-  const assigned = hasAssignedTechnician(technician);
-  const tel = telLink(technician?.phone);
-  const wa = whatsappLink(technician?.phone, 'Hello, regarding my Seric Tech Solutions booking.');
-
-  return (
-    <div className="rounded-card border border-ink-200 bg-white p-5">
-      <h3 className="text-sm font-semibold text-ink-900">Technician</h3>
-
-      {!assigned ? (
-        <p className="mt-2 flex items-start gap-2 text-sm text-ink-500">
-          <Icon name="clock" size={16} className="mt-0.5 shrink-0 text-ink-400" />
-          Technician details will appear after assignment.
-        </p>
-      ) : (
-        <div className="mt-3">
-          <p className="text-sm font-medium text-ink-800">{technician?.displayName}</p>
-          {technician?.headline && <p className="mt-0.5 text-xs text-ink-500">{technician.headline}</p>}
-          <div className="mt-3 flex flex-wrap gap-2">
-            {tel && (
-              <a
-                href={tel}
-                className="inline-flex items-center gap-1.5 rounded-xl bg-brand-600 px-3 py-2 text-xs font-semibold text-white shadow-card transition-all duration-300 hover:bg-brand-700 hover:shadow-elevated"
-              >
-                <Icon name="phone" size={14} />
-                Call
-              </a>
-            )}
-            {wa && (
-              <a
-                href={wa}
-                target="_blank"
-                rel="noopener noreferrer nofollow"
-                className="inline-flex items-center gap-1.5 rounded-lg bg-success px-3 py-2 text-xs font-semibold text-white transition hover:bg-success/90"
-              >
-                <Icon name="whatsapp" size={14} />
-                WhatsApp
-              </a>
-            )}
-          </div>
-        </div>
-      )}
-    </div>
-  );
-}
-
-/** Composed tracking panel: headline, lifecycle and technician. */
 export function BookingStatusPanel({ status, technician, className }: BookingStatusPanelProps) {
   return (
     <div className={cn('space-y-5', className)}>
-      <StatusHeadline status={status} />
+      <StatusHeadline status={status} technician={technician ?? null} />
       <BookingLifecycle status={status} />
-      <TechnicianCard technician={technician ?? null} />
     </div>
   );
 }

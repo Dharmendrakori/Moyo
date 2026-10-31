@@ -44,7 +44,10 @@ export default async function TechnicianJobPage({
     .join(', ');
 
   const call = telLink(job.contactPhone);
-  const whatsapp = whatsappLink(job.contactPhone);
+  const whatsapp = whatsappLink(
+    job.contactPhone,
+    'Hello, regarding my Seric Tech Solutions booking.',
+  );
   const status = job.status as BookingStatus;
 
   return (

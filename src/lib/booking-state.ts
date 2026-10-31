@@ -170,7 +170,7 @@ export const STATUS_LABEL: Record<BookingStatus, string> = {
 export const STATUS_HINT: Record<BookingStatus, string> = {
   REQUESTED: 'Your request has been recorded. Confirmation follows shortly.',
   CONFIRMED: 'Confirmed. A technician will be assigned to this booking.',
-  TECHNICIAN_ASSIGNED: 'A technician is assigned. Their details appear here once assigned.',
+  TECHNICIAN_ASSIGNED: 'A technician has been assigned to your service request.',
   TECHNICIAN_ON_THE_WAY: 'The technician has marked themselves on the way.',
   ARRIVED: 'The technician has arrived at your location.',
   SERVICE_IN_PROGRESS: 'Work is underway.',

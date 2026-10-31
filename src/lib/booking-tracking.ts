@@ -54,7 +54,7 @@ export type LifecycleProjection = {
 const NEXT_ACTION: Record<BookingStatus, string | null> = {
   REQUESTED: 'Awaiting confirmation from the provider.',
   CONFIRMED: 'A technician will be assigned to this booking.',
-  TECHNICIAN_ASSIGNED: 'Technician assigned. Their details appear below.',
+  TECHNICIAN_ASSIGNED: 'Technician assigned. You can reach them using the details below.',
   TECHNICIAN_ON_THE_WAY: 'The technician has marked themselves on the way.',
   ARRIVED: 'The technician has arrived at your location.',
   SERVICE_IN_PROGRESS: 'Work is underway.',

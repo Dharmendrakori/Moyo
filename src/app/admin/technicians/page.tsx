@@ -64,11 +64,20 @@ export default async function AdminTechniciansPage({
     if (query.q) params.set('q', query.q);
     if (query.status !== 'ALL') params.set('status', query.status);
     if (query.availability !== 'ALL') params.set('availability', query.availability);
+    if (query.portal !== 'ALL') params.set('portal', query.portal);
+    if (query.skill) params.set('skill', query.skill);
+    if (query.area) params.set('area', query.area);
     params.set('page', String(page));
     return `/admin/technicians?${params.toString()}`;
   };
 
-  const hasFilters = Boolean(query.q) || query.status !== 'ALL' || query.availability !== 'ALL';
+  const hasFilters =
+    Boolean(query.q) ||
+    Boolean(query.skill) ||
+    Boolean(query.area) ||
+    query.status !== 'ALL' ||
+    query.availability !== 'ALL' ||
+    query.portal !== 'ALL';
   const assignable = rows.items.filter((t) => t.eligibility === 'ASSIGNABLE').length;
 
   return (
@@ -103,12 +112,32 @@ export default async function AdminTechniciansPage({
         </Notice>
       )}
 
-      <Toolbar action="/admin/technicians" query={{ q: query.q, pageSize: String(PAGE_SIZE) }}>
+      <Toolbar
+        action="/admin/technicians"
+        query={{
+          q: query.q,
+          skill: query.skill,
+          area: query.area,
+          pageSize: String(PAGE_SIZE),
+        }}
+      >
         <SearchField
           name="q"
           label="Search"
           defaultValue={query.q ?? ''}
           placeholder="Name, phone, skill or area"
+        />
+        <SearchField
+          name="skill"
+          label="Expertise"
+          defaultValue={query.skill ?? ''}
+          placeholder="e.g. Refrigeration"
+        />
+        <SearchField
+          name="area"
+          label="Service area"
+          defaultValue={query.area ?? ''}
+          placeholder="e.g. Bhopal"
         />
         <SelectField
           name="status"
@@ -128,6 +157,17 @@ export default async function AdminTechniciansPage({
             { value: 'ALL', label: 'Any' },
             { value: 'AVAILABLE', label: 'Available' },
             { value: 'UNAVAILABLE', label: 'Unavailable' },
+          ]}
+        />
+        <SelectField
+          name="portal"
+          label="Portal account"
+          defaultValue={query.portal}
+          options={[
+            { value: 'ALL', label: 'Any' },
+            { value: 'LINKED', label: 'Has a login' },
+            { value: 'MISSING', label: 'No login' },
+            { value: 'INVITED', label: 'Invitation pending' },
           ]}
         />
       </Toolbar>

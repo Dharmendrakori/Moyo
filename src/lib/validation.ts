@@ -464,6 +464,12 @@ export const adminTechnicianAccountSchema = z
   })
   .strict();
 
+/**
+ * Roster capability filters. `portal` describes the LOGIN state, which is a
+ * different question from whether the profile is active.
+ */
+export const TECHNICIAN_PORTAL_FILTERS = ['ALL', 'LINKED', 'MISSING', 'INVITED'] as const;
+
 /** Roster table query. An unknown parameter is rejected, never forwarded. */
 export const adminTechnicianQuerySchema = z
   .object({
@@ -475,10 +481,114 @@ export const adminTechnicianQuerySchema = z
       .optional(),
     status: z.enum(['ALL', 'ACTIVE', 'INACTIVE']).default('ALL'),
     availability: z.enum(['ALL', 'AVAILABLE', 'UNAVAILABLE']).default('ALL'),
+    portal: z.enum(TECHNICIAN_PORTAL_FILTERS).default('ALL'),
+    skill: z
+      .string()
+      .trim()
+      .max(60)
+      .transform((s) => s.replace(controlChars, ''))
+      .optional(),
+    area: z
+      .string()
+      .trim()
+      .max(60)
+      .transform((s) => s.replace(controlChars, ''))
+      .optional(),
     page: z.coerce.number().int().min(1).max(10_000).default(1),
     pageSize: z.coerce.number().int().min(1).max(100).default(20),
   })
   .strict();
+
+/**
+ * Bulk roster operations.
+ *
+ * The value-bearing actions (skills, service areas) take an explicit list of
+ * tokens; every other action must NOT carry one, so an activation can never
+ * silently rewrite expertise. Ids are validated as cuid, capped, and **duplicates
+ * are rejected** rather than silently collapsed: a client that repeats an id has a
+ * bug, and the operator should see it instead of a quietly different batch size.
+ */
+export const TECHNICIAN_BULK_ACTIONS = [
+  'ACTIVATE',
+  'DEACTIVATE',
+  'SET_AVAILABLE',
+  'SET_UNAVAILABLE',
+  'ADD_SKILLS',
+  'REMOVE_SKILLS',
+  'ADD_SERVICE_AREAS',
+  'REMOVE_SERVICE_AREAS',
+  'REISSUE_INVITATIONS',
+] as const;
+
+export type TechnicianBulkAction = (typeof TECHNICIAN_BULK_ACTIONS)[number];
+
+const VALUE_ACTIONS: ReadonlySet<string> = new Set([
+  'ADD_SKILLS',
+  'REMOVE_SKILLS',
+  'ADD_SERVICE_AREAS',
+  'REMOVE_SERVICE_AREAS',
+]);
+
+/** Bounded batch. The roster is small, and one request must not run unbounded. */
+export const TECHNICIAN_BULK_MAX_IDS = 50;
+
+export const adminTechnicianBulkSchema = z
+  .object({
+    ids: z
+      .array(z.string().cuid('Invalid technician id'))
+      .min(1, 'Select at least one technician')
+      .max(TECHNICIAN_BULK_MAX_IDS, `Select at most ${TECHNICIAN_BULK_MAX_IDS} technicians at once`),
+    action: z.enum(TECHNICIAN_BULK_ACTIONS),
+    values: z
+      .array(
+        safeString(40).refine(
+          (value) => !/[,\u0000-\u001F]/.test(value),
+          'Enter one value per entry, without commas',
+        ),
+      )
+      .min(1, 'Enter at least one value')
+      .max(10, 'Enter at most 10 values at once')
+      .optional(),
+  })
+  .strict()
+  .superRefine((data, ctx) => {
+    if (new Set(data.ids).size !== data.ids.length) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'Duplicate technician ids are not allowed',
+        path: ['ids'],
+      });
+    }
+    if (VALUE_ACTIONS.has(data.action) && !data.values) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'Enter at least one value',
+        path: ['values'],
+      });
+    }
+    if (!VALUE_ACTIONS.has(data.action) && data.values) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'Values are only accepted for skill and service-area actions',
+        path: ['values'],
+      });
+    }
+    // Each invitation returns a one-time credential to display; keep that surface
+    // small enough to hand over deliberately.
+    if (data.action === 'REISSUE_INVITATIONS' && data.ids.length > 20) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'Re-issue at most 20 invitations at once',
+        path: ['ids'],
+      });
+    }
+  });
+
+/** Ids accepted by the CSV export endpoint (an explicit selection, capped). */
+export const technicianExportIdsSchema = z
+  .array(z.string().cuid('Invalid technician id'))
+  .min(1, 'Select at least one technician')
+  .max(TECHNICIAN_BULK_MAX_IDS, `Export at most ${TECHNICIAN_BULK_MAX_IDS} technicians at once`);
 
 /**
  * Technician feature configuration.

@@ -141,6 +141,12 @@ export const AUDIT_ACTIONS = [
   'TECHNICIAN_FEATURES_CHANGED',
   'TECHNICIAN_JOB_STATUS_CHANGED',
   /**
+   * One event per bulk roster operation. The individual outcomes are in the
+   * metadata (action, requested, affected, skipped) rather than as N log rows, so
+   * a 50-technician edit stays one auditable action by one actor.
+   */
+  'TECHNICIAN_BULK_CHANGED',
+  /**
    * Catalog and commercial administration. These are deliberately distinct
    * actions rather than a generic "admin updated row": a price publication and
    * a price withdrawal are different events with different risk, and collapsing
